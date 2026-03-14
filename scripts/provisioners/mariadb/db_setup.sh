@@ -130,19 +130,27 @@ create_user() {
 }
 
 # =============================================================================
-# PASO 4 — Otorgar privilegios READ-ONLY (CNST-003)
+# PASO 4 — Otorgar privilegios
+#   ivr_legacy        → SELECT         (READ-ONLY — CNST-003)
+#   test_ivr_legacy   → CREATE, DROP   (solo para pytest — BD de tests)
 # GRANT es idempotente en MariaDB — re-aplicar no genera error
 # =============================================================================
 grant_privileges() {
-    log_step 4 $TOTAL_STEPS "Privilegios READ-ONLY: ${DB_USER} sobre ${DB_NAME}"
+    log_step 4 $TOTAL_STEPS "Privilegios: ${DB_USER} sobre ${DB_NAME} y test_${DB_NAME}"
+
+    local TEST_DB_NAME="test_${DB_NAME}"
 
     for host in "%" "localhost"; do
+        # Producción: solo lectura (CNST-003)
         my_root -e \
             "GRANT SELECT ON \`${DB_NAME}\`.* TO '${DB_USER}'@'${host}';" > /dev/null
+        # Tests: pytest necesita crear y destruir test_ivr_legacy
+        my_root -e \
+            "GRANT CREATE, DROP ON \`${TEST_DB_NAME}\`.* TO '${DB_USER}'@'${host}';" > /dev/null
     done
 
     my_root -e "FLUSH PRIVILEGES;" > /dev/null
-    log_success "Privilegios SELECT aplicados (READ-ONLY — CNST-003)"
+    log_success "Privilegios aplicados: SELECT en ${DB_NAME} (READ-ONLY) + CREATE/DROP en ${TEST_DB_NAME} (tests)"
 }
 
 # =============================================================================
