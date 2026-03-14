@@ -1,0 +1,60 @@
+{
+  "module": "MOD_Access",
+  "app": "access",
+  "menu_tree": [
+    {
+      "nivel": 1,
+      "id_menu": 3,
+      "des_name": "Permisos",
+      "icon": "/static/icons/menu/access.png",
+      "orden": 30,
+      "required_functions": [],
+      "submenus": [
+        {
+          "id_menu": 301,
+          "des_name": "Asignar Funciones",
+          "icon": "/static/icons/submenu/assign_functions.png",
+          "endpoint": "/api/v1/access/assign-functions/",
+          "method": "POST",
+          "orden": 1,
+          "required_functions": [
+            "access.assign_functions"
+          ]
+        },
+        {
+          "id_menu": 302,
+          "des_name": "Revocar Funciones",
+          "icon": "/static/icons/submenu/revoke_functions.png",
+          "endpoint": "/api/v1/access/revoke-functions/",
+          "method": "POST",
+          "orden": 2,
+          "required_functions": [
+            "access.revoke_functions"
+          ]
+        },
+        {
+          "id_menu": 303,
+          "des_name": "Ver Permisos",
+          "icon": "/static/icons/submenu/view_permissions.png",
+          "endpoint": "/api/v1/access/permissions/",
+          "method": "GET",
+          "orden": 3,
+          "required_functions": [
+            "access.view_functions"
+          ]
+        },
+        {
+          "id_menu": 304,
+          "des_name": "Gestionar Grupos",
+          "icon": "/static/icons/submenu/manage_groups.png",
+          "endpoint": "/api/v1/access/groups/",
+          "method": "GET",
+          "orden": 4,
+          "required_functions": [
+            "access.assign_functions"
+          ]
+        }
+      ]
+    }
+  ]
+}

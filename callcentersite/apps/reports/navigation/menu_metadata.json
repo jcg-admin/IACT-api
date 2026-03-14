@@ -1,0 +1,69 @@
+{
+  "module": "MOD_Reports",
+  "app": "reports",
+  "description": "Sistema de reportes y exportación (CNST-007 compliant)",
+  "menu_tree": [
+    {
+      "nivel": 1,
+      "id_menu": 5,
+      "des_name": "Reportes",
+      "icon": "/static/icons/menu/reports.png",
+      "orden": 50,
+      "required_functions": [],
+      "submenus": [
+        {
+          "id_menu": 501,
+          "des_name": "Mis Reportes",
+          "icon": "/static/icons/submenu/list_reports.png",
+          "endpoint": "/api/v1/reports/",
+          "method": "GET",
+          "orden": 1,
+          "required_functions": ["reports.view"],
+          "description": "Ver lista de reportes propios"
+        },
+        {
+          "id_menu": 502,
+          "des_name": "Crear Reporte",
+          "icon": "/static/icons/submenu/create_report.png",
+          "endpoint": "/api/v1/reports/",
+          "method": "POST",
+          "orden": 2,
+          "required_functions": ["reports.create"],
+          "description": "Crear nuevo reporte (calls, users, audit)"
+        },
+        {
+          "id_menu": 503,
+          "des_name": "Mis Exportaciones",
+          "icon": "/static/icons/submenu/export_jobs.png",
+          "endpoint": "/api/v1/export-jobs/",
+          "method": "GET",
+          "orden": 3,
+          "required_functions": ["reports.view"],
+          "description": "Ver historial de exportaciones"
+        },
+        {
+          "id_menu": 504,
+          "des_name": "Exportar a CSV",
+          "icon": "/static/icons/submenu/export_csv.png",
+          "endpoint": "/api/v1/reports/{id}/export/",
+          "method": "POST",
+          "payload": {"format": "csv"},
+          "orden": 4,
+          "required_functions": ["reports.export.csv"],
+          "description": "Exportar reporte a CSV (max 100K registros CNST-007)"
+        },
+        {
+          "id_menu": 505,
+          "des_name": "Exportar a Excel",
+          "icon": "/static/icons/submenu/export_excel.png",
+          "endpoint": "/api/v1/reports/{id}/export/",
+          "method": "POST",
+          "payload": {"format": "excel"},
+          "orden": 5,
+          "required_functions": ["reports.export.csv"],
+          "description": "Exportar reporte a Excel (max 100K registros CNST-007)"
+        }
+      ]
+    }
+  ]
+}
