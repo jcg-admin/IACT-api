@@ -17,6 +17,9 @@ set -euo pipefail
 # LOAD UTILITIES
 # =============================================================================
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
+export PROJECT_ROOT
+
 # shellcheck disable=SC1091
 source "${SCRIPT_DIR}/utils/logging.sh"
 # shellcheck disable=SC1091
@@ -25,12 +28,20 @@ source "${SCRIPT_DIR}/utils/core.sh"
 source "${SCRIPT_DIR}/utils/database.sh"
 
 # =============================================================================
-# CONFIGURATION
+# CONFIGURATION — load from .env, fallback to Vagrant defaults
 # =============================================================================
-POSTGRES_HOST="${POSTGRES_HOST:-192.168.56.11}"
-POSTGRES_PORT="${POSTGRES_PORT:-5432}"
-MARIADB_HOST="${MARIADB_HOST:-192.168.56.10}"
-MARIADB_PORT="${MARIADB_PORT:-3306}"
+ENV_FILE="${PROJECT_ROOT}/.env"
+if [[ -f "$ENV_FILE" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "$ENV_FILE"
+    set +a
+fi
+
+POSTGRES_HOST="${DB_HOST:-192.168.56.11}"
+POSTGRES_PORT="${DB_PORT:-5432}"
+MARIADB_HOST="${IVR_DB_HOST:-192.168.56.10}"
+MARIADB_PORT="${IVR_DB_PORT:-3306}"
 
 ERRORS=0
 WARNINGS=0
