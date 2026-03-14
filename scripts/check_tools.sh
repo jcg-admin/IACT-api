@@ -1,347 +1,315 @@
 #!/bin/bash
-
-# ==============================================================================
-# CHECK TOOLS - IACT API
-# ==============================================================================
-# Verifica que todas las herramientas del sistema requeridas para el desarrollo
-# y despliegue del sistema IACT estén instaladas y con las versiones correctas.
+# IACT API - Check Tools
+# Version: 0.2.0
+# Description: Verifica herramientas del entorno de desarrollo IACT
 #
 # Uso:
 #   bash scripts/check_tools.sh
 #
-# Requisitos:
-#   - Python 3.11+
-#   - PostgreSQL 16+ (cliente psql)
-#   - MariaDB 11.4+ (cliente mysql)
-#   - pip
-# ==============================================================================
-
+# Variables opcionales de entorno:
+#   POSTGRES_HOST  (default: 192.168.56.11)
+#   POSTGRES_PORT  (default: 5432)
+#   MARIADB_HOST   (default: 192.168.56.10)
+#   MARIADB_PORT   (default: 3306)
 set -euo pipefail
 
-# ------------------------------------------------------------------------------
-# Colores
-# ------------------------------------------------------------------------------
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-NC='\033[0m' # No Color
+# =============================================================================
+# LOAD UTILITIES
+# =============================================================================
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/utils/logging.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/utils/core.sh"
+# shellcheck disable=SC1091
+source "${SCRIPT_DIR}/utils/database.sh"
 
-# ------------------------------------------------------------------------------
-# Contadores
-# ------------------------------------------------------------------------------
+# =============================================================================
+# CONFIGURATION
+# =============================================================================
+POSTGRES_HOST="${POSTGRES_HOST:-192.168.56.11}"
+POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+MARIADB_HOST="${MARIADB_HOST:-192.168.56.10}"
+MARIADB_PORT="${MARIADB_PORT:-3306}"
+
 ERRORS=0
 WARNINGS=0
 OK_COUNT=0
 
-# ------------------------------------------------------------------------------
-# Funciones auxiliares
-# ------------------------------------------------------------------------------
+# =============================================================================
+# RESULT HELPERS (wrap log_* with counters)
+# =============================================================================
 ok() {
-    echo -e "  ${GREEN}[OK]${NC}   $1"
+    log_success "$1"
     OK_COUNT=$((OK_COUNT + 1))
 }
 
 warn() {
-    echo -e "  ${YELLOW}[WARN]${NC}  $1"
+    log_warn "$1"
     WARNINGS=$((WARNINGS + 1))
 }
 
-error() {
-    echo -e "  ${RED}[ERROR]${NC} $1"
+fail() {
+    log_error "$1"
     ERRORS=$((ERRORS + 1))
 }
 
-section() {
-    echo ""
-    echo -e "${CYAN}──────────────────────────────────────────────────────${NC}"
-    echo -e "${CYAN}  $1${NC}"
-    echo -e "${CYAN}──────────────────────────────────────────────────────${NC}"
-}
+# =============================================================================
+# CHECK FUNCTIONS
+# =============================================================================
+check_python() {
+    log_header "Python (requerido: 3.11+)"
 
-# Verifica que un binario existe
-check_binary() {
-    local name="$1"
-    local cmd="$2"
-
-    if command -v "$cmd" &>/dev/null; then
-        local version
-        version=$(${3:-"$cmd --version"} 2>&1 | head -1)
-        ok "$name encontrado: $version"
-        return 0
-    else
-        error "$name NO encontrado. Instalar: $name"
-        return 1
-    fi
-}
-
-# Verifica versión mínima de Python (major.minor)
-check_python_version() {
-    local required_major=$1
-    local required_minor=$2
-
-    if ! command -v python3 &>/dev/null; then
-        error "python3 NO encontrado"
-        return 1
+    if ! command_exists python3; then
+        fail "python3 NO encontrado"
+        return
     fi
 
-    local version
+    local version major minor
     version=$(python3 -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}.{sys.version_info.micro}')")
-    local major minor
     major=$(echo "$version" | cut -d. -f1)
     minor=$(echo "$version" | cut -d. -f2)
 
-    if [ "$major" -gt "$required_major" ] || \
-       ([ "$major" -eq "$required_major" ] && [ "$minor" -ge "$required_minor" ]); then
-        ok "Python $version (requerido: $required_major.$required_minor+)"
+    if [[ "$major" -gt 3 ]] || ([[ "$major" -eq 3 ]] && [[ "$minor" -ge 11 ]]); then
+        ok "Python ${version}"
     else
-        error "Python $version — se requiere $required_major.$required_minor+"
-        return 1
+        fail "Python ${version} — se requiere 3.11+"
+    fi
+
+    if command_exists pip3 || command_exists pip; then
+        local pip_cmd; pip_cmd=$(command -v pip3 2>/dev/null || command -v pip)
+        ok "pip: $($pip_cmd --version 2>&1 | head -1)"
+    else
+        fail "pip NO encontrado"
+    fi
+
+    if python3 -m venv --help &>/dev/null; then
+        ok "venv disponible"
+    else
+        warn "venv NO disponible"
     fi
 }
 
-# Verifica que un paquete Python está instalado
-check_python_package() {
-    local package="$1"
-    local import_name="${2:-$1}"
+check_python_packages() {
+    log_header "Paquetes Python (drivers y core)"
 
-    if python3 -c "import $import_name" &>/dev/null; then
-        local version
-        version=$(python3 -c "import $import_name; v=getattr($import_name,'__version__',None) or getattr($import_name,'VERSION',None); print(v or 'version desconocida')" 2>/dev/null || echo "instalado")
-        ok "$package ($version)"
-    else
-        warn "$package NO instalado (pip install $package)"
-    fi
-}
+    local pkg import_name version
+    declare -A packages=(
+        ["django"]="django"
+        ["rest_framework"]="djangorestframework"
+        ["rest_framework_simplejwt"]="djangorestframework-simplejwt"
+        ["django_filters"]="django-filter"
+        ["drf_spectacular"]="drf-spectacular"
+        ["psycopg2"]="psycopg2"
+        ["MySQLdb"]="mysqlclient"
+        ["apscheduler"]="APScheduler"
+        ["boto3"]="boto3"
+        ["openpyxl"]="openpyxl"
+        ["decouple"]="python-decouple"
+        ["pytz"]="pytz"
+        ["dateutil"]="python-dateutil"
+    )
 
-# Verifica versión mínima de PostgreSQL cliente
-check_psql_version() {
-    local required_major=$1
-
-    if ! command -v psql &>/dev/null; then
-        warn "psql (cliente PostgreSQL) NO encontrado — instalar postgresql-client"
-        return 0
-    fi
-
-    local version
-    version=$(psql --version 2>&1 | head -1)
-    local major
-    major=$(psql --version 2>&1 | grep -oP '\d+' | head -1)
-
-    if [ "$major" -ge "$required_major" ]; then
-        ok "psql $version (requerido: $required_major+)"
-    else
-        warn "psql $version — se recomienda $required_major+"
-    fi
-}
-
-# Verifica versión de MariaDB/MySQL cliente
-check_mysql_version() {
-    if command -v mariadb &>/dev/null; then
-        local version
-        version=$(mariadb --version 2>&1 | head -1)
-        ok "mariadb cliente: $version"
-    elif command -v mysql &>/dev/null; then
-        local version
-        version=$(mysql --version 2>&1 | head -1)
-        ok "mysql cliente: $version"
-    else
-        warn "mariadb/mysql cliente NO encontrado — instalar mariadb-client"
-    fi
-}
-
-# ==============================================================================
-# INICIO
-# ==============================================================================
-echo ""
-echo -e "${BLUE}=====================================================================${NC}"
-echo -e "${BLUE}  CHECK TOOLS - IACT API v2.2.1${NC}"
-echo -e "${BLUE}=====================================================================${NC}"
-
-# ------------------------------------------------------------------------------
-# 1. Sistema Operativo
-# ------------------------------------------------------------------------------
-section "1. SISTEMA OPERATIVO"
-if [ -f /etc/os-release ]; then
-    . /etc/os-release
-    ok "SO: $NAME $VERSION_ID"
-else
-    ok "SO: $(uname -s) $(uname -r)"
-fi
-
-# ------------------------------------------------------------------------------
-# 2. Python
-# ------------------------------------------------------------------------------
-section "2. PYTHON (requerido: 3.11+)"
-check_python_version 3 11
-
-if command -v python3 &>/dev/null; then
-    PYTHON_PATH=$(command -v python3)
-    ok "Ruta: $PYTHON_PATH"
-fi
-
-# pip
-if command -v pip3 &>/dev/null || command -v pip &>/dev/null; then
-    PIP_CMD=$(command -v pip3 2>/dev/null || command -v pip)
-    PIP_VERSION=$($PIP_CMD --version 2>&1 | head -1)
-    ok "pip: $PIP_VERSION"
-else
-    error "pip NO encontrado"
-fi
-
-# virtualenv / venv
-if python3 -m venv --help &>/dev/null; then
-    ok "venv (módulo estándar de Python)"
-else
-    warn "venv NO disponible — verificar instalación de Python"
-fi
-
-# ------------------------------------------------------------------------------
-# 3. Bases de datos (clientes)
-# ------------------------------------------------------------------------------
-section "3. CLIENTES DE BASE DE DATOS"
-check_psql_version 16
-check_mysql_version
-
-# ------------------------------------------------------------------------------
-# 4. Paquetes Python del proyecto
-# ------------------------------------------------------------------------------
-section "4. PAQUETES PYTHON CORE"
-check_python_package "Django" "django"
-check_python_package "djangorestframework" "rest_framework"
-check_python_package "djangorestframework-simplejwt" "rest_framework_simplejwt"
-check_python_package "django-filter" "django_filters"
-check_python_package "drf-spectacular" "drf_spectacular"
-check_python_package "psycopg2" "psycopg2"
-check_python_package "mysqlclient" "MySQLdb"
-check_python_package "APScheduler" "apscheduler"
-check_python_package "boto3" "boto3"
-check_python_package "openpyxl" "openpyxl"
-check_python_package "python-decouple" "decouple"
-check_python_package "pytz" "pytz"
-check_python_package "python-dateutil" "dateutil"
-
-# ------------------------------------------------------------------------------
-# 5. Herramientas de testing
-# ------------------------------------------------------------------------------
-section "5. HERRAMIENTAS DE TESTING"
-check_python_package "pytest" "pytest"
-check_python_package "pytest-django" "pytest_django"
-check_python_package "pytest-cov" "pytest_cov"
-check_python_package "factory-boy" "factory"
-check_python_package "faker" "faker"
-check_python_package "coverage" "coverage"
-
-# ------------------------------------------------------------------------------
-# 6. Herramientas de calidad de código
-# ------------------------------------------------------------------------------
-section "6. CALIDAD DE CÓDIGO (desarrollo)"
-if command -v black &>/dev/null; then
-    ok "black $(black --version 2>&1 | head -1)"
-else
-    warn "black NO encontrado (pip install black)"
-fi
-
-if command -v flake8 &>/dev/null; then
-    ok "flake8 $(flake8 --version 2>&1 | head -1)"
-else
-    warn "flake8 NO encontrado (pip install flake8)"
-fi
-
-if command -v isort &>/dev/null; then
-    ok "isort $(isort --version 2>&1 | head -1)"
-else
-    warn "isort NO encontrado (pip install isort)"
-fi
-
-if command -v mypy &>/dev/null; then
-    ok "mypy $(mypy --version 2>&1 | head -1)"
-else
-    warn "mypy NO encontrado (pip install mypy)"
-fi
-
-# ------------------------------------------------------------------------------
-# 7. Herramientas del sistema
-# ------------------------------------------------------------------------------
-section "7. HERRAMIENTAS DEL SISTEMA"
-check_binary "git" "git" "git --version"
-check_binary "bash" "bash" "bash --version"
-check_binary "curl" "curl" "curl --version"
-
-# Apache (solo en producción)
-if command -v apache2 &>/dev/null || command -v httpd &>/dev/null; then
-    APACHE_CMD=$(command -v apache2 2>/dev/null || command -v httpd)
-    ok "Apache: $($APACHE_CMD -v 2>&1 | head -1)"
-else
-    warn "Apache NO encontrado (requerido en producción)"
-fi
-
-# ------------------------------------------------------------------------------
-# 8. Variables de entorno
-# ------------------------------------------------------------------------------
-section "8. VARIABLES DE ENTORNO (.env)"
-if [ -f ".env" ]; then
-    ok ".env encontrado"
-    # Verificar variables críticas sin exponer valores
-    for var in SECRET_KEY DEBUG ALLOWED_HOSTS DATABASE_URL LEGACY_DATABASE_URL SESSION_ENGINE; do
-        if grep -q "^${var}=" .env 2>/dev/null; then
-            ok "  $var configurado"
+    for import_name in "${!packages[@]}"; do
+        pkg="${packages[$import_name]}"
+        if python3 -c "import $import_name" &>/dev/null; then
+            version=$(python3 -c "
+import $import_name
+v = getattr($import_name, '__version__', None) or getattr($import_name, 'VERSION', None)
+print(v or 'instalado')
+" 2>/dev/null || echo "instalado")
+            ok "${pkg} (${version})"
         else
-            warn "  $var NO configurado en .env"
+            # psycopg2 y mysqlclient son bloqueantes — error en vez de warn
+            if [[ "$import_name" == "psycopg2" ]] || [[ "$import_name" == "MySQLdb" ]] || \
+               [[ "$import_name" == "django" ]]; then
+                fail "${pkg} NO instalado — pip install ${pkg}"
+            else
+                warn "${pkg} NO instalado — pip install ${pkg}"
+            fi
         fi
     done
-elif [ -f ".env.example" ]; then
-    warn ".env NO encontrado — copiar .env.example a .env y configurar"
-else
-    warn ".env y .env.example NO encontrados"
-fi
+}
 
-# ------------------------------------------------------------------------------
-# 9. Estructura del proyecto
-# ------------------------------------------------------------------------------
-section "9. ESTRUCTURA DEL PROYECTO"
-if [ -f "manage.py" ]; then
-    ok "manage.py encontrado (ejecutar desde callcentersite/)"
-else
-    warn "manage.py NO encontrado — ejecutar desde callcentersite/"
-fi
+check_testing_tools() {
+    log_header "Herramientas de testing"
 
-if [ -d "callcentersite" ] || [ -d "apps" ]; then
-    ok "Directorio del proyecto encontrado"
-else
-    warn "Directorio callcentersite/ o apps/ NO encontrado"
-fi
+    declare -A test_packages=(
+        ["pytest"]="pytest"
+        ["pytest_django"]="pytest-django"
+        ["pytest_cov"]="pytest-cov"
+        ["factory"]="factory-boy"
+        ["faker"]="faker"
+        ["coverage"]="coverage"
+    )
 
-# ==============================================================================
-# RESUMEN
-# ==============================================================================
-echo ""
-echo -e "${BLUE}=====================================================================${NC}"
-echo -e "${BLUE}  RESUMEN${NC}"
-echo -e "${BLUE}=====================================================================${NC}"
-echo -e "  ${GREEN}OK:${NC}           $OK_COUNT"
-echo -e "  ${YELLOW}Advertencias:${NC} $WARNINGS"
-echo -e "  ${RED}Errores:${NC}      $ERRORS"
-echo ""
+    for import_name in "${!test_packages[@]}"; do
+        pkg="${test_packages[$import_name]}"
+        if python3 -c "import $import_name" &>/dev/null; then
+            ok "${pkg}"
+        else
+            warn "${pkg} NO instalado — pip install ${pkg}"
+        fi
+    done
+}
 
-if [ "$ERRORS" -eq 0 ] && [ "$WARNINGS" -eq 0 ]; then
-    echo -e "  ${GREEN}[LISTO]${NC} Todas las herramientas están instaladas correctamente."
+check_code_quality() {
+    log_header "Calidad de código (desarrollo)"
+    local tools=("black" "flake8" "isort" "mypy")
+    for tool in "${tools[@]}"; do
+        if command_exists "$tool"; then
+            ok "${tool}: $($tool --version 2>&1 | head -1)"
+        else
+            warn "${tool} NO encontrado — pip install ${tool}"
+        fi
+    done
+}
+
+check_system_tools() {
+    log_header "Herramientas del sistema"
+
+    local required=("git" "bash" "curl")
+    for tool in "${required[@]}"; do
+        if command_exists "$tool"; then
+            ok "${tool}: $($tool --version 2>&1 | head -1)"
+        else
+            fail "${tool} NO encontrado"
+        fi
+    done
+
+    # DB clients (opcionales — Django usa drivers Python, no los binarios)
+    if command_exists mysqladmin; then
+        ok "mysqladmin: $(mysqladmin --version 2>&1 | head -1)"
+    else
+        warn "mysqladmin NO encontrado — instalar mariadb-client (opcional)"
+    fi
+
+    if command_exists psql; then
+        ok "psql: $(psql --version 2>&1 | head -1)"
+    else
+        warn "psql NO encontrado — instalar postgresql-client (opcional)"
+    fi
+
+    if command_exists pg_isready; then
+        ok "pg_isready disponible"
+    else
+        warn "pg_isready NO encontrado — instalar postgresql-client"
+    fi
+}
+
+check_database_connectivity() {
+    log_header "Conectividad a bases de datos (via TCP)"
+    log_info "PostgreSQL: ${POSTGRES_HOST}:${POSTGRES_PORT}"
+    log_info "MariaDB:    ${MARIADB_HOST}:${MARIADB_PORT}"
+    log_separator
+
+    # PostgreSQL TCP
+    if tcp_is_reachable "$POSTGRES_HOST" "$POSTGRES_PORT" 3; then
+        ok "PostgreSQL alcanzable en ${POSTGRES_HOST}:${POSTGRES_PORT}"
+    else
+        warn "PostgreSQL NO alcanzable en ${POSTGRES_HOST}:${POSTGRES_PORT} — ejecutar: vagrant up"
+    fi
+
+    # MariaDB TCP
+    if tcp_is_reachable "$MARIADB_HOST" "$MARIADB_PORT" 3; then
+        ok "MariaDB alcanzable en ${MARIADB_HOST}:${MARIADB_PORT}"
+    else
+        warn "MariaDB NO alcanzable en ${MARIADB_HOST}:${MARIADB_PORT} — ejecutar: vagrant up"
+    fi
+}
+
+check_environment_file() {
+    log_header "Variables de entorno (.env)"
+
+    local env_file="${PROJECT_ROOT}/.env"
+    local env_example="${PROJECT_ROOT}/.env.example"
+
+    if exists_file "$env_file"; then
+        ok ".env encontrado"
+        local required_vars=("SECRET_KEY" "DEBUG" "ALLOWED_HOSTS" "DATABASE_URL" "LEGACY_DATABASE_URL" "SESSION_ENGINE")
+        for var in "${required_vars[@]}"; do
+            if grep -q "^${var}=" "$env_file" 2>/dev/null; then
+                ok "  ${var} configurado"
+            else
+                warn "  ${var} NO configurado en .env"
+            fi
+        done
+    elif exists_file "$env_example"; then
+        warn ".env NO encontrado — copiar: cp .env.example .env"
+    else
+        warn ".env y .env.example NO encontrados"
+    fi
+}
+
+check_project_structure() {
+    log_header "Estructura del proyecto"
+
+    local callcentersite="${PROJECT_ROOT}/callcentersite"
+
+    if exists_file "${callcentersite}/manage.py"; then
+        ok "manage.py encontrado"
+    else
+        warn "manage.py NO encontrado en callcentersite/"
+    fi
+
+    local dirs=(
+        "callcentersite/static/icons/menu"
+        "callcentersite/static/icons/submenu"
+        "callcentersite/static/icons/defaults"
+    )
+    for dir in "${dirs[@]}"; do
+        if exists_dir "${PROJECT_ROOT}/${dir}"; then
+            ok "${dir}/"
+        else
+            warn "${dir}/ NO encontrado"
+        fi
+    done
+}
+
+# =============================================================================
+# MAIN
+# =============================================================================
+main() {
+    start_timer
+
     echo ""
-    exit 0
-elif [ "$ERRORS" -eq 0 ]; then
-    echo -e "  ${YELLOW}[ADVERTENCIA]${NC} Hay advertencias. Revisar herramientas opcionales."
+    log_header "CHECK TOOLS - IACT API v2.2.1"
+
+    check_python
+    check_python_packages
+    check_testing_tools
+    check_code_quality
+    check_system_tools
+    check_database_connectivity
+    check_environment_file
+    check_project_structure
+
+    # Summary
+    log_separator "=" 60
     echo ""
-    exit 0
-else
-    echo -e "  ${RED}[INCOMPLETO]${NC} Faltan herramientas requeridas. Revisar errores arriba."
+    log_info  "Tiempo total: $(show_elapsed)"
+    log_success "OK:           ${OK_COUNT}"
+    log_warn  "Advertencias: ${WARNINGS}"
+    log_error "Errores:      ${ERRORS}"
     echo ""
-    echo "  PASOS SUGERIDOS:"
-    echo "    1. Instalar herramientas faltantes"
-    echo "    2. Crear entorno virtual: python3 -m venv venv"
-    echo "    3. Activar entorno:       source venv/bin/activate"
-    echo "    4. Instalar dependencias: pip install -r requirements/development.txt"
-    echo "    5. Ejecutar de nuevo:     bash scripts/check_tools.sh"
-    echo ""
-    exit 1
-fi
+
+    if [[ $ERRORS -eq 0 ]] && [[ $WARNINGS -eq 0 ]]; then
+        log_success "Entorno listo para desarrollo."
+        exit 0
+    elif [[ $ERRORS -eq 0 ]]; then
+        log_warn "Entorno funcional con advertencias. Revisar items marcados."
+        exit 0
+    else
+        log_error "Entorno incompleto. Corregir errores antes de continuar."
+        echo ""
+        log_info "Pasos sugeridos:"
+        log_info "  1. python3 -m venv venv && source venv/bin/activate"
+        log_info "  2. pip install -r requirements/development.txt"
+        log_info "  3. cp .env.example .env  (y editar valores)"
+        log_info "  4. vagrant up            (para levantar las DBs)"
+        echo ""
+        exit 1
+    fi
+}
+
+main
