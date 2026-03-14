@@ -22,8 +22,8 @@ tcp_is_reachable() {
     local host=$1
     local port=$2
     local timeout=${3:-3}
-    # Use bash /dev/tcp — no netcat or nmap required
-    (bash -c "exec 3<>/dev/tcp/${host}/${port}" 2>/dev/null) && return 0 || return 1
+    # Use 'timeout' + bash /dev/tcp — respects the timeout without blocking
+    timeout "$timeout" bash -c "exec 3<>/dev/tcp/${host}/${port}" 2>/dev/null && return 0 || return 1
 }
 
 wait_for_tcp() {

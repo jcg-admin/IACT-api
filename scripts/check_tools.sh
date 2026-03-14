@@ -285,7 +285,7 @@ main() {
     check_project_structure
 
     # Summary
-    log_separator "=" 60
+    log_separator 60 "="
     echo ""
     log_info  "Tiempo total: $(show_elapsed)"
     log_success "OK:           ${OK_COUNT}"
