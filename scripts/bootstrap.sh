@@ -156,9 +156,13 @@ phase_python() {
 # =============================================================================
 
 # Intenta arrancar un servicio si está inactivo y lo habilita para boot.
-# Uso: try_start_service <nombre> <comando_check> <comando_start>
+# En entornos con systemd usa systemctl; en contenedores/SysVinit usa `service`.
+# Uso: try_start_service <nombre> <comando_check>
 try_start_service() {
-    local name="$1" check_cmd="$2" start_cmd="$3"
+    local name="$1" check_cmd="$2"
+    local has_systemd=false
+
+    systemctl is-system-running &>/dev/null 2>&1 && has_systemd=true
 
     if eval "$check_cmd" &>/dev/null 2>&1; then
         log_success "${name} ya está activo"
@@ -166,12 +170,28 @@ try_start_service() {
     fi
 
     log_info "${name} inactivo — intentando arrancar..."
-    if eval "$start_cmd" &>/dev/null 2>&1; then
-        log_success "${name} iniciado"
-        systemctl enable "$name" &>/dev/null 2>&1 \
-            && log_info "${name} habilitado en arranque (systemctl enable)" \
-            || log_warn "${name}: no se pudo habilitar en arranque"
-    else
+
+    local started=false
+    if $has_systemd; then
+        if systemctl start "$name" &>/dev/null 2>&1; then
+            started=true
+            log_success "${name} iniciado (systemctl)"
+            systemctl enable "$name" &>/dev/null 2>&1 \
+                && log_info "${name} habilitado en arranque (systemctl enable)" \
+                || log_warn "${name}: no se pudo habilitar en arranque"
+        fi
+    fi
+
+    if ! $started; then
+        # Fallback SysVinit / contenedor (sin systemd)
+        if service "$name" start &>/dev/null 2>&1; then
+            started=true
+            log_success "${name} iniciado (service — entorno sin systemd)"
+            log_info "${name}: systemctl enable no aplica en este entorno"
+        fi
+    fi
+
+    if ! $started; then
         log_warn "${name}: no se pudo iniciar — puede no estar instalado localmente"
     fi
 }
@@ -180,13 +200,8 @@ phase_databases() {
     log_header "Fase 4/6 — Bases de datos"
 
     # --- Arrancar servicios si están apagados ---
-    try_start_service "postgresql" \
-        "pg_isready -h 127.0.0.1 -p 5432 -q" \
-        "systemctl start postgresql"
-
-    try_start_service "mariadb" \
-        "mysqladmin ping --silent 2>/dev/null" \
-        "systemctl start mariadb"
+    try_start_service "postgresql" "pg_isready -h 127.0.0.1 -p 5432 -q"
+    try_start_service "mariadb"    "mysqladmin ping --silent 2>/dev/null"
 
     echo ""
 
