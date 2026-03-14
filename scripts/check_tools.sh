@@ -222,11 +222,14 @@ check_environment_file() {
     log_header "Variables de entorno (.env)"
 
     local env_file="${PROJECT_ROOT}/.env"
-    local env_example="${PROJECT_ROOT}/.env.example"
 
     if exists_file "$env_file"; then
         ok ".env encontrado"
-        local required_vars=("SECRET_KEY" "DEBUG" "ALLOWED_HOSTS" "DATABASE_URL" "LEGACY_DATABASE_URL" "SESSION_ENGINE")
+        local required_vars=(
+            "SECRET_KEY"
+            "DB_HOST" "DB_PORT" "DB_NAME" "DB_USER" "DB_PASSWORD"
+            "IVR_DB_HOST" "IVR_DB_PORT" "IVR_DB_NAME" "IVR_DB_USER" "IVR_DB_PASSWORD"
+        )
         for var in "${required_vars[@]}"; do
             if grep -q "^${var}=" "$env_file" 2>/dev/null; then
                 ok "  ${var} configurado"
@@ -234,10 +237,8 @@ check_environment_file() {
                 warn "  ${var} NO configurado en .env"
             fi
         done
-    elif exists_file "$env_example"; then
-        warn ".env NO encontrado — copiar: cp .env.example .env"
     else
-        warn ".env y .env.example NO encontrados"
+        warn ".env NO encontrado en ${PROJECT_ROOT}"
     fi
 }
 
@@ -305,7 +306,7 @@ main() {
         log_info "Pasos sugeridos:"
         log_info "  1. python3 -m venv venv && source venv/bin/activate"
         log_info "  2. pip install -r requirements/development.txt"
-        log_info "  3. cp .env.example .env  (y editar valores)"
+        log_info "  3. Editar .env con los valores del entorno"
         log_info "  4. vagrant up            (para levantar las DBs)"
         echo ""
         exit 1
