@@ -58,7 +58,7 @@ pip install -r requirements/development.txt
 ### 4. Configurar variables de entorno
 
 ```bash
-cp .env.example .env
+Editar .env con los valores del entorno
 ```
 
 Edita `.env` con tus valores:
@@ -242,7 +242,7 @@ api/
 │   ├── api/                     # Documentación de API
 │   ├── setup/                   # Guías de setup
 │   └── README.md
-├── .env.example
+├── .env
 ├── .gitignore
 ├── Makefile                     # Scripts útiles
 └── README.md
@@ -477,7 +477,7 @@ source venv/bin/activate
 pip install -r requirements/production.txt
 
 # Configurar .env
-cp .env.example .env
+Editar .env con los valores del entorno
 # Editar con valores de producción
 ```
 
