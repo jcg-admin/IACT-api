@@ -280,7 +280,7 @@ main() {
         fi
     done
 
-    log_separator "=" 60
+    log_separator 60 "="
     log_info "Tiempo total: $(show_elapsed)"
     echo ""
 
