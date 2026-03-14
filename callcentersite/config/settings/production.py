@@ -183,32 +183,18 @@ MEDIA_ROOT = config('MEDIA_ROOT', default='/var/www/iact/media')
 # ==============================================================================
 # CACHE
 # ==============================================================================
-# CNST_TECNICAS: NO Redis
-# ==============================================================================
-
-# REDIS PROHIBIDO POR CNST_TECNICAS 
+# CNST-010 + CNST_TECNICAS: NO cache de ningun tipo. CACHES removido.
 #
-# NO usar Redis como cache
-# NO usar django-redis
-# Usar cache local en memoria
-
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'iact-prod-cache',
-        'OPTIONS': {
-            'MAX_ENTRIES': 10000,
-        },
-    }
-}
-
 # PROHIBIDO:
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django_redis.cache.RedisCache',  # PROHIBIDO
-#         ...
-#     }
-# }
+# - Redis / django-redis          → CNST_TECNICAS
+# - LocMemCache                   → CNST-010 + inutil en multi-proceso
+#
+# LocMemCache en produccion (mod_wsgi/gunicorn multi-worker):
+# - Cada worker tiene su propia copia aislada en memoria
+# - No hay estado compartido entre workers → inconsistencia garantizada
+# - Se pierde al reiniciar → no es persistencia real
+# - Toda persistencia va a PostgreSQL (sessions, datos, login lockout)
+# ==============================================================================
 
 
 # ==============================================================================

@@ -97,14 +97,14 @@ LOGGING['loggers']['apps']['level'] = 'DEBUG'
 # ==============================================================================
 # CACHE
 # ==============================================================================
-
-# Development: cache local
-CACHES = {
-    'default': {
-        'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-        'LOCATION': 'iact-dev-cache',
-    }
-}
+# CNST-010: NO cache permitido. CACHES removido.
+#
+# LocMemCache es inutil en un API REST multi-proceso:
+# - Cada worker (gunicorn/mod_wsgi) tiene su propia copia aislada en memoria
+# - No hay estado compartido entre workers
+# - Se pierde todo al reiniciar el proceso
+# - Toda persistencia ya va a PostgreSQL (sessions, datos, locks)
+# ==============================================================================
 
 
 # ==============================================================================
