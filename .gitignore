@@ -264,6 +264,12 @@ secrets/
 infrastructure/vagrant/*.box
 
 
+# ==============================================================================
+# Apache — conf generado (tiene rutas absolutas del servidor, no va a git)
+# El template sí está en git: scripts/apache/iact-apache.conf
+# ==============================================================================
+scripts/apache/iact.conf
+
 ## Devcontainer
 
 .init_completed
