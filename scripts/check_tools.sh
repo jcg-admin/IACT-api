@@ -105,13 +105,14 @@ check_python_packages() {
     log_header "Paquetes Python (drivers y core)"
 
     local pkg import_name version
+    # [import_name]="pip package name"
     declare -A packages=(
         ["django"]="django"
         ["rest_framework"]="djangorestframework"
         ["rest_framework_simplejwt"]="djangorestframework-simplejwt"
         ["django_filters"]="django-filter"
         ["drf_spectacular"]="drf-spectacular"
-        ["psycopg2"]="psycopg2"
+        ["psycopg2"]="psycopg2-binary"
         ["MySQLdb"]="mysqlclient"
         ["apscheduler"]="APScheduler"
         ["boto3"]="boto3"
@@ -119,7 +120,14 @@ check_python_packages() {
         ["decouple"]="python-decouple"
         ["pytz"]="pytz"
         ["dateutil"]="python-dateutil"
+        ["jwt"]="PyJWT"
+        ["sqlparse"]="sqlparse"
+        ["tzlocal"]="tzlocal"
+        ["yaml"]="PyYAML"
     )
+
+    # Paquetes bloqueantes (ERROR si faltan)
+    local critical="psycopg2 MySQLdb django"
 
     for import_name in "${!packages[@]}"; do
         pkg="${packages[$import_name]}"
@@ -131,9 +139,7 @@ print(v or 'instalado')
 " 2>/dev/null || echo "instalado")
             ok "${pkg} (${version})"
         else
-            # psycopg2 y mysqlclient son bloqueantes — error en vez de warn
-            if [[ "$import_name" == "psycopg2" ]] || [[ "$import_name" == "MySQLdb" ]] || \
-               [[ "$import_name" == "django" ]]; then
+            if [[ " $critical " == *" $import_name "* ]]; then
                 fail "${pkg} NO instalado — pip install ${pkg}"
             else
                 warn "${pkg} NO instalado — pip install ${pkg}"
@@ -156,6 +162,25 @@ check_testing_tools() {
 
     for import_name in "${!test_packages[@]}"; do
         pkg="${test_packages[$import_name]}"
+        if python3 -c "import $import_name" &>/dev/null; then
+            ok "${pkg}"
+        else
+            warn "${pkg} NO instalado — pip install ${pkg}"
+        fi
+    done
+}
+
+check_dev_extras() {
+    log_header "Herramientas dev (opcionales)"
+
+    declare -A dev_packages=(
+        ["debug_toolbar"]="django-debug-toolbar"
+        ["django_extensions"]="django-extensions"
+        ["IPython"]="ipython"
+    )
+
+    for import_name in "${!dev_packages[@]}"; do
+        pkg="${dev_packages[$import_name]}"
         if python3 -c "import $import_name" &>/dev/null; then
             ok "${pkg}"
         else
@@ -290,6 +315,7 @@ main() {
     check_python
     check_python_packages
     check_testing_tools
+    check_dev_extras
     check_code_quality
     check_system_tools
     check_database_connectivity
