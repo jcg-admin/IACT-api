@@ -164,7 +164,7 @@ DATABASES = {
     },
     
     # MariaDB - IVR Legacy Database (READ-ONLY)
-    'ivr_legacy': {
+    'ivr': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': config('IVR_DB_NAME', default='ivr_legacy'),
         'USER': config('IVR_DB_USER', default='ivr_readonly'),
@@ -179,7 +179,7 @@ DATABASES = {
 }
 
 # Database Router (CNST-003: READ-ONLY enforcement)
-DATABASE_ROUTERS = ['config.database_router.IVRRouter']  # CNST-003: Router corregido
+DATABASE_ROUTERS = ['config.db_router.DatabaseRouter']  # CNST-003
 
 
 # ==============================================================================

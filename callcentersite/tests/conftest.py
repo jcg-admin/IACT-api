@@ -63,7 +63,7 @@ def django_db_setup(django_db_setup, django_db_blocker):
             'NAME': ':memory:',
             'ATOMIC_REQUESTS': True,
         },
-        'ivr_legacy': {
+        'ivr': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': ':memory:',
             'ATOMIC_REQUESTS': False,  # IVR readonly
