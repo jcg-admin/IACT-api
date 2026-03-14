@@ -29,6 +29,18 @@ source "${PROJECT_ROOT}/scripts/utils/core.sh"
 source "${PROJECT_ROOT}/scripts/utils/database.sh"
 
 # =============================================================================
+# AUTO-ACTIVATE VENV
+# Si existe venv/ en el proyecto y no está ya activo, lo agrega al PATH.
+# Así check_tools funciona igual con o sin `source venv/bin/activate`.
+# =============================================================================
+VENV_PYTHON="${PROJECT_ROOT}/venv/bin/python3"
+if [[ -f "$VENV_PYTHON" ]]; then
+    if [[ "${VIRTUAL_ENV:-}" != "${PROJECT_ROOT}/venv" ]]; then
+        export PATH="${PROJECT_ROOT}/venv/bin:${PATH}"
+    fi
+fi
+
+# =============================================================================
 # CONFIGURATION — load from .env, fallback to Vagrant defaults
 # =============================================================================
 ENV_FILE="${PROJECT_ROOT}/.env"
