@@ -64,7 +64,7 @@ def mock_ivr_connection(mocker):
     # Mockear django.db.connections['ivr_legacy']
     mocker.patch(
         'django.db.connections.__getitem__',
-        side_effect=lambda db_alias: mock_connection if db_alias == 'ivr_legacy' else Mock()
+        side_effect=lambda db_alias: mock_connection if db_alias == 'ivr' else Mock()
     )
     
     return mock_connection
@@ -205,29 +205,29 @@ def mock_database_router(mocker):
     
     mock_router = MagicMock(spec=IVRRouter)
     
-    # db_for_read: IVR -> 'ivr_legacy', otros -> 'default'
+    # db_for_read: IVR -> 'ivr', otros -> 'default'
     def mock_db_for_read(model, **hints):
-        if hasattr(model, '_meta') and model._meta.app_label == 'ivr_legacy':
-            return 'ivr_legacy'
+        if hasattr(model, '_meta') and model._meta.app_label == 'ivr':
+            return 'ivr'
         return 'default'
-    
+
     mock_router.db_for_read.side_effect = mock_db_for_read
-    
+
     # db_for_write: IVR -> None (readonly), otros -> 'default'
     def mock_db_for_write(model, **hints):
-        if hasattr(model, '_meta') and model._meta.app_label == 'ivr_legacy':
+        if hasattr(model, '_meta') and model._meta.app_label == 'ivr':
             return None  # IVR readonly
         return 'default'
-    
+
     mock_router.db_for_write.side_effect = mock_db_for_write
-    
+
     # allow_relation: siempre True en tests
     mock_router.allow_relation.return_value = True
-    
+
     # allow_migrate: IVR no migra, otros sí
     def mock_allow_migrate(db, app_label, model_name=None, **hints):
-        if app_label == 'ivr_legacy':
-            return db == 'ivr_legacy'
+        if app_label == 'ivr':
+            return db == 'ivr'
         return db == 'default'
     
     mock_router.allow_migrate.side_effect = mock_allow_migrate
@@ -332,7 +332,7 @@ def mock_database_settings(mocker):
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': ':memory:',
         },
-        'ivr_legacy': {
+        'ivr': {
             'ENGINE': 'django.db.backends.sqlite3',
             'NAME': ':memory:',
         }

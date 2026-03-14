@@ -56,7 +56,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 DATABASES['default']['CONN_MAX_AGE'] = 600
 DATABASES['default']['OPTIONS']['connect_timeout'] = 10
 
-DATABASES['ivr_legacy']['OPTIONS']['connect_timeout'] = 10
+DATABASES['ivr']['OPTIONS']['connect_timeout'] = 10
 
 
 # ==============================================================================

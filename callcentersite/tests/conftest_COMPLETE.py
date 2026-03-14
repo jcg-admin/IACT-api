@@ -658,7 +658,7 @@ def use_ivr_db(db):
     CNST-002: BD IVR readonly.
     
     Uso:
-        @pytest.mark.django_db(databases=['ivr_legacy'])
+        @pytest.mark.django_db(databases=['ivr'])
         def test_ivr(use_ivr_db):
             # Usa BD IVR
             pass
