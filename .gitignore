@@ -65,7 +65,6 @@ venv.bak/
 *.venv/
 venv_local
 .venv_local
-*env
 # ==========================================
 # Django
 # ==========================================
@@ -136,7 +135,8 @@ Temporary Items
 # ==========================================
 # Environment Variables
 # ==========================================
-.env
+# .env se trackea en git como template con valores placeholder.
+# Para overrides locales con credenciales reales usar .env.local (ignorado).
 .env.local
 .env.*.local
 
@@ -277,4 +277,5 @@ infrastructure/cpython/.build_state/
 
 
 docs/
+!scripts/documents/
 logs/
