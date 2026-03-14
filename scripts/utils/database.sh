@@ -38,7 +38,7 @@ wait_for_tcp() {
             return 1
         }
         sleep 1
-        ((elapsed++))
+        elapsed=$((elapsed + 1))
     done
     log_success "${host}:${port} is reachable"
 }
@@ -66,7 +66,7 @@ mysql_wait_ready() {
             return 1
         }
         sleep 1
-        ((elapsed++))
+        elapsed=$((elapsed + 1))
     done
     log_success "MySQL/MariaDB is ready"
 }
@@ -179,7 +179,7 @@ postgres_wait_ready() {
             return 1
         }
         sleep 1
-        ((elapsed++))
+        elapsed=$((elapsed + 1))
     done
     log_success "PostgreSQL is ready"
 }

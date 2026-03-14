@@ -99,7 +99,7 @@ wait_for_process() {
     while ! is_running "$process"; do
         [[ $elapsed -ge $timeout ]] && return 1
         sleep 1
-        ((elapsed++))
+        elapsed=$((elapsed + 1))
     done
     return 0
 }
@@ -243,7 +243,7 @@ retry() {
             return 0
         fi
         echo "[WARN] Command failed (attempt ${attempt}/${max_attempts})"
-        ((attempt++))
+        attempt=$((attempt + 1))
         [[ $attempt -le $max_attempts ]] && sleep 2
     done
     return 1
