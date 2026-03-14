@@ -1,0 +1,110 @@
+================================================================================
+  IACT API — FLUJO: scripts/bootstrap.sh
+  Prepara el entorno local de desarrollo
+================================================================================
+
+  INVOCACIÓN
+  ──────────
+    $ bash scripts/bootstrap.sh
+
+  DEPENDENCIAS CARGADAS AL INICIO
+  ────────────────────────────────
+    bootstrap.sh
+    ├── utils/core.sh          require_command, command_exists, is_package_installed
+    ├── utils/logging.sh       log_*, init_log, start_timer, show_elapsed
+    ├── utils/network.sh       can_reach_port
+    ├── utils/database.sh      tcp_is_reachable
+    ├── utils/validation.sh    validate_file_exists, exists_file, exists_dir
+    └── utils/provisioning.sh  step_header, log_step, log_separator
+
+  FLUJO PASO A PASO
+  ─────────────────
+
+    bootstrap.sh
+         │
+         ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  PASO 1/6 — Python                           BLOQUEANTE│
+    ├────────────────────────────────────────────────────────┤
+    │  python3 --version >= 3.11 ?                           │
+    │      NO ──► log_fatal → exit 1                         │
+    │      SÍ ──► check pip3 / pip disponible                │
+    └────────────────────────────────────────────────────────┘
+         │ OK
+         ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  PASO 2/6 — Entorno virtual                  BLOQUEANTE│
+    ├────────────────────────────────────────────────────────┤
+    │  venv/ existe ?                                        │
+    │      NO ──► python3 -m venv venv                       │
+    │      SÍ ──► skip (idempotente)                         │
+    │  venv/bin/pip existe ?                                 │
+    │      NO ──► log_error → return 1                       │
+    └────────────────────────────────────────────────────────┘
+         │ OK
+         ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  PASO 3/6 — Dependencias del sistema         BLOQUEANTE│
+    ├────────────────────────────────────────────────────────┤
+    │  apt-get update -qq                                    │
+    │  Para cada paquete del sistema:                        │
+    │    libpq-dev, default-libmysqlclient-dev,              │
+    │    python3-dev, build-essential, pkg-config            │
+    │                                                        │
+    │    instalado ? SÍ ──► skip (idempotente)               │
+    │               NO ──► apt-get install -y                │
+    └────────────────────────────────────────────────────────┘
+         │ OK
+         ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  PASO 4/6 — Dependencias Python              BLOQUEANTE│
+    ├────────────────────────────────────────────────────────┤
+    │  venv/bin/pip install -r requirements/development.txt  │
+    │  import psycopg2  → falla ──► return 1                 │
+    │  import MySQLdb   → falla ──► return 1                 │
+    └────────────────────────────────────────────────────────┘
+         │ OK
+         ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  PASO 5/6 — Archivo .env                  NO BLOQUEANTE│
+    ├────────────────────────────────────────────────────────┤
+    │  .env existe ?                                         │
+    │      NO ──► log_error (continúa)                       │
+    │      SÍ ──► verifica variables:                        │
+    │             SECRET_KEY, DB_HOST, DB_NAME, DB_USER,     │
+    │             DB_PASSWORD, IVR_DB_HOST, IVR_DB_NAME      │
+    │             faltante ──► log_warn (no bloquea)         │
+    └────────────────────────────────────────────────────────┘
+         │
+         ▼
+    ┌────────────────────────────────────────────────────────┐
+    │  PASO 6/6 — Conectividad DB               NO BLOQUEANTE│
+    ├────────────────────────────────────────────────────────┤
+    │  tcp_is_reachable 127.0.0.1 5432 (timeout 3s)          │
+    │      NO ──► log_warn "vagrant up"                      │
+    │  tcp_is_reachable 127.0.0.1 3306 (timeout 3s)          │
+    │      NO ──► log_warn "vagrant up"                      │
+    └────────────────────────────────────────────────────────┘
+         │
+         ▼
+    ┌─────────────────────────────┐
+    │  RESUMEN                    │
+    │  failed == 0 ──► exit 0     │
+    │  failed  > 0 ──► exit 0 *   │
+    │  paso 1-4 falló ──► exit 1  │
+    └─────────────────────────────┘
+    * Pasos 5-6 cuentan como advertencias, no errores fatales
+
+  COMPORTAMIENTO IDEMPOTENTE
+  ──────────────────────────
+    ✓ venv ya existe     → no se recrea
+    ✓ paquete instalado  → apt-get skip
+    ✓ deps pip           → pip no reinstala si versión OK
+    ✓ se puede ejecutar N veces sin efecto colateral
+
+  SIGUIENTE PASO SUGERIDO (output del script)
+  ────────────────────────────────────────────
+    source venv/bin/activate
+    cd callcentersite && python manage.py migrate
+
+================================================================================
