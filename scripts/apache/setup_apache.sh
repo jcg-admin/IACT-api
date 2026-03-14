@@ -3,10 +3,11 @@
 # setup_apache.sh — Configura Apache + mod_wsgi para IACT Call Center
 #
 # ESTRATEGIA DE ARCHIVOS:
-#   Template  (git)      : scripts/apache/iact-apache.conf     (con {{VARIABLES}})
-#   Generado  (gitignore): scripts/apache/iact.conf            (rutas reales)
-#   Symlink Apache       : /etc/apache2/sites-available/iact.conf -> scripts/apache/iact.conf
+#   Conf (git)           : scripts/apache/iact-apache.conf     (valores de desarrollo, en git)
+#   Symlink Apache       : /etc/apache2/sites-available/iact.conf -> scripts/apache/iact-apache.conf
 #   Habilitado por a2ensite: /etc/apache2/sites-enabled/iact.conf -> ../sites-available/iact.conf
+#
+# Para cambiar rutas o settings: edita las directivas Define en iact-apache.conf
 #
 # IDEMPOTENTE: se puede ejecutar múltiples veces sin efectos adversos.
 # PREREQUISITO: sudo bash scripts/apache/install_apache_deb.sh
@@ -29,11 +30,12 @@ VENV_DIR="$PROJECT_ROOT/venv"
 DJANGO_SETTINGS_MODULE="config.settings.production"
 WSGI_FILE="$DJANGO_DIR/config/wsgi.py"
 
-# Conf: template en git, generado en el mismo dir (gitignoreado)
-APACHE_CONF_TPL="$SCRIPT_DIR/iact-apache.conf"
-APACHE_CONF_GENERATED="$SCRIPT_DIR/iact.conf"
+# Conf: archivo en el repo con valores de desarrollo (en git)
+# El symlink de Apache apunta directamente a este archivo.
+# Para producción: edita las variables Define al inicio de iact-apache.conf
+APACHE_CONF_SRC="$SCRIPT_DIR/iact-apache.conf"
 
-# Destino en Apache — será un symlink al archivo generado
+# Destino en Apache — symlink al archivo del repo
 APACHE_SITES_AVAILABLE="/etc/apache2/sites-available"
 APACHE_CONF_LINK="$APACHE_SITES_AVAILABLE/iact.conf"
 
@@ -92,7 +94,7 @@ check_prerequisites() {
     [[ -f "$DJANGO_DIR/manage.py" ]]  || { log_fatal "manage.py no encontrado en $DJANGO_DIR"; ok=false; }
     [[ -f "$WSGI_FILE" ]]             || { log_fatal "wsgi.py no encontrado en $WSGI_FILE"; ok=false; }
     [[ -d "$VENV_DIR" ]]              || { log_fatal "Virtualenv no encontrado en $VENV_DIR"; ok=false; }
-    [[ -f "$APACHE_CONF_TPL" ]]       || { log_fatal "Template no encontrado: $APACHE_CONF_TPL"; ok=false; }
+    [[ -f "$APACHE_CONF_SRC" ]]        || { log_fatal "Conf no encontrado: $APACHE_CONF_SRC"; ok=false; }
 
     $ok || exit 1
     log_success "Prerequisitos OK"
@@ -103,31 +105,17 @@ check_prerequisites() {
 # ==============================================================================
 
 configure_virtualhost() {
-    log_step 2 $TOTAL_STEPS "Generando VirtualHost y enlace simbólico"
+    log_step 2 $TOTAL_STEPS "Configurando VirtualHost (symlink al repo)"
 
-    # 2a. Generar iact.conf a partir del template (siempre se regenera = idempotente)
-    sed \
-        -e "s|{{PROJECT_ROOT}}|$PROJECT_ROOT|g" \
-        -e "s|{{DJANGO_DIR}}|$DJANGO_DIR|g" \
-        -e "s|{{VENV_DIR}}|$VENV_DIR|g" \
-        -e "s|{{WSGI_FILE}}|$WSGI_FILE|g" \
-        -e "s|{{STATIC_ROOT}}|$STATIC_ROOT|g" \
-        -e "s|{{MEDIA_ROOT}}|$MEDIA_ROOT|g" \
-        -e "s|{{LOG_DIR}}|$LOG_DIR|g" \
-        -e "s|{{DJANGO_SETTINGS_MODULE}}|$DJANGO_SETTINGS_MODULE|g" \
-        "$APACHE_CONF_TPL" > "$APACHE_CONF_GENERATED"
-
-    log_info "Conf generado : $APACHE_CONF_GENERATED"
-
-    # 2b. Crear/actualizar symlink en sites-available
-    #     Si ya existe y apunta al lugar correcto → sin cambios
-    #     Si es un archivo real o apunta a otro sitio → reemplazar
+    # Crear/actualizar symlink en sites-available apuntando al archivo del repo.
+    # Si ya existe y apunta al lugar correcto → sin cambios (idempotente).
+    # Si es un archivo real o apunta a otro lugar → reemplazar.
     local needs_link=false
 
     if [[ -L "$APACHE_CONF_LINK" ]]; then
         current_target="$(readlink -f "$APACHE_CONF_LINK" 2>/dev/null || echo '')"
-        if [[ "$current_target" == "$APACHE_CONF_GENERATED" ]]; then
-            log_info "Symlink ya correcto: $APACHE_CONF_LINK -> $APACHE_CONF_GENERATED"
+        if [[ "$current_target" == "$APACHE_CONF_SRC" ]]; then
+            log_info "Symlink ya correcto: $APACHE_CONF_LINK -> $APACHE_CONF_SRC"
         else
             log_warn "Symlink apunta a '$current_target', actualizando..."
             rm "$APACHE_CONF_LINK"
@@ -142,8 +130,8 @@ configure_virtualhost() {
     fi
 
     if $needs_link; then
-        ln -s "$APACHE_CONF_GENERATED" "$APACHE_CONF_LINK"
-        log_success "Symlink creado: $APACHE_CONF_LINK -> $APACHE_CONF_GENERATED"
+        ln -s "$APACHE_CONF_SRC" "$APACHE_CONF_LINK"
+        log_success "Symlink creado: $APACHE_CONF_LINK -> $APACHE_CONF_SRC"
     fi
 
     # 2c. Deshabilitar default, habilitar iact
@@ -237,9 +225,8 @@ echo "  STATIC_ROOT         : $STATIC_ROOT"
 echo "  MEDIA_ROOT          : $MEDIA_ROOT"
 echo ""
 echo "Archivos Apache:"
-echo "  Template (git)      : $APACHE_CONF_TPL"
-echo "  Generado (local)    : $APACHE_CONF_GENERATED"
-echo "  Symlink Apache      : $APACHE_CONF_LINK -> $APACHE_CONF_GENERATED"
+echo "  Conf (git)          : $APACHE_CONF_SRC"
+echo "  Symlink Apache      : $APACHE_CONF_LINK -> $APACHE_CONF_SRC"
 echo ""
 
 read -rp "Continuar? [yes/no]: " confirm
@@ -254,11 +241,11 @@ start_apache
 log_header "SETUP COMPLETADO"
 echo ""
 echo "  Sitio activo en  : http://$(hostname -I | awk '{print $1}' 2>/dev/null || echo 'localhost')"
-echo "  Config generada  : $APACHE_CONF_GENERATED"
+echo "  Conf (git)       : $APACHE_CONF_SRC"
 echo "  Symlink Apache   : $APACHE_CONF_LINK"
 echo ""
 echo "Próximos pasos:"
-echo "  1. Ajusta ServerName en $APACHE_CONF_GENERATED (o edita el template y re-ejecuta)"
+echo "  1. Ajusta las rutas Define en $APACHE_CONF_SRC y re-ejecuta si cambia el servidor"
 echo "  2. Configura ALLOWED_HOSTS en $DJANGO_DIR/.env"
 echo "  3. Verifica: sudo bash scripts/apache/check_apache.sh"
 echo ""
