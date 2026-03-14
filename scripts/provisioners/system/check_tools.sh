@@ -8,9 +8,9 @@
 #   sudo bash scripts/bootstrap.sh   (llamado automáticamente)
 #
 # Variables opcionales de entorno:
-#   POSTGRES_HOST  (default: 192.168.56.11)
+#   POSTGRES_HOST  (default: 127.0.0.1)
 #   POSTGRES_PORT  (default: 5432)
-#   MARIADB_HOST   (default: 192.168.56.10)
+#   MARIADB_HOST   (default: 127.0.0.1)
 #   MARIADB_PORT   (default: 3306)
 set -euo pipefail
 
@@ -51,9 +51,9 @@ if [[ -f "$ENV_FILE" ]]; then
     set +a
 fi
 
-POSTGRES_HOST="${DB_HOST:-192.168.56.11}"
+POSTGRES_HOST="${DB_HOST:-127.0.0.1}"
 POSTGRES_PORT="${DB_PORT:-5432}"
-MARIADB_HOST="${IVR_DB_HOST:-192.168.56.10}"
+MARIADB_HOST="${IVR_DB_HOST:-127.0.0.1}"
 MARIADB_PORT="${IVR_DB_PORT:-3306}"
 
 ERRORS=0
