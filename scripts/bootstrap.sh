@@ -1,25 +1,25 @@
 #!/bin/bash
 # =============================================================================
-# bootstrap.sh — IACT API: Entrypoint de provisioning
+# bootstrap.sh — IACT API: Entrypoint único de provisioning y verificación
 # =============================================================================
-# Version: 1.0.0
-# Description: Orquesta la instalación y configuración completa del entorno
-#              IACT API en Ubuntu 24.04.x LTS desde cero (idempotente).
+# Version: 1.1.0
 #
-# Uso:
+# UN SOLO COMANDO para todo:
 #   sudo bash scripts/bootstrap.sh
 #
-# Requisito: Ubuntu 24.04.x LTS
-#            El script verifica el SO antes de ejecutar cualquier otra cosa.
+# Primera vez : instala y configura todo desde cero
+# Veces siguientes: verifica estado de todo (DBs activas, Apache, Python...)
 #
-# Flujo:
+# Requisito: Ubuntu 24.04.x LTS
+#
+# Flujo (todas las fases son idempotentes):
 #   Fase 1 — SO          : Verificar Ubuntu 24.04.x LTS             [FATAL]
 #   Fase 2 — Paquetes    : Instalar dependencias del sistema        [FATAL]
-#   Fase 3 — Python      : Entorno virtual + dependencias pip       [FATAL]
+#   Fase 3 — Python      : Entorno virtual + pip install            [FATAL]
 #   Fase 4 — Bases datos : PostgreSQL (iact_analytics) +            [WARN]
 #                          MariaDB    (ivr_legacy, read-only)
-#   Fase 5 — Apache      : Configurar virtual host IACT             [WARN]
-#   Fase 6 — Verificación: check_tools — resumen del entorno        [INFO]
+#   Fase 5 — Apache      : Virtual host + mod_wsgi + static         [WARN]
+#   Fase 6 — Verificación: Estado completo del entorno              [INFO]
 # =============================================================================
 set -euo pipefail
 
@@ -30,52 +30,69 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "${SCRIPT_DIR}/.." && pwd)"
 export PROJECT_ROOT
 
+UTILS_DIR="${SCRIPT_DIR}/utils"
 PROVISIONERS_DIR="${SCRIPT_DIR}/provisioners"
 SYSTEM_DIR="${PROVISIONERS_DIR}/system"
 POSTGRES_DIR="${PROVISIONERS_DIR}/postgres"
 MARIADB_DIR="${PROVISIONERS_DIR}/mariadb"
 APACHE_DIR="${SCRIPT_DIR}/apache"
 
-source "${SCRIPT_DIR}/utils/logging.sh"
-source "${SCRIPT_DIR}/utils/core.sh"
+# =============================================================================
+# LOAD UTILS (orden importa: logging primero, luego el resto)
+# =============================================================================
+# shellcheck disable=SC1091
+source "${UTILS_DIR}/logging.sh"
+# shellcheck disable=SC1091
+source "${UTILS_DIR}/core.sh"
+# shellcheck disable=SC1091
+source "${UTILS_DIR}/validation.sh"
+# shellcheck disable=SC1091
+source "${UTILS_DIR}/network.sh"
+# shellcheck disable=SC1091
+source "${UTILS_DIR}/database.sh"
+# shellcheck disable=SC1091
+source "${UTILS_DIR}/provisioning.sh"
 
 LOG_NAME="bootstrap"
 init_log "$LOG_NAME"
 
 # =============================================================================
 # FASE 1 — Sistema Operativo
-# Bloquea TODA la ejecución si no es Ubuntu 24.04.x
+# Bloquea TODO si no es Ubuntu 24.04.x LTS
 # =============================================================================
 phase_os() {
     log_header "Fase 1/6 — Sistema operativo"
     bash "${SYSTEM_DIR}/check_os.sh" || {
         echo ""
-        log_fatal "SO incompatible. Bootstrap abortado."
+        log_fatal "SO incompatible — bootstrap abortado"
         exit 1
     }
 }
 
 # =============================================================================
 # FASE 2 — Paquetes del sistema
-# net-tools, iproute2, python3-dev, libpq-dev, default-libmysqlclient-dev ...
+# Instala: net-tools, iproute2, python3-dev, libpq-dev, mariadb-client, etc.
+# Idempotente: dpkg check antes de instalar
 # =============================================================================
 phase_system_packages() {
     log_header "Fase 2/6 — Paquetes del sistema"
 
-    [[ $EUID -ne 0 ]] && {
-        log_fatal "Las fases 2–5 requieren root. Usa: sudo bash scripts/bootstrap.sh"
+    validate_root || {
+        log_fatal "Las fases de provisioning requieren root."
+        log_fatal "Usa: sudo bash scripts/bootstrap.sh"
         exit 1
     }
 
     bash "${SYSTEM_DIR}/install_packages.sh" || {
-        log_fatal "Instalación de paquetes falló — bootstrap abortado"
+        log_fatal "Instalación de paquetes del sistema falló"
         exit 1
     }
 }
 
 # =============================================================================
 # FASE 3 — Entorno Python
-# Virtual env + pip install -r requirements/development.txt
+# Crea venv si no existe, instala requirements/development.txt
+# Idempotente: venv ya existente = solo re-instala si hay cambios en req
 # =============================================================================
 phase_python() {
     log_header "Fase 3/6 — Entorno Python"
@@ -96,7 +113,7 @@ phase_python() {
 
     # --- Virtual env ---
     local venv_dir="${PROJECT_ROOT}/venv"
-    if exists_dir "$venv_dir"; then
+    if exists_dir "$venv_dir" && exists_file "${venv_dir}/bin/pip"; then
         log_info "venv ya existe: ${venv_dir}"
     else
         log_info "Creando entorno virtual en ${venv_dir}"
@@ -108,15 +125,18 @@ phase_python() {
     local venv_pip="${venv_dir}/bin/pip"
     local req_file="${PROJECT_ROOT}/requirements/development.txt"
 
-    validate_file_exists "$req_file" || { log_fatal "requirements/development.txt no encontrado"; exit 1; }
+    validate_file_exists "$req_file" || {
+        log_fatal "No se encontró: ${req_file}"
+        exit 1
+    }
 
-    log_info "pip install -r ${req_file}"
+    log_info "pip install -r requirements/development.txt"
     "$venv_pip" install -r "$req_file" -q || { log_fatal "pip install falló"; exit 1; }
     log_success "Dependencias Python instaladas"
 
-    # --- Verificar drivers críticos ---
+    # --- Drivers críticos ---
     local python="${venv_dir}/bin/python3"
-    "$python" -c "import psycopg2"  2>/dev/null \
+    "$python" -c "import psycopg2" 2>/dev/null \
         && log_success "psycopg2 OK" \
         || { log_fatal "psycopg2 NO disponible — revisa libpq-dev"; exit 1; }
 
@@ -126,74 +146,94 @@ phase_python() {
 }
 
 # =============================================================================
-# FASE 4 — Bases de datos (provisioning local)
-# Idempotente: crea BD/usuario solo si no existen
+# FASE 4 — Bases de datos
+# Crea BD y usuario si no existen; verifica conectividad si ya existen
+# No es FATAL: las DBs pueden estar en otro host o no instaladas localmente
 # =============================================================================
 phase_databases() {
     log_header "Fase 4/6 — Bases de datos"
 
-    local failed=0
+    local pg_ok=0 my_ok=0
 
-    # PostgreSQL — iact_analytics (READ+WRITE)
-    log_info "PostgreSQL: iact_analytics"
-    if bash "${POSTGRES_DIR}/db_setup.sh"; then
-        log_success "PostgreSQL OK"
+    # --- PostgreSQL (iact_analytics, READ+WRITE) ---
+    log_info "PostgreSQL → iact_analytics"
+    if bash "${POSTGRES_DIR}/db_setup.sh" 2>&1; then
+        pg_ok=1
     else
-        log_warn "PostgreSQL setup falló — verifica que el servicio esté activo"
-        failed=$((failed + 1))
+        log_warn "PostgreSQL: setup falló o servicio no activo"
+        log_warn "  Verifica: sudo pg_ctlcluster 16 main status"
     fi
 
     echo ""
 
-    # MariaDB — ivr_legacy (READ-ONLY, CNST-003)
-    log_info "MariaDB: ivr_legacy (read-only)"
-    if bash "${MARIADB_DIR}/db_setup.sh"; then
-        log_success "MariaDB OK"
+    # --- MariaDB (ivr_legacy, READ-ONLY CNST-003) ---
+    log_info "MariaDB → ivr_legacy (read-only)"
+    if bash "${MARIADB_DIR}/db_setup.sh" 2>&1; then
+        my_ok=1
     else
-        log_warn "MariaDB setup falló — verifica que el servicio esté activo"
-        failed=$((failed + 1))
+        log_warn "MariaDB: setup falló o servicio no activo"
+        log_warn "  Verifica: sudo service mariadb status"
     fi
 
-    if [[ $failed -gt 0 ]]; then
-        log_warn "Fase 4 completada con ${failed} advertencia(s) — continúa el bootstrap"
+    echo ""
+    if [[ $pg_ok -eq 1 && $my_ok -eq 1 ]]; then
+        log_success "Fase 4 completa — ambas bases de datos OK"
+    elif [[ $pg_ok -eq 1 || $my_ok -eq 1 ]]; then
+        log_warn "Fase 4 parcial — una DB con problemas"
     else
-        log_success "Fase 4 completada — ambas bases de datos listas"
+        log_warn "Fase 4 sin éxito — ambas DBs inaccesibles"
     fi
 
-    return 0   # No es fatal: las DBs pueden estar en otro servidor
+    return 0   # Siempre continúa
 }
 
 # =============================================================================
 # FASE 5 — Apache
+# Configura virtual host, permisos, static files, reinicia servicio
+# No es FATAL: puede no estar instalado en el entorno
 # =============================================================================
 phase_apache() {
     log_header "Fase 5/6 — Apache"
 
     local apache_setup="${APACHE_DIR}/setup_apache.sh"
+
     if [[ ! -f "$apache_setup" ]]; then
-        log_warn "setup_apache.sh no encontrado — omitiendo fase Apache"
+        log_warn "setup_apache.sh no encontrado en ${APACHE_DIR}"
+        log_warn "  Omitiendo fase Apache"
         return 0
     fi
 
-    if bash "$apache_setup"; then
-        log_success "Apache configurado"
-    else
-        log_warn "Apache setup falló — verifica ${apache_setup}"
+    if ! command_exists apache2 && ! command_exists apache2ctl; then
+        log_warn "Apache2 no está instalado — omitiendo fase"
+        log_warn "  Instalar: sudo apt-get install -y apache2 libapache2-mod-wsgi-py3"
+        return 0
     fi
+
+    bash "$apache_setup" && \
+        log_success "Apache configurado correctamente" || \
+        log_warn "Apache setup tuvo advertencias — revisa ${APACHE_DIR}/setup_apache.sh"
+
     return 0
 }
 
 # =============================================================================
-# FASE 6 — Verificación final (check_tools)
+# FASE 6 — Verificación completa del entorno
+# Ejecuta check_tools: muestra estado de TODO en una sola vista
 # =============================================================================
 phase_verify() {
-    log_header "Fase 6/6 — Verificación del entorno"
-    log_info "Ejecutando check_tools..."
+    log_header "Fase 6/6 — Estado completo del entorno"
     echo ""
 
-    # check_tools puede salir con 1 (errores) pero no queremos que falle bootstrap
+    # Activar venv temporalmente para que check_tools vea los paquetes Python
+    local venv_python="${PROJECT_ROOT}/venv/bin/python3"
+    if exists_file "$venv_python"; then
+        export PATH="${PROJECT_ROOT}/venv/bin:${PATH}"
+        log_info "venv activado para verificación de paquetes Python"
+        echo ""
+    fi
+
     bash "${SYSTEM_DIR}/check_tools.sh" || {
-        log_warn "check_tools reportó errores — revisa la salida anterior"
+        log_warn "check_tools reportó errores — ver salida anterior"
     }
 }
 
@@ -205,8 +245,8 @@ main() {
 
     echo ""
     log_separator 60 "="
-    echo "  IACT API — Bootstrap v1.0.0"
-    echo "  Ubuntu 24.04.x LTS requerido"
+    echo "  IACT API — Bootstrap v1.1.0"
+    echo "  sudo bash scripts/bootstrap.sh"
     log_separator 60 "="
     echo ""
 
@@ -227,15 +267,17 @@ main() {
 
     phase_verify
 
-    # -------------------------------------------------------------------------
     log_separator 60 "="
     log_info "Tiempo total: $(show_elapsed)"
     log_success "Bootstrap completado."
     echo ""
-    log_info "Siguientes pasos:"
+    log_info "Siguientes pasos (primera vez):"
     log_info "  source venv/bin/activate"
-    log_info "  cp .env.example .env  # si no existe"
+    log_info "  cp .env.example .env  # ajusta las variables"
     log_info "  cd callcentersite && python manage.py migrate"
+    echo ""
+    log_info "Para verificar estado en cualquier momento:"
+    log_info "  sudo bash scripts/bootstrap.sh"
     echo ""
 }
 
