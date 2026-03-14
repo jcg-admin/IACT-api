@@ -119,21 +119,16 @@ step_dependencies() {
 step_env_file() {
     log_header "Paso 5/6 — Archivo .env"
     local env_file="${PROJECT_ROOT}/.env"
-    local env_example="${PROJECT_ROOT}/.env.example"
 
-    if exists_file "$env_file"; then
-        log_success ".env encontrado"
-    elif exists_file "$env_example"; then
-        log_info "Copiando .env.example → .env"
-        cp "$env_example" "$env_file"
-        log_warn "Editar antes de usar: ${env_file}"
-    else
-        log_error ".env.example no encontrado en ${PROJECT_ROOT}"
+    if ! exists_file "$env_file"; then
+        log_error ".env no encontrado en ${PROJECT_ROOT}"
+        log_error "Crear y configurar: ${env_file}"
         return 1
     fi
+    log_success ".env encontrado"
 
     local missing=0
-    for var in SECRET_KEY DATABASE_URL LEGACY_DATABASE_URL SESSION_ENGINE; do
+    for var in SECRET_KEY DB_HOST DB_NAME DB_USER DB_PASSWORD IVR_DB_HOST IVR_DB_NAME; do
         if grep -q "^${var}=" "$env_file" 2>/dev/null; then
             log_success "  ${var} configurado"
         else
