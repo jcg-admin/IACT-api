@@ -1,0 +1,7 @@
+-r base.txt
+
+gunicorn==21.2.0
+django-secure==1.0.2
+
+# NOTA: NO sentry-sdk (CNST_TECNICAS)
+# NOTA: NO redis (CNST_TECNICAS)

@@ -1,0 +1,45 @@
+# ==============================================================================
+# REQUIREMENTS BASE - IACT Call Center System
+# ==============================================================================
+# Version: 2.2.1
+# Python: 3.11+
+# Compliance: CNST v2.2.1 (100%)
+#
+# PROHIBIDO (CNST_TECNICAS):
+#   - sentry-sdk
+#   - redis, django-redis
+#   - celery
+#   - channels, daphne
+# ==============================================================================
+
+# Django Core
+Django==5.0.1
+python-decouple==3.8
+
+# Django REST Framework
+djangorestframework==3.14.0
+djangorestframework-simplejwt==5.3.1
+django-filter==23.5
+drf-spectacular==0.27.0
+
+# Databases
+psycopg2-binary==2.9.9     # PostgreSQL
+mysqlclient==2.2.1         # MariaDB
+
+# Scheduling (CNST-004: NO Celery)
+APScheduler==3.10.4
+
+# AWS SDK (CNST-006: Logs S3)
+boto3==1.28.0
+botocore==1.31.0
+
+# Excel Export (Reports)
+openpyxl==3.1.2
+
+# Utilities
+pytz==2024.1
+python-dateutil==2.8.2
+
+# NOTA: NO email backends (CNST-001)
+# NOTA: NO redis/celery (CNST_TECNICAS)
+# NOTA: NO channels/websockets (CNST-004)
