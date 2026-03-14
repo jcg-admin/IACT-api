@@ -26,13 +26,24 @@ source "${PROJECT_ROOT}/scripts/utils/logging.sh"
 
 # =============================================================================
 # GRUPOS DE PAQUETES
+# Nota: algunos paquetes tienen "verificación funcional" como alternativa
+# al nombre exacto del paquete dpkg (meta-paquetes con nombre versionado).
+#   python3-venv     → existe como python3.X-venv; se verifica con `python3 -m venv`
+#   postgresql-client→ existe como postgresql-client-16; se verifica con `psql`
 # =============================================================================
 declare -A PACKAGE_GROUPS=(
     ["red"]="net-tools iproute2"
-    ["python"]="python3 python3-dev python3-venv python3-pip build-essential pkg-config"
-    ["postgresql"]="libpq-dev postgresql-client"
+    ["python"]="python3 python3-dev python3-pip build-essential pkg-config"
+    ["postgresql"]="libpq-dev"
     ["mariadb"]="default-libmysqlclient-dev mariadb-client"
     ["general"]="curl git"
+)
+
+# Verificaciones funcionales: si el comando existe, el paquete se considera OK
+# Formato: "nombre_descriptivo:comando_check:paquete_a_instalar_si_falla"
+FUNCTIONAL_CHECKS=(
+    "python3-venv:python3 -m venv --help:python3-venv"
+    "postgresql-client:psql --version:postgresql-client"
 )
 
 TOTAL_STEPS=5
@@ -146,6 +157,30 @@ install_network_packages() {
 }
 
 # =============================================================================
+# HELPER — Verificaciones funcionales (meta-paquetes con nombre versionado)
+# Verifica por comando; solo instala si el comando NO está disponible
+# =============================================================================
+check_functional_packages() {
+    log_info "Verificaciones funcionales (meta-paquetes):"
+
+    for entry in "${FUNCTIONAL_CHECKS[@]}"; do
+        local label="${entry%%:*}"
+        local rest="${entry#*:}"
+        local check_cmd="${rest%%:*}"
+        local fallback_pkg="${rest##*:}"
+
+        if eval "$check_cmd" &>/dev/null 2>&1; then
+            log_info "  ✓ ${label} (funcional)"
+        else
+            log_info "  · ${label} — intentando instalar ${fallback_pkg}"
+            apt-get install -y -qq "$fallback_pkg" 2>/dev/null \
+                && log_success "  ✓ ${label} instalado" \
+                || log_warn "  ! ${label}: apt-get falló — puede funcionar igual"
+        fi
+    done
+}
+
+# =============================================================================
 # PASO 4 — Instalar paquetes Python y DB
 # =============================================================================
 install_dev_packages() {
@@ -159,6 +194,10 @@ install_dev_packages() {
         }
         echo ""
     done
+
+    # Meta-paquetes / verificación funcional
+    check_functional_packages
+    echo ""
 
     [[ $failed -gt 0 ]] && {
         log_error "${failed} grupo(s) con errores"
