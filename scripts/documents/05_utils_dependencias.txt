@@ -1,0 +1,151 @@
+================================================================================
+  IACT API — UTILS: Mapa de dependencias entre scripts
+================================================================================
+
+  DEPENDENCIAS ENTRE UTILS
+  ─────────────────────────
+
+    logging.sh          (sin dependencias externas — base de todo)
+         ▲
+         │ source
+         ├──────────── core.sh
+         │                 ▲
+         │                 │ source
+         │             database.sh
+         │                 ▲
+         │                 │ source
+         │             network.sh
+         │
+         └──────────── validation.sh
+                           source logging.sh
+                           source network.sh
+
+    provisioning.sh
+         source logging.sh
+         source core.sh
+         source network.sh
+         source validation.sh
+         (carga utils dinámicamente via load_utils)
+
+    system.sh
+         source logging.sh
+         source core.sh
+         (standalone: puede ejecutarse directamente)
+
+  ÁRBOL COMPLETO DE CARGA
+  ────────────────────────
+
+    bootstrap.sh
+    └── source core.sh
+    └── source logging.sh
+    └── source network.sh
+    └── source database.sh
+    └── source validation.sh
+    └── source provisioning.sh
+
+    check_tools.sh
+    └── source logging.sh
+    └── source core.sh
+    └── source database.sh
+
+    provisioners/*/bootstrap.sh
+    └── source provisioning.sh
+           └── (carga core, logging, network, validation)
+
+  FUNCIONES POR MÓDULO
+  ─────────────────────
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  logging.sh                                                     │
+    ├─────────────────────────────────────────────────────────────────┤
+    │  init_log(name)          Inicializa archivo de log              │
+    │  log_debug/info/success  Imprime con color y timestamp          │
+    │  log_warn/error/fatal    Niveles de error                       │
+    │  log_header(title)       Sección con separador                  │
+    │  log_separator(w, char)  Línea separadora                       │
+    │  start_timer()           Guarda timestamp inicial               │
+    │  show_elapsed()          Retorna tiempo transcurrido            │
+    │  step_header(app, desc)  Banner de inicio de script             │
+    └─────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  core.sh                                                        │
+    ├─────────────────────────────────────────────────────────────────┤
+    │  command_exists(cmd)     Verifica si comando existe             │
+    │  require_command(cmd)    Idem pero con log_error si falta       │
+    │  is_package_installed(p) dpkg -l check                          │
+    │  is_service_active(svc)  systemctl → fallback: service status   │
+    │  start_service(svc)      service start (sin systemctl requerido)│
+    │  enable_service(svc)     systemctl enable → fallback update-rc.d│
+    │  exists_file(path)       [ -f path ]                            │
+    │  exists_dir(path)        [ -d path ]                            │
+    └─────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  database.sh                                                    │
+    ├─────────────────────────────────────────────────────────────────┤
+    │  tcp_is_reachable(h,p,t) timeout t bash /dev/tcp/h/p           │
+    │  can_reach_port(h,p,t)   alias de tcp_is_reachable              │
+    │  mysql_wait_ready(h,p,u) Loop: mysqladmin ping hasta ready      │
+    │  postgres_wait_ready(h,p,u) Loop: pg_isready hasta ready        │
+    │  mysql_exec(sql,h,p,u,pw)   Ejecuta SQL en MariaDB              │
+    │  psql_exec(sql,h,p,u,pw)    Ejecuta SQL en PostgreSQL           │
+    └─────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  network.sh                                                     │
+    ├─────────────────────────────────────────────────────────────────┤
+    │  is_port_listening(port) ss -tlnp (iproute2, no netstat)        │
+    │  find_process_on_port(p) ss -tlnp | grep -oP 'pid=\K[0-9]+'    │
+    │  wait_for_port(h,p,t)    Loop TCP hasta que puerto responda     │
+    └─────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  validation.sh                                                  │
+    ├─────────────────────────────────────────────────────────────────┤
+    │  validate_file_exists(f) Error si archivo no existe             │
+    │  validate_dir_exists(d)  Error si directorio no existe          │
+    │  validate_var_set(var)   Error si variable vacía                │
+    │  require_vars(v1 v2...)  Valida múltiples variables             │
+    └─────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  provisioning.sh                                                │
+    ├─────────────────────────────────────────────────────────────────┤
+    │  init_env()              Detecta PROJECT_ROOT via git           │
+    │  load_utils()            Carga todos los utils desde utils/     │
+    │  run_step(name, fn)      Ejecuta paso con log y manejo de error │
+    │  run_all(steps[])        Orquesta lista de pasos                │
+    │  show_results()          Resumen OK/WARN/ERROR                  │
+    │  show_connection_info()  Muestra datos de conexión DB           │
+    │  mark_done(key)          Crea marker de idempotencia            │
+    │  is_done(key)            Verifica si step ya fue ejecutado      │
+    └─────────────────────────────────────────────────────────────────┘
+
+    ┌─────────────────────────────────────────────────────────────────┐
+    │  system.sh                                                      │
+    ├─────────────────────────────────────────────────────────────────┤
+    │  configure_timezone(tz)  timedatectl → fallback /etc/timezone   │
+    │  set_hostname(name)      hostnamectl → fallback hostname cmd    │
+    │  install_packages(p...)  apt-get install con retry              │
+    │  update_apt_cache()      apt-get update -qq                     │
+    └─────────────────────────────────────────────────────────────────┘
+
+  COMPATIBILIDAD SIN SYSTEMD
+  ───────────────────────────
+    El entorno es Ubuntu 24.04 en contenedor (sin systemd).
+    Cada función con systemctl tiene fallback automático:
+
+    is_service_active()
+        if systemctl is-active --quiet svc 2>/dev/null → OK
+        else service svc status                         → fallback
+
+    enable_service()
+        if systemctl enable svc 2>/dev/null → OK
+        else update-rc.d svc defaults        → fallback
+
+    configure_timezone()
+        if timedatectl set-timezone tz → OK
+        else echo tz > /etc/timezone   → fallback
+
+================================================================================

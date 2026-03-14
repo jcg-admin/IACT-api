@@ -277,4 +277,5 @@ infrastructure/cpython/.build_state/
 
 
 docs/
+!scripts/documents/
 logs/
