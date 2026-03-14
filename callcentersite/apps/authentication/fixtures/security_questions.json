@@ -1,0 +1,132 @@
+[
+  {
+    "model": "authentication.securityquestion",
+    "pk": 1,
+    "fields": {
+      "question": "¿Cuál es el nombre de tu primera mascota?",
+      "is_active": true,
+      "order": 1,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "authentication.securityquestion",
+    "pk": 2,
+    "fields": {
+      "question": "¿En qué ciudad naciste?",
+      "is_active": true,
+      "order": 2,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "authentication.securityquestion",
+    "pk": 3,
+    "fields": {
+      "question": "¿Cuál es tu color favorito?",
+      "is_active": true,
+      "order": 3,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "authentication.securityquestion",
+    "pk": 4,
+    "fields": {
+      "question": "¿Cuál es el nombre de tu mejor amigo de la infancia?",
+      "is_active": true,
+      "order": 4,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "authentication.securityquestion",
+    "pk": 5,
+    "fields": {
+      "question": "¿Cuál es tu comida favorita?",
+      "is_active": true,
+      "order": 5,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "authentication.securityquestion",
+    "pk": 6,
+    "fields": {
+      "question": "¿Cuál fue tu primer trabajo?",
+      "is_active": true,
+      "order": 6,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "authentication.securityquestion",
+    "pk": 7,
+    "fields": {
+      "question": "¿Cuál es el nombre de tu escuela primaria?",
+      "is_active": true,
+      "order": 7,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "authentication.securityquestion",
+    "pk": 8,
+    "fields": {
+      "question": "¿Cuál es tu película favorita?",
+      "is_active": true,
+      "order": 8,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "authentication.securityquestion",
+    "pk": 9,
+    "fields": {
+      "question": "¿Cuál es tu libro favorito?",
+      "is_active": true,
+      "order": 9,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "authentication.securityquestion",
+    "pk": 10,
+    "fields": {
+      "question": "¿Cuál es tu deporte favorito?",
+      "is_active": true,
+      "order": 10,
+      "is_deleted": false,
+      "deleted_at": null,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  }
+]

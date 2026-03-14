@@ -1,0 +1,56 @@
+{
+  "module": "MOD_Users",
+  "app": "users",
+  "menu_tree": [
+    {
+      "nivel": 1,
+      "id_menu": 2,
+      "des_name": "Usuarios",
+      "icon": "/static/icons/menu/users.png",
+      "orden": 20,
+      "required_functions": [],
+      "submenus": [
+        {
+          "id_menu": 201,
+          "des_name": "Listar Usuarios",
+          "icon": "/static/icons/submenu/list_users.png",
+          "endpoint": "/api/v1/users/",
+          "method": "GET",
+          "orden": 1,
+          "required_functions": [
+            "users.view"
+          ]
+        },
+        {
+          "id_menu": 202,
+          "des_name": "Crear Usuario",
+          "icon": "/static/icons/submenu/create_user.png",
+          "endpoint": "/api/v1/users/",
+          "method": "POST",
+          "orden": 2,
+          "required_functions": [
+            "users.create"
+          ]
+        },
+        {
+          "id_menu": 203,
+          "des_name": "Mi Perfil",
+          "icon": "{{user.avatar_url}}",
+          "endpoint": "/api/v1/users/profile/",
+          "method": "GET",
+          "orden": 3,
+          "required_functions": []
+        },
+        {
+          "id_menu": 204,
+          "des_name": "Subir Avatar",
+          "icon": "/static/icons/submenu/upload_avatar.png",
+          "endpoint": "/api/v1/users/upload-avatar/",
+          "method": "POST",
+          "orden": 4,
+          "required_functions": []
+        }
+      ]
+    }
+  ]
+}

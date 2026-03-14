@@ -1,0 +1,97 @@
+[
+  {
+    "model": "alerts.alertconfiguration",
+    "pk": 1,
+    "fields": {
+      "name": "Alto Volumen de Llamadas",
+      "description": "Alerta cuando el volumen de llamadas supera 100 en 1 hora",
+      "condition": {
+        "metric": "call_volume",
+        "operator": ">",
+        "value": 100,
+        "period": "1h"
+      },
+      "priority": "warning",
+      "is_active": true,
+      "last_evaluated_at": null,
+      "last_triggered_at": null,
+      "deleted_at": null
+    }
+  },
+  {
+    "model": "alerts.alertconfiguration",
+    "pk": 2,
+    "fields": {
+      "name": "Tiempo de Espera Crítico",
+      "description": "Alerta cuando el tiempo de espera promedio supera 5 minutos",
+      "condition": {
+        "metric": "avg_wait_time",
+        "operator": ">",
+        "value": 300,
+        "period": "30m"
+      },
+      "priority": "critical",
+      "is_active": true,
+      "last_evaluated_at": null,
+      "last_triggered_at": null,
+      "deleted_at": null
+    }
+  },
+  {
+    "model": "alerts.alertconfiguration",
+    "pk": 3,
+    "fields": {
+      "name": "SLA Bajo Umbral",
+      "description": "Alerta cuando el SLA cae por debajo del 85%",
+      "condition": {
+        "metric": "sla_percentage",
+        "operator": "<",
+        "value": 85,
+        "period": "1h"
+      },
+      "priority": "error",
+      "is_active": true,
+      "last_evaluated_at": null,
+      "last_triggered_at": null,
+      "deleted_at": null
+    }
+  },
+  {
+    "model": "alerts.alertconfiguration",
+    "pk": 4,
+    "fields": {
+      "name": "Bajo Volumen de Llamadas",
+      "description": "Alerta cuando el volumen de llamadas es menor a 10 en 1 hora (posible problema)",
+      "condition": {
+        "metric": "call_volume",
+        "operator": "<",
+        "value": 10,
+        "period": "1h"
+      },
+      "priority": "warning",
+      "is_active": false,
+      "last_evaluated_at": null,
+      "last_triggered_at": null,
+      "deleted_at": null
+    }
+  },
+  {
+    "model": "alerts.alertconfiguration",
+    "pk": 5,
+    "fields": {
+      "name": "Monitoreo de Medio Día",
+      "description": "Revisa el volumen de llamadas a medio día",
+      "condition": {
+        "metric": "call_volume",
+        "operator": ">",
+        "value": 50,
+        "period": "6h"
+      },
+      "priority": "info",
+      "is_active": true,
+      "last_evaluated_at": null,
+      "last_triggered_at": null,
+      "deleted_at": null
+    }
+  }
+]

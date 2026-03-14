@@ -1,0 +1,43 @@
+{
+  "module": "MOD_Audit",
+  "app": "audit",
+  "menu_tree": [
+    {
+      "nivel": 1,
+      "id_menu": 7,
+      "des_name": "Auditoria",
+      "icon": "/static/icons/menu/audit.png",
+      "orden": 70,
+      "required_functions": [],
+      "submenus": [
+        {
+          "id_menu": 701,
+          "des_name": "Registro de Auditoria",
+          "icon": "/static/icons/submenu/audit_log.png",
+          "endpoint": "/api/v1/audit/log/",
+          "method": "GET",
+          "orden": 1,
+          "required_functions": []
+        },
+        {
+          "id_menu": 702,
+          "des_name": "Reporte Compliance",
+          "icon": "/static/icons/submenu/compliance_report.png",
+          "endpoint": "/api/v1/audit/compliance-report/",
+          "method": "POST",
+          "orden": 2,
+          "required_functions": []
+        },
+        {
+          "id_menu": 703,
+          "des_name": "Exportar Auditoria",
+          "icon": "/static/icons/submenu/export_audit.png",
+          "endpoint": "/api/v1/audit/export/",
+          "method": "POST",
+          "orden": 3,
+          "required_functions": []
+        }
+      ]
+    }
+  ]
+}

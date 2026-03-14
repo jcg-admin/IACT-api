@@ -1,0 +1,21 @@
+[
+  {
+    "model": "core.center",
+    "pk": 1,
+    "fields": {
+      "nombre": "Centro CDMX",
+      "codigo": "CDMX01",
+      "activo": true
+    }
+  },
+  {
+    "model": "core.service",
+    "pk": 1,
+    "fields": {
+      "numero_800": "8001234567",
+      "nombre": "Atención Cliente",
+      "center": 1,
+      "activo": true
+    }
+  }
+]

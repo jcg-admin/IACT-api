@@ -1,0 +1,61 @@
+[
+  {
+    "model": "access.module",
+    "pk": 5,
+    "fields": {
+      "name": "MOD_Reports",
+      "description": "Sistema de Reportes y Exportación",
+      "is_active": true,
+      "created_at": "2025-01-16T10:00:00Z",
+      "updated_at": "2025-01-16T10:00:00Z"
+    }
+  },
+  {
+    "model": "access.function",
+    "pk": 50,
+    "fields": {
+      "name": "reports.view_report",
+      "description": "Ver reportes propios",
+      "module": 5,
+      "is_active": true,
+      "created_at": "2025-01-16T10:00:00Z",
+      "updated_at": "2025-01-16T10:00:00Z"
+    }
+  },
+  {
+    "model": "access.function",
+    "pk": 51,
+    "fields": {
+      "name": "reports.create_report",
+      "description": "Crear nuevos reportes",
+      "module": 5,
+      "is_active": true,
+      "created_at": "2025-01-16T10:00:00Z",
+      "updated_at": "2025-01-16T10:00:00Z"
+    }
+  },
+  {
+    "model": "access.function",
+    "pk": 52,
+    "fields": {
+      "name": "reports.export_report",
+      "description": "Exportar reportes (CSV/Excel, CNST-007 compliant)",
+      "module": 5,
+      "is_active": true,
+      "created_at": "2025-01-16T10:00:00Z",
+      "updated_at": "2025-01-16T10:00:00Z"
+    }
+  },
+  {
+    "model": "access.function",
+    "pk": 53,
+    "fields": {
+      "name": "reports.delete_report",
+      "description": "Eliminar reportes propios (soft delete)",
+      "module": 5,
+      "is_active": true,
+      "created_at": "2025-01-16T10:00:00Z",
+      "updated_at": "2025-01-16T10:00:00Z"
+    }
+  }
+]

@@ -1,0 +1,82 @@
+[
+{
+    "model": "access.module",
+    "pk": 1,
+    "fields": {
+        "code": "MOD_REPORTES",
+        "name": "Reportes",
+        "description": "Modulo principal de reportes del sistema",
+        "parent": null,
+        "order": 1,
+        "icon": null,
+        "url_path": "/reportes",
+        "is_active": true,
+        "is_deleted": false,
+        "deleted_at": null
+    }
+},
+{
+    "model": "access.module",
+    "pk": 2,
+    "fields": {
+        "code": "MOD_REPORTES_DIARIO",
+        "name": "Reporte Diario",
+        "description": "Reporte de actividad diaria",
+        "parent": 1,
+        "order": 1,
+        "icon": null,
+        "url_path": "/reportes/diario",
+        "is_active": true,
+        "is_deleted": false,
+        "deleted_at": null
+    }
+},
+{
+    "model": "access.module",
+    "pk": 3,
+    "fields": {
+        "code": "MOD_REPORTES_ACUMULADO",
+        "name": "Reporte Acumulado",
+        "description": "Reporte acumulado de periodo",
+        "parent": 1,
+        "order": 2,
+        "icon": null,
+        "url_path": "/reportes/acumulado",
+        "is_active": true,
+        "is_deleted": false,
+        "deleted_at": null
+    }
+},
+{
+    "model": "access.module",
+    "pk": 4,
+    "fields": {
+        "code": "MOD_ONBOARDING",
+        "name": "OnBoarding",
+        "description": "Modulo de onboarding de asesores",
+        "parent": null,
+        "order": 2,
+        "icon": null,
+        "url_path": "/onboarding",
+        "is_active": true,
+        "is_deleted": false,
+        "deleted_at": null
+    }
+},
+{
+    "model": "access.module",
+    "pk": 5,
+    "fields": {
+        "code": "MOD_ONBOARDING_MATRIZ",
+        "name": "Matriz de Asesores",
+        "description": "Matriz de desempeno de asesores",
+        "parent": 4,
+        "order": 1,
+        "icon": null,
+        "url_path": "/onboarding/matriz-asesores",
+        "is_active": true,
+        "is_deleted": false,
+        "deleted_at": null
+    }
+}
+]
