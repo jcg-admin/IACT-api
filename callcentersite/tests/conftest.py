@@ -4,7 +4,6 @@ Configuración pytest compartida - FASE 1 Testing Infrastructure v2.0.0.
 Integra:
 - 137 Factories (factory_boy)
 - 81 Mocks (pytest fixtures)
-- Configuración SQLite para tests
 - Fixtures híbridas (factory + mock)
 
 CLEAN_CODE v3.0.1: Organizado por categoría.
@@ -15,7 +14,6 @@ import pytest
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
-from django.conf import settings
 
 
 # ============================================================================
@@ -37,53 +35,18 @@ pytest_plugins = [
 
 
 # ============================================================================
-# DATABASE CONFIGURATION - SQLite para Tests
+# DATABASE CONFIGURATION
 # ============================================================================
-
-@pytest.fixture(scope='session')
-def django_db_setup(django_db_setup, django_db_blocker):
-    """
-    Configuración SQLite para tests.
-    
-    CONTEXTO: NO tenemos IPs MySQL/PostgreSQL en desarrollo/tests.
-    
-    Configuración:
-        - default: SQLite (PostgreSQL en producción)
-        - ivr_legacy: SQLite (MariaDB readonly en producción)
-    
-    CNST-002: Dual DB (PostgreSQL + MariaDB IVR readonly).
-    
-    IMPORTANTE: Ejecuta migrations para crear tablas.
-    """
-    from django.core.management import call_command
-    
-    settings.DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': ':memory:',
-            'ATOMIC_REQUESTS': True,
-        },
-        'ivr': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': ':memory:',
-            'ATOMIC_REQUESTS': False,  # IVR readonly
-        }
-    }
-    
-    # CNST-001: Email console backend
-    settings.EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    
-    # CNST-010: Cache locmem (NO Redis)
-    settings.CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
-        }
-    }
-    
-    # EJECUTAR MIGRATIONS
-    with django_db_blocker.unblock():
-        call_command('migrate', '--run-syncdb', verbosity=0)
+# Las bases de datos para tests se configuran en config/settings/testing.py:
+#   - default → test_iact_analytics  (PostgreSQL, migrations completas)
+#   - ivr     → test_ivr_legacy      (MariaDB, schema vacío managed=False)
+#
+# Django crea/destruye los schemas automáticamente al correr pytest.
+# No se necesita override aquí.
+#
+# PENDIENTE: fixture para crear tabla call_logs en test_ivr_legacy
+# y sembrar datos para tests de consumo IVR (ver deuda-tecnica.md).
+# ============================================================================
 
 
 # ============================================================================
@@ -555,7 +518,6 @@ def cleanup_files():
 # TOTAL: 218+ fixtures disponibles
 # 
 # CLEAN_CODE v3.0.1: Organizado y documentado [SUCCESS]
-# CNST-001: Email console backend [SUCCESS]
-# CNST-002: Dual DB (SQLite en tests) [SUCCESS]
-# CNST-010: Cache locmem (NO Redis) [SUCCESS]
+# CNST-002: Dual DB (PostgreSQL test_iact_analytics + MariaDB test_ivr_legacy) [SUCCESS]
+# CNST-010: NO cache (DummyCache en testing.py) [SUCCESS]
 # ============================================================================

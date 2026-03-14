@@ -25,17 +25,22 @@ SECRET_KEY = 'django-insecure-test-key-DO-NOT-USE-IN-PRODUCTION'
 
 
 # ==============================================================================
-# DATABASES (in-memory for speed)
+# DATABASES — Schemas aislados para tests
+# ==============================================================================
+# Hereda conexiones de base.py (.env: host, user, password).
+# Django crea/destruye estos schemas automáticamente al correr pytest.
+#
+# default → test_iact_analytics  (PostgreSQL — migrations completas)
+# ivr     → test_ivr_legacy      (MariaDB — schema vacío, managed=False)
+#
+# PENDIENTE (deuda técnica):
+#   test_ivr_legacy requiere fixture que cree tabla call_logs via SQL
+#   y factories para sembrar datos de prueba reales.
+#   Hasta entonces los tests IVR usan mocks (database_mocks.py).
 # ==============================================================================
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': ':memory:',
-    },
-    # IVR legacy se mantiene si tests lo requieren
-    # O se puede mock
-}
+DATABASES['default']['TEST'] = {'NAME': 'test_iact_analytics'}
+DATABASES['ivr']['TEST'] = {'NAME': 'test_ivr_legacy'}
 
 
 # ==============================================================================
