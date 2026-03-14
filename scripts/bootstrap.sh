@@ -114,25 +114,14 @@ phase_python() {
     # --- Virtual env ---
     local venv_dir="${PROJECT_ROOT}/venv"
     if exists_dir "$venv_dir" && exists_file "${venv_dir}/bin/pip"; then
-        log_info "venv ya existe: ${venv_dir}"
+        log_success "venv existe: ${venv_dir}"
     else
-        log_info "Creando entorno virtual en ${venv_dir}"
-        python3 -m venv "$venv_dir" || { log_fatal "No se pudo crear el venv"; exit 1; }
-        log_success "venv creado"
-    fi
-
-    # --- pip install ---
-    local venv_pip="${venv_dir}/bin/pip"
-    local req_file="${PROJECT_ROOT}/requirements/development.txt"
-
-    validate_file_exists "$req_file" || {
-        log_fatal "No se encontró: ${req_file}"
+        log_fatal "venv no encontrado en ${venv_dir}"
+        log_fatal "  Crea el entorno manualmente:"
+        log_fatal "    python3 -m venv venv"
+        log_fatal "    venv/bin/pip install -r requirements/development.txt"
         exit 1
-    }
-
-    log_info "pip install -r requirements/development.txt"
-    "$venv_pip" install -r "$req_file" -q || { log_fatal "pip install falló"; exit 1; }
-    log_success "Dependencias Python instaladas"
+    fi
 
     # --- Drivers críticos ---
     local python="${venv_dir}/bin/python3"
