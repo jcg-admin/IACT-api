@@ -12,8 +12,8 @@ Total Fixtures: 218+ (factories + mocks + híbridas)
 
 import pytest
 from rest_framework.test import APIClient
+from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
 # ============================================================================
@@ -79,11 +79,11 @@ def authenticated_client(db):
             assert response.status_code == 200
     """
     from tests.factories import UserFactory
-    
+
     user = UserFactory()
     client = APIClient()
-    refresh = RefreshToken.for_user(user)
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    token, _ = Token.objects.get_or_create(user=user)
+    client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
     client.user = user  # Adjuntar user para acceso fácil
     return client
 
@@ -101,11 +101,11 @@ def admin_client(db):
             assert response.status_code == 201
     """
     from tests.factories import AdminUserFactory
-    
+
     admin = AdminUserFactory()
     client = APIClient()
-    refresh = RefreshToken.for_user(admin)
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    token, _ = Token.objects.get_or_create(user=admin)
+    client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
     client.user = admin
     return client
 
@@ -221,16 +221,16 @@ def authenticated_client_with_rbac(db, mock_access_service):
             assert response.status_code == 200
     """
     from tests.factories import CompleteUserFactory
-    
+
     user = CompleteUserFactory()
     client = APIClient()
-    refresh = RefreshToken.for_user(user)
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    token, _ = Token.objects.get_or_create(user=user)
+    client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
     client.user = user
-    
+
     # Mock RBAC
     mock_access_service.user_has_function.return_value = True
-    
+
     return client
 
 
