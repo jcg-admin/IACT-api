@@ -136,23 +136,23 @@ class TestAuthenticationFlow:
         
         response = self.client.post(login_url, login_data, format='json')
         
-        # Verificar error
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        # Verificar error — InvalidCredentialsError retorna 401
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         assert response.data['success'] is False
-        
+
         # Verificar LoginAttempt fallido registrado
         failed_attempt = LoginAttempt.objects.filter(
             username='testuser',
             success=False
         ).latest('created_at')
         assert failed_attempt is not None
-    
+
     def test_login_with_nonexistent_user(self):
         """
         Test login con usuario inexistente.
-        
+
         Verifica:
-        - Error 400
+        - Error 401 (mismo codigo que password incorrecto, previene enumeracion RN-007)
         - LoginAttempt registrado sin user (user=None)
         """
         login_url = reverse('auth-login')
@@ -160,10 +160,10 @@ class TestAuthenticationFlow:
             'username': 'nonexistent',
             'password': 'anypass'
         }
-        
+
         response = self.client.post(login_url, login_data, format='json')
-        
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
         
         # Verificar LoginAttempt con user=None
         attempt = LoginAttempt.objects.filter(
@@ -250,10 +250,10 @@ class TestAccountLockout:
             }
             response = self.client.post(login_url, login_data, format='json')
             
-            # Primeros 4 deben fallar normalmente
+            # Primeros 4 deben fallar con 401 INVALID_CREDENTIALS
             if i < 4:
-                assert response.status_code == status.HTTP_400_BAD_REQUEST
-                assert 'credentials' in str(response.data).lower()
+                assert response.status_code == status.HTTP_401_UNAUTHORIZED
+                assert response.data['error']['error_code'] == 'INVALID_CREDENTIALS'
             else:
                 # 5to debe mostrar cuenta bloqueada
                 assert response.status_code == status.HTTP_403_FORBIDDEN
