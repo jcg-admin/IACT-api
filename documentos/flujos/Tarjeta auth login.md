@@ -35,8 +35,8 @@ Permite al usuario autenticarse en el sistema ingresando su nombre de usuario y 
 - Sistema no puede autenticar las credenciales
 - Sistema registra intento fallido en LoginAttempt
 - Sistema incrementa contador en LoginLockout
-- Si contador < 5: muestra mensaje con intentos restantes
-- Si contador = 5: bloquea cuenta por 15 minutos y muestra mensaje de bloqueo
+- Si intentos restantes > 0: retorna INVALID_CREDENTIALS con details.attempts_remaining = N
+- Si intentos restantes = 0 (5to intento): bloquea cuenta y retorna ACCOUNT_LOCKED con details = {} (sin locked_minutes, el bloqueo acaba de crearse)
 - Caso de uso termina
 
 **A2. Cuenta bloqueada (paso 4)**
@@ -64,7 +64,8 @@ Permite al usuario autenticarse en el sistema ingresando su nombre de usuario y 
 
 **A5. Primera vez que inicia sesion (paso 9)**
 
-- Sistema detecta que first_login = true (campo en User)
+- Sistema detecta que first_login = true contando LoginAttempts exitosos anteriores (no es campo del modelo User, se calcula dinamicamente)
+- Si LoginAttempt(user, success=True).count() <= 1, es el primer login
 - Respuesta incluye first_login: true
 - Frontend puede mostrar pantalla de bienvenida o configuracion inicial
 - Caso de uso termina normalmente
@@ -283,7 +284,8 @@ Protecciones Implementadas:
 - El bloqueo se maneja por username, no por IP
 - Contador de intentos fallidos se resetea completamente tras login exitoso
 - SessionLog registra el inicio de sesion con is_active = true; se actualiza al hacer logout
-- El campo first_login en la respuesta indica si es la primera vez que el usuario inicia sesion
+- El campo first_login en la respuesta se calcula dinamicamente contando LoginAttempts exitosos; no es un campo del modelo User
+- details.locked_minutes solo aparece cuando la cuenta ya estaba bloqueada (intento posterior al lockout); al alcanzar el 5to intento fallido se retorna ACCOUNT_LOCKED con details vacio
 - La sesion de Django expira a la hora (SESSION_TIMEOUT_SECONDS = 3600)
 - El endpoint no requiere autenticacion (AllowAny); cualquier cliente puede intentar login
 - La recuperacion de contrasena NO usa email, usa preguntas de seguridad (5 preguntas obligatorias, CNST-001)
@@ -291,4 +293,4 @@ Protecciones Implementadas:
 ---
 
 Sistema IACT - Analisis IVR
-Version: 1.0.0 | Fecha documento: 2026-03-14 | Modelo RBAC: v7.0.0
+Version: 1.1.0 | Fecha documento: 2026-03-15 | Modelo RBAC: v7.0.0
