@@ -14,13 +14,13 @@ Este diccionario documenta los flujos de cada funcion atomica del sistema IACT m
 
 Cada tarjeta es un archivo independiente ubicado en: documentos/flujos/
 
-Estado actual: 3 de 46 funciones documentadas (6.5%)
+Estado actual: 4 de 46 funciones documentadas (8.7%)
 
 ---
 
 ## MODULOS
 
-- MOD_Auth - Autenticacion (3/4 funciones documentadas)
+- MOD_Auth - Autenticacion (4/4 funciones documentadas)
 - MOD_Users - Gestion de Usuarios (0/9 funciones documentadas)
 - MOD_Access - Gestion de Permisos (0/3 funciones documentadas)
 - MOD_Reports - Reportes y Analisis (0/6 funciones documentadas)
@@ -34,7 +34,7 @@ Estado actual: 3 de 46 funciones documentadas (6.5%)
 
 1. auth.login - Iniciar Sesion | Tarjeta auth login.md
 2. auth.logout - Cerrar Sesion | Tarjeta auth logout.md
-3. auth.recover_password - Recuperar Contrasena | pendiente
+3. auth.recover_password - Recuperar Contrasena | Tarjeta auth recover password.md
 4. auth.manage_sessions - Gestionar Sesiones | Tarjeta auth manage sessions.md
 
 ### MOD_Users - Gestion de Usuarios
