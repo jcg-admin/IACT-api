@@ -14,7 +14,7 @@ Este diccionario documenta los flujos de cada funcion atomica del sistema IACT m
 
 Cada tarjeta es un archivo independiente ubicado en: documentos/flujos/
 
-Estado actual: 7 de 46 funciones documentadas (15.2%)
+Estado actual: 8 de 46 funciones documentadas (17.4%)
 
 ---
 
@@ -24,7 +24,7 @@ Estado actual: 7 de 46 funciones documentadas (15.2%)
 - MOD_Users - Gestion de Usuarios (3/9 funciones documentadas)
 - MOD_Access - Gestion de Permisos (0/3 funciones documentadas)
 - MOD_Reports - Reportes y Analisis (0/6 funciones documentadas)
-- MOD_Audit - Auditoria y Compliance (0/3 funciones documentadas)
+- MOD_Audit - Auditoria y Compliance (1/3 funciones documentadas)
 
 ---
 
@@ -68,7 +68,7 @@ Estado actual: 7 de 46 funciones documentadas (15.2%)
 
 23. audit.view - Ver Auditoria | pendiente
 24. audit.search - Buscar en Auditoria | pendiente
-25. audit.delete - Eliminar Registros de Auditoria | pendiente
+25. audit.delete - Eliminar Registros de Auditoria | Tarjeta audit delete.md
 
 ---
 
