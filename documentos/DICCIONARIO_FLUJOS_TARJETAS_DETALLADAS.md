@@ -14,14 +14,14 @@ Este diccionario documenta los flujos de cada funcion atomica del sistema IACT m
 
 Cada tarjeta es un archivo independiente ubicado en: documentos/flujos/
 
-Estado actual: 6 de 46 funciones documentadas (13.0%)
+Estado actual: 7 de 46 funciones documentadas (15.2%)
 
 ---
 
 ## MODULOS
 
 - MOD_Auth - Autenticacion (4/4 funciones documentadas)
-- MOD_Users - Gestion de Usuarios (2/9 funciones documentadas)
+- MOD_Users - Gestion de Usuarios (3/9 funciones documentadas)
 - MOD_Access - Gestion de Permisos (0/3 funciones documentadas)
 - MOD_Reports - Reportes y Analisis (0/6 funciones documentadas)
 - MOD_Audit - Auditoria y Compliance (0/3 funciones documentadas)
@@ -41,7 +41,7 @@ Estado actual: 6 de 46 funciones documentadas (13.0%)
 
 5. users.view - Ver Usuarios | Tarjeta users view.md
 6. users.create - Crear Usuarios | Tarjeta users create.md
-7. users.edit - Editar Usuarios | pendiente
+7. users.edit - Editar Usuarios | Tarjeta users edit.md
 8. users.delete - Eliminar Usuarios | pendiente
 9. users.reset_password - Resetear Contrasena | pendiente
 10. users.lock - Bloquear Usuario | pendiente
