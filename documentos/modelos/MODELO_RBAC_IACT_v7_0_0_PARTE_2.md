@@ -20,6 +20,11 @@ Parte anterior: `MODELO_RBAC_IACT_v7_0_0_PARTE_1.md`
 
 ---
 
+> **NOTA IMPORTANTE — Ejemplos de Casos de Uso (CUU):**
+> Los casos de uso incluidos en este documento (sección 8) son **ejemplos ilustrativos** que muestran el flujo resumido de cada operación a nivel conceptual. **No constituyen la implementación formal** del sistema. La implementación detallada de cada flujo — incluyendo pasos de UI, validaciones, manejo de errores, restricciones técnicas y contratos de API — se define en los documentos de **Tarjetas de Función** (`documentos/flujos/`). Las tarjetas son la fuente de verdad para la implementación.
+
+---
+
 <a name="6-modelo"></a>
 ## 6. MODELO DE DATOS
 
