@@ -3,75 +3,51 @@ Adapters para IVR Legacy.
 
 CNST-003: Acceso READ-ONLY a MariaDB legacy.
 """
-from datetime import date
-from typing import List, Dict
-from .models import CallLog
-
-
-class IVRAdapter:
-    """
-    Adapter para acceder a IVR legacy DB.
-    
-    CNST-003:
-    - Acceso READ-ONLY a ivr_legacy DB
-    - Usuario ivr_readonly (SOLO SELECT)
-    - Database Router enforza READ-ONLY
-    
-    Usage:
-        adapter = IVRAdapter()
-        calls = adapter.get_calls(
-            fecha_inicio=date(2024, 1, 15),
-            fecha_fin=date(2024, 1, 20)
-        )
-    """
-    
-    def get_calls(
-        self,
-        fecha_inicio: date,
-        fecha_fin: date
-    ) -> List[Dict]:
-        """
-        Obtener llamadas de IVR legacy por rango fechas.
-        
-        Args:
-            fecha_inicio: Fecha inicio (inclusive)
-            fecha_fin: Fecha fin (inclusive)
-        
-        Returns:
-            List[Dict]: Lista de llamadas como dicts
-        
-        Examples:
-            >>> adapter = IVRAdapter()
-            >>> calls = adapter.get_calls(
-            ...     fecha_inicio=date(2024, 1, 15),
-            ...     fecha_fin=date(2024, 1, 15)
-            ... )
-            >>> len(calls) >= 0
-            True
-        """
-        # Query a ivr_legacy DB (READ-ONLY)
-        # NOTA: En testing usa default DB (SQLite), en prod usa ivr_legacy (MariaDB)
-        calls = []
-        
-        try:
-            # Intentar usar ivr_legacy DB
-            queryset = CallLog.objects.using('ivr').filter(
-                fecha__gte=fecha_inicio,
-                fecha__lte=fecha_fin
-            ).order_by('fecha', 'telefono')
-            
-            # Convertir a dicts
-            for call in queryset:
-                calls.append({
-                    'fecha': call.fecha,
-                    'telefono': call.telefono,
-                    'servicio_800': call.servicio_800,
-                    'total_llamadas': call.total_llamadas,
-                    'llamadas_contestadas': call.llamadas_contestadas,
-                    'llamadas_abandonadas': call.llamadas_abandonadas,
-                })
-        except Exception:
-            # Si ivr_legacy no esta configurado (testing), retornar vacio
-            pass
-        
-        return calls
+# =============================================================================
+# DEUDA TÉCNICA — PENDIENTE
+# =============================================================================
+# Fecha de eliminación: 2026-03-21
+# Motivo: IVRAdapter desactivado. La tabla call_logs no existe en ivr_legacy.
+#         El schema real de ivr_legacy es responsabilidad de los scripts
+#         MariaDB, no de Django.
+#         Reactivar cuando:
+#           1. scripts/provisioners/mariadb/schema.sh esté implementado
+#           2. La tabla call_logs exista en ivr_legacy (producción)
+#           3. El pipeline ETL requiera datos reales de IVR
+# Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
+# =============================================================================
+#
+# from datetime import date
+# from typing import List, Dict
+# from .models import CallLog
+#
+#
+# class IVRAdapter:
+#     """
+#     Adapter para acceder a IVR legacy DB.
+#
+#     CNST-003:
+#     - Acceso READ-ONLY a ivr_legacy DB
+#     - Usuario ivr_readonly (SOLO SELECT)
+#     - Database Router enforza READ-ONLY
+#     """
+#
+#     def get_calls(self, fecha_inicio: date, fecha_fin: date) -> List[Dict]:
+#         calls = []
+#         try:
+#             queryset = CallLog.objects.using('ivr').filter(
+#                 fecha__gte=fecha_inicio,
+#                 fecha__lte=fecha_fin
+#             ).order_by('fecha', 'telefono')
+#             for call in queryset:
+#                 calls.append({
+#                     'fecha': call.fecha,
+#                     'telefono': call.telefono,
+#                     'servicio_800': call.servicio_800,
+#                     'total_llamadas': call.total_llamadas,
+#                     'llamadas_contestadas': call.llamadas_contestadas,
+#                     'llamadas_abandonadas': call.llamadas_abandonadas,
+#                 })
+#         except Exception:
+#             pass
+#         return calls
