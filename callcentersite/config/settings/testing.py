@@ -33,10 +33,10 @@ SECRET_KEY = 'django-insecure-test-key-DO-NOT-USE-IN-PRODUCTION'
 # default → test_iact_analytics  (PostgreSQL — migrations completas)
 # ivr     → test_ivr_legacy      (MariaDB — schema vacío, managed=False)
 #
-# PENDIENTE (deuda técnica):
-#   test_ivr_legacy requiere fixture que cree tabla call_logs via SQL
-#   y factories para sembrar datos de prueba reales.
-#   Hasta entonces los tests IVR usan mocks (database_mocks.py).
+# El schema de IVR (tbl_temp_prueba_ivr) es responsabilidad del provisioner:
+#   scripts/provisioners/mariadb/schema_temp_prueba.sh
+# Python solo CONSUME (SELECT) — no crea schema desde Python.
+# Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
 # ==============================================================================
 
 DATABASES['default']['TEST'] = {'NAME': 'test_iact_analytics'}
