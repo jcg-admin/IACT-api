@@ -24,8 +24,8 @@ pytest_plugins = [
     # Fixtures existentes
     'tests.fixtures.users',
     'tests.fixtures.rbac',
-    
-    # Mocks (PARTE 3)
+
+    # Mocks
     'tests.mocks.database_mocks',
     'tests.mocks.service_mocks',
     'tests.mocks.file_mocks',
@@ -41,11 +41,9 @@ pytest_plugins = [
 #   - default → test_iact_analytics  (PostgreSQL, migrations completas)
 #   - ivr     → test_ivr_legacy      (MariaDB, schema vacío managed=False)
 #
-# Django crea/destruye los schemas automáticamente al correr pytest.
-# No se necesita override aquí.
-#
-# PENDIENTE: fixture para crear tabla call_logs en test_ivr_legacy
-# y sembrar datos para tests de consumo IVR (ver deuda-tecnica.md).
+# La tabla tbl_temp_prueba_ivr es responsabilidad del script MariaDB:
+#   scripts/provisioners/mariadb/schema_temp_prueba.sh
+# Python solo CONSUME (SELECT) — no crea schema desde Python.
 # ============================================================================
 
 
