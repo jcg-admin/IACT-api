@@ -103,11 +103,10 @@ class DatabaseRouter:
         if app_label in self.ivr_apps:
             return db == 'ivr'  # False para default
         
-        # Default apps: migrations solo en default
-        if app_label in self.default_apps:
-            return db == 'default'
-        
-        return None
+        # Default apps y framework apps (contenttypes, auth, sessions, etc.):
+        # migrations solo en default. ANTES retornaba None, causando que
+        # Django corriera migrations en ivr (BUG B-20).
+        return db == 'default'
 
 
 # ==============================================================================

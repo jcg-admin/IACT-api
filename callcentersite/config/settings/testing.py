@@ -40,7 +40,10 @@ SECRET_KEY = 'django-insecure-test-key-DO-NOT-USE-IN-PRODUCTION'
 # ==============================================================================
 
 DATABASES['default']['TEST'] = {'NAME': 'test_iact_analytics'}
-DATABASES['ivr']['TEST'] = {'NAME': 'test_ivr_legacy'}
+# ivr MIGRATE=False: IVR es READ-ONLY (CNST-003). Modelos managed=False,
+# no hay tablas que crear. Django no corre migrations ni necesita INSERT.
+# Tests de IVR usan mocks (tests/mocks/database_mocks.py). Bug B-20/B-21.
+DATABASES['ivr']['TEST'] = {'NAME': 'test_ivr_legacy', 'MIGRATE': False}
 
 
 # ==============================================================================

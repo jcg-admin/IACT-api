@@ -116,27 +116,34 @@ echo "Creado: $(ls -lh /home/user/IACT-api/documentos/planes/plan_implementacion
 
 ## CONVENCIONES DE NOMENCLATURA
 
+> **REGLA OBLIGATORIA:** TODOS los documentos DEBEN incluir timestamp
+> `{YYYYMMDDHHMMSS}` en el nombre de archivo. Sin excepción.
+> Los documentos existentes sin timestamp se dejan como están (no renombrar).
+
 ### Planes de implementación
 ```
 documentos/planes/plan_implementacion_v{X.Y.Z}_{YYYYMMDDHHMMSS}.md
 ```
 Ejemplos:
-- `plan_implementacion_v1.0.0_210326040159.md`
-- `plan_implementacion_v2.0.1_210326.md`
-- `plan_implementacion_v2.2.1_210326214437.md`
+- `plan_implementacion_v2.2.1_20260321214437.md`
+- `plan_implementacion_v2.3.0_20260321221530.md`
 
 ### Análisis
 ```
-documentos/analisis/ANALISIS_{TEMA}_{DDMMYYYY}.md
-documentos/analisis/ANALISIS_{TEMA}_v{X.Y.Z}.md
+documentos/analisis/ANALISIS_{TEMA}_{YYYYMMDDHHMMSS}.md
 ```
 Ejemplos:
-- `ANALISIS_BRECHAS_AUTH_LOGIN_15032026.md`
-- `ANALISIS_ESTADO_TESTS_v2_2_1.md`
+- `ANALISIS_GRANT_ALTER_IVR_v1.0.0_20260321221000.md`
+- `ANALISIS_ESTADO_TESTS_v2_3_0_20260321223000.md`
 
 ### Documentación general
 ```
-documentos/analisis/DOCUMENTACION_COMPLETA_v{X_Y_Z}.md
+documentos/analisis/DOCUMENTACION_COMPLETA_v{X_Y_Z}_{YYYYMMDDHHMMSS}.md
+```
+
+### Regla para obtener el timestamp
+```bash
+date +%Y%m%d%H%M%S   # → 20260321222142
 ```
 
 ---
