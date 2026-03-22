@@ -271,6 +271,58 @@ def format_service_800(service: str) -> str:
     return service  # Retornar sin cambios
 
 
+def format_number(number: float, decimals: int = 0) -> str:
+    """
+    Formatea un número con separador de miles.
+
+    Args:
+        number: Número a formatear
+        decimals: Cantidad de decimales (default 0)
+
+    Returns:
+        str: Número formateado, ej. '1.000.000' o '1.234,56'
+
+    Example:
+        >>> format_number(1000000)
+        '1.000.000'
+        >>> format_number(1234.56, decimals=2)
+        '1.234,56'
+    """
+    if decimals > 0:
+        formatted = f'{number:,.{decimals}f}'
+    else:
+        formatted = f'{int(round(number)):,}'
+    # Convertir separadores al estilo chileno (puntos para miles, coma para decimales)
+    formatted = formatted.replace(',', '.')
+    if decimals > 0:
+        parts = formatted.rsplit('.', 1)
+        formatted = parts[0] + ',' + parts[1] if len(parts) == 2 else formatted
+    return formatted
+
+
+def truncate_text(text: str, max_length: int = 100, suffix: str = '...') -> str:
+    """
+    Trunca texto a una longitud máxima.
+
+    Args:
+        text: Texto a truncar
+        max_length: Longitud máxima (default 100)
+        suffix: Sufijo al truncar (default '...')
+
+    Returns:
+        str: Texto truncado con sufijo si supera max_length
+
+    Example:
+        >>> truncate_text('Hello world', max_length=5)
+        'Hello...'
+        >>> truncate_text('Hi', max_length=10)
+        'Hi'
+    """
+    if len(text) <= max_length:
+        return text
+    return text[:max_length] + suffix
+
+
 # ============================================================================
 # DATE/TIME FORMATTING
 # ============================================================================

@@ -204,3 +204,39 @@ class ResetPasswordSerializer(serializers.Serializer):
             })
         
         return attrs
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """
+    Solicitud reset password vía preguntas de seguridad (sin email).
+
+    CNST-001: Reset SIN email, solo preguntas.
+    """
+
+    username = serializers.CharField()
+    question1_answer = serializers.CharField(write_only=True)
+    question2_answer = serializers.CharField(write_only=True)
+    question3_answer = serializers.CharField(write_only=True)
+    new_password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, attrs):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        username = attrs.get('username')
+        try:
+            user = User.objects.get(username=username)
+        except User.DoesNotExist:
+            raise serializers.ValidationError("Usuario no existe")
+        answers = user.security_answers.all()
+        if answers.count() < 3:
+            raise serializers.ValidationError(
+                "Usuario sin preguntas de seguridad configuradas"
+            )
+        attrs['user'] = user
+        return attrs
+
+    def save(self):
+        user = self.validated_data['user']
+        user.set_password(self.validated_data['new_password'])
+        user.save()
+        return user

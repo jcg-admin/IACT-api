@@ -13,12 +13,12 @@ from factory import fuzzy
 from apps.access.models import (
     Module,
     Function,
-    Role,
     UserModuleAccess,
     UserFunctionAssignment,
-    UserRoleAssignment,
-    RoleFunctionAssignment,
 )
+# DEUDA TÉCNICA 2026-03-21: Role, UserRoleAssignment, RoleFunctionAssignment
+# eliminados en DT-002 junto con UserServiceAccess (RBAC simplificado).
+# TODO: Reescribir factories si se reimplementa sistema de Roles.
 from .user_factory import UserFactory
 
 
@@ -118,59 +118,6 @@ class FunctionDeleteFactory(FunctionFactory):
 
 
 # ============================================================================
-# ROLE FACTORIES
-# ============================================================================
-
-class RoleFactory(DjangoModelFactory):
-    """
-    Factory para Role.
-    
-    Uso básico:
-        role = RoleFactory(role_id='ROLE_ADMIN', name='Administrador')
-    
-    Batch:
-        roles = RoleFactory.create_batch(5)
-    """
-    
-    class Meta:
-        model = Role
-        django_get_or_create = ('role_id',)
-    
-    role_id = factory.Sequence(lambda n: f'ROLE_{n:03d}')
-    name = factory.Faker('job')
-    description = factory.Faker('sentence', nb_words=15)
-    is_active = True
-
-
-class AdminRoleFactory(RoleFactory):
-    """Factory para rol de Administrador."""
-    role_id = 'ROLE_ADMIN'
-    name = 'Administrador'
-    description = 'Acceso completo al sistema'
-
-
-class ManagerRoleFactory(RoleFactory):
-    """Factory para rol de Manager."""
-    role_id = 'ROLE_MANAGER'
-    name = 'Gerente'
-    description = 'Gestión de reportes y dashboards'
-
-
-class AnalystRoleFactory(RoleFactory):
-    """Factory para rol de Analista."""
-    role_id = 'ROLE_ANALYST'
-    name = 'Analista'
-    description = 'Visualización de reportes'
-
-
-class ViewerRoleFactory(RoleFactory):
-    """Factory para rol de Viewer."""
-    role_id = 'ROLE_VIEWER'
-    name = 'Visualizador'
-    description = 'Solo lectura'
-
-
-# ============================================================================
 # ASSIGNMENT FACTORIES
 # ============================================================================
 
@@ -217,48 +164,6 @@ class UserFunctionAssignmentFactory(DjangoModelFactory):
     assigned_by = factory.SubFactory(UserFactory)
     reason = factory.Faker('sentence', nb_words=8)
     is_active = True
-
-
-class UserRoleAssignmentFactory(DjangoModelFactory):
-    """
-    Factory para UserRoleAssignment (asignación usuario-rol).
-    
-    Uso:
-        user = UserFactory()
-        role = RoleFactory()
-        assignment = UserRoleAssignmentFactory(user=user, role=role)
-    """
-    
-    class Meta:
-        model = UserRoleAssignment
-    
-    user = factory.SubFactory(UserFactory)
-    role = factory.SubFactory(RoleFactory)
-    assigned_at = factory.Faker('date_time_this_year')
-    assigned_by = factory.SubFactory(UserFactory)
-    reason = factory.Faker('sentence', nb_words=8)
-    is_active = True
-
-
-class RoleFunctionAssignmentFactory(DjangoModelFactory):
-    """
-    Factory para RoleFunctionAssignment (asignación rol-función).
-    
-    Uso:
-        role = RoleFactory()
-        function = FunctionFactory()
-        assignment = RoleFunctionAssignmentFactory(
-            role=role,
-            function=function
-        )
-    """
-    
-    class Meta:
-        model = RoleFunctionAssignment
-    
-    role = factory.SubFactory(RoleFactory)
-    function = factory.SubFactory(FunctionFactory)
-    assigned_at = factory.Faker('date_time_this_year')
 
 
 # ============================================================================
@@ -311,56 +216,26 @@ class UserWithFunctionFactory(UserFactory):
             UserFunctionAssignmentFactory(user=self)
 
 
-class UserWithRoleFactory(UserFactory):
-    """
-    Factory que crea Usuario con rol asignado.
-    
-    Uso:
-        user = UserWithRoleFactory()
-        # Usuario con rol ANALYST por defecto
-        
-        user = UserWithRoleFactory(role__role_id='ROLE_ADMIN')
-        # Usuario con rol específico
-    """
-    
-    @factory.post_generation
-    def role(self, create, extracted, **kwargs):
-        if not create:
-            return
-        
-        if extracted:
-            UserRoleAssignmentFactory(user=self, role=extracted)
-        else:
-            # Rol por defecto: ANALYST
-            role = AnalystRoleFactory()
-            UserRoleAssignmentFactory(user=self, role=role)
-
-
 class CompleteUserFactory(UserFactory):
     """
-    Factory que crea Usuario con módulo + función + rol.
-    
-    Uso:
-        user = CompleteUserFactory()
-        # Usuario con módulo, función y rol asignados
+    Factory que crea Usuario con módulo + función.
+
+    DEUDA TÉCNICA 2026-03-21: Roles eliminados en DT-002.
+    El factory ya no asigna rol; solo módulo y función.
     """
-    
+
     @factory.post_generation
     def complete_access(self, create, extracted, **kwargs):
         if not create:
             return
-        
+
         # Crear módulo
         module = ModuleFactory()
         UserModuleAccessFactory(user=self, module=module)
-        
+
         # Crear función
         function = FunctionFactory(module=module)
         UserFunctionAssignmentFactory(user=self, function=function)
-        
-        # Crear rol
-        role = AnalystRoleFactory()
-        UserRoleAssignmentFactory(user=self, role=role)
 
 
 # ============================================================================

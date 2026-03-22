@@ -306,3 +306,10 @@ class CompleteBaseModel(TimeStampedModel, SoftDeleteMixin, AuditedModel):
 #   [SUCCESS] TODOS tienen abstract=True
 #   [SUCCESS] SOLO clases base reutilizables
 # ============================================================================
+
+# ============================================================================
+# BACKWARD-COMPAT RE-EXPORTS
+# Los modelos concretos fueron movidos a apps.pipeline en DT-001.
+# Estos re-exports mantienen compatibilidad con código existente.
+# ============================================================================
+from apps.pipeline.models import CallRecord, Center, Service  # noqa: F401, E402
