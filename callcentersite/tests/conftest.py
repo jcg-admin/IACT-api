@@ -24,6 +24,7 @@ pytest_plugins = [
     # Fixtures existentes
     'tests.fixtures.users',
     'tests.fixtures.rbac',
+    'tests.fixtures.authentication',
 
     # Mocks
     'tests.mocks.database_mocks',
