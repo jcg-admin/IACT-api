@@ -11,7 +11,8 @@ CLEAN_CODE v3.0.1: Nombres auto-documentados.
 import factory
 from factory.django import DjangoModelFactory
 from factory import fuzzy
-from apps.audit.models import AuditLog, SessionLog
+from apps.audit.models import AuditLog
+from apps.authentication.models import SessionLog
 from .user_factory import UserFactory
 
 

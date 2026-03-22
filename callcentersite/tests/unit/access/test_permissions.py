@@ -10,7 +10,7 @@ import pytest
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIRequestFactory
 from apps.access.models import Module, UserModuleAccess
-from apps.access.permissions import HasModuleAccess
+from apps.access.permissions.module_permissions import HasModuleAccess
 
 User = get_user_model()
 
