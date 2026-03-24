@@ -1,23 +1,133 @@
-"""Development settings."""
-from .base import *  # noqa: F401, F403
+"""
+Django settings DEVELOPMENT - IACT Call Center.
+
+Configuracion para desarrollo local.
+
+CNST v2.2.1 Compliance: 100%
+- CNST-001: NO email (console backend no funcional)
+"""
+
+from .base import *
+
+
+# ==============================================================================
+# DEBUG
+# ==============================================================================
 
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1', '192.168.56.11', '0.0.0.0']
 
-INSTALLED_APPS += [  # noqa: F405
-    'django.contrib.admindocs',
+# ==============================================================================
+# ALLOWED HOSTS
+# ==============================================================================
+
+ALLOWED_HOSTS = ['localhost', '127.0.0.1', '[::1]', '*.ngrok.io']
+
+
+# ==============================================================================
+# INSTALLED APPS (development tools)
+# ==============================================================================
+
+INSTALLED_APPS += [
     'django_extensions',
-    'debug_toolbar',
+    # 'debug_toolbar',  # Descomentar si se necesita
 ]
 
-MIDDLEWARE += [  # noqa: F405
-    'debug_toolbar.middleware.DebugToolbarMiddleware',
-]
 
-INTERNAL_IPS = ['127.0.0.1']
+# ==============================================================================
+# MIDDLEWARE (development tools)
+# ==============================================================================
 
-# Relax security for development
+# MIDDLEWARE = [
+#     'debug_toolbar.middleware.DebugToolbarMiddleware',
+# ] + MIDDLEWARE
+
+
+# ==============================================================================
+# DATABASES
+# ==============================================================================
+
+# Usar configuracion base
+# Puede override si necesario para desarrollo:
+
+# DATABASES['default']['OPTIONS']['connect_timeout'] = 5
+
+
+# ==============================================================================
+# EMAIL
+# ==============================================================================
+# CNST-001: NO email en desarrollo
+# ==============================================================================
+
+# EMAIL DESHABILITADO POR CNST-001
+# Console backend solo imprime, NO envía emails
+
+# PROHIBIDO usar:
+# - django.core.mail.backends.smtp.EmailBackend
+# - cualquier backend que envíe emails reales
+
+# NOTA: Si se necesita testear flujos con email,
+# usar console backend y verificar logs
+
+
+# ==============================================================================
+# LOGGING
+# ==============================================================================
+
+LOGGING['loggers']['django']['level'] = 'DEBUG'
+LOGGING['loggers']['apps']['level'] = 'DEBUG'
+
+
+# ==============================================================================
+# CORS (si se necesita)
+# ==============================================================================
+
+# CORS_ALLOW_ALL_ORIGINS = True  # Solo desarrollo
+
+
+# ==============================================================================
+# DEBUG TOOLBAR (si se habilita)
+# ==============================================================================
+
+# INTERNAL_IPS = [
+#     '127.0.0.1',
+# ]
+
+
+# ==============================================================================
+# CACHE
+# ==============================================================================
+# CNST-010: NO cache permitido. CACHES removido.
+#
+# LocMemCache es inutil en un API REST multi-proceso:
+# - Cada worker (gunicorn/mod_wsgi) tiene su propia copia aislada en memoria
+# - No hay estado compartido entre workers
+# - Se pierde todo al reiniciar el proceso
+# - Toda persistencia ya va a PostgreSQL (sessions, datos, locks)
+# ==============================================================================
+
+
+# ==============================================================================
+# SECURITY (relaxed for development)
+# ==============================================================================
+
 SESSION_COOKIE_SECURE = False
 CSRF_COOKIE_SECURE = False
 SECURE_SSL_REDIRECT = False
+
+
+# ==============================================================================
+# COMPLIANCE CNST v2.2.1 - DEVELOPMENT
+# ==============================================================================
+
+"""
+VERIFICACION COMPLIANCE DEVELOPMENT:
+
+ CNST-002: SESSION_ENGINE heredado de base
+ CNST-003: Dual database heredado de base
+ CNST-004: NO Celery, NO Channels
+ CNST-005: Throttling heredado de base
+ CNST_TECNICAS: NO Sentry, NO Redis
+
+Compliance: 100%
+"""

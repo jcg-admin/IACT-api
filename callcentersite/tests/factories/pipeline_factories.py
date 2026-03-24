@@ -171,7 +171,7 @@ class ConnectionErrorFactory(ETLErrorFactory):
     error_type = 'CONNECTION_ERROR'
     error_message = 'Database connection timeout'
     record_data = factory.LazyFunction(lambda: {
-        'database': 'ivr_legacy',
+        'database': 'ivr',
         'timeout_seconds': 30
     })
 

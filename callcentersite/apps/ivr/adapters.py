@@ -55,7 +55,7 @@ class IVRAdapter:
         
         try:
             # Intentar usar ivr_legacy DB
-            queryset = CallLog.objects.using('ivr_legacy').filter(
+            queryset = CallLog.objects.using('ivr').filter(
                 fecha__gte=fecha_inicio,
                 fecha__lte=fecha_fin
             ).order_by('fecha', 'telefono')

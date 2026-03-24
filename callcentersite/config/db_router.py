@@ -5,7 +5,7 @@ CNST-003: Enforce READ-ONLY access to IVR Legacy database.
 
 Routing rules:
 - Models de apps.core (CallRecord, etc) -> 'default' (PostgreSQL)
-- Models de apps.ivr (legacy) -> 'ivr_legacy' (MariaDB READ-ONLY)
+- Models de apps.ivr (legacy) -> 'ivr' (MariaDB READ-ONLY)
 
 Compliance: CNST-003
 """
@@ -16,10 +16,10 @@ class DatabaseRouter:
     Database router para dual-database setup.
     
     - default (PostgreSQL): Analytics DB (READ + WRITE)
-    - ivr_legacy (MariaDB): IVR Legacy DB (READ-ONLY)
+    - ivr (MariaDB): IVR Legacy DB (READ-ONLY)
     """
     
-    # Apps que usan ivr_legacy (READ-ONLY)
+    # Apps que usan ivr (READ-ONLY)
     ivr_apps = {'ivr'}  # Se agrega en Sprint 1
     
     # Apps que usan default (READ + WRITE)
@@ -33,12 +33,12 @@ class DatabaseRouter:
             model: Model class
         
         Returns:
-            str: 'default' o 'ivr_legacy'
+            str: 'default' o 'ivr'
         """
         app_label = model._meta.app_label
         
         if app_label in self.ivr_apps:
-            return 'ivr_legacy'
+            return 'ivr'
         
         if app_label in self.default_apps:
             return 'default'
@@ -79,7 +79,7 @@ class DatabaseRouter:
         Returns:
             bool: True si misma DB
         """
-        db_set = {'default', 'ivr_legacy'}
+        db_set = {'default', 'ivr'}
         
         if obj1._state.db in db_set and obj2._state.db in db_set:
             return True
@@ -101,7 +101,7 @@ class DatabaseRouter:
         """
         # IVR apps: NO migrations (legacy database)
         if app_label in self.ivr_apps:
-            return db == 'ivr_legacy'  # False para default
+            return db == 'ivr'  # False para default
         
         # Default apps: migrations solo en default
         if app_label in self.default_apps:
@@ -143,8 +143,8 @@ def test_router_migrations_readonly():
     
     # Migrations de app ivr solo permitidas en ivr_legacy
     assert router.allow_migrate('default', 'ivr') is False
-    assert router.allow_migrate('ivr_legacy', 'ivr') is True
+    assert router.allow_migrate('ivr', 'ivr') is True
     
     # Migrations de app core solo permitidas en default
     assert router.allow_migrate('default', 'core') is True
-    assert router.allow_migrate('ivr_legacy', 'core') is False
+    assert router.allow_migrate('ivr', 'core') is False
