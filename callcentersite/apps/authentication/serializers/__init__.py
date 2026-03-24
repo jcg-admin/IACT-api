@@ -8,6 +8,7 @@ from apps.authentication.serializers.auth import (
     LoginSerializer,
     LogoutSerializer,
     ChangePasswordSerializer,
+    CustomTokenObtainPairSerializer,
 )
 
 from apps.authentication.serializers.recovery import (
@@ -16,6 +17,7 @@ from apps.authentication.serializers.recovery import (
     SetSecurityAnswersSerializer,
     VerifySecurityAnswersSerializer,
     ResetPasswordSerializer,
+    PasswordResetRequestSerializer,
 )
 
 from apps.authentication.serializers.session import (
@@ -28,6 +30,7 @@ __all__ = [
     'LoginSerializer',
     'LogoutSerializer',
     'ChangePasswordSerializer',
+    'CustomTokenObtainPairSerializer',
     
     # Recovery
     'SecurityQuestionSerializer',
@@ -35,6 +38,7 @@ __all__ = [
     'SetSecurityAnswersSerializer',
     'VerifySecurityAnswersSerializer',
     'ResetPasswordSerializer',
+    'PasswordResetRequestSerializer',
     
     # Session
     'SessionLogSerializer',

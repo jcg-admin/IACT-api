@@ -7,7 +7,7 @@ CNST-004: NO Celery (usar APScheduler).
 import pytest
 from datetime import date
 from apps.core.services.etl_service import ETLService
-from apps.core.models import CallRecord
+from apps.pipeline.models import CallRecord
 
 
 @pytest.mark.django_db

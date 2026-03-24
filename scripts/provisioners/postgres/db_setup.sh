@@ -126,9 +126,11 @@ GRANT ALL ON SCHEMA public TO ${DB_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES    TO ${DB_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO ${DB_USER};
 ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON FUNCTIONS TO ${DB_USER};
+-- Necesario para que pytest cree/destruya test_iact_analytics
+ALTER ROLE ${DB_USER} CREATEDB;
 SQL
 
-    log_success "Privilegios aplicados"
+    log_success "Privilegios aplicados (incluye CREATEDB para tests)"
 }
 
 # =============================================================================

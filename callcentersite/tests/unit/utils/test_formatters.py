@@ -18,7 +18,7 @@ Total: 17 tests
 import pytest
 
 from apps.utils.formatters import (
-    format_phone,
+    format_phone_cl,
     format_currency,
     format_percentage,
     format_number,
@@ -35,25 +35,25 @@ class TestFormatPhone:
     
     def test_format_mobile_chile(self):
         """Test: Format móvil chileno."""
-        result = format_phone('912345678')
+        result = format_phone_cl('912345678')
         
         assert '+56 9 1234 5678' in result or '9 1234 5678' in result
     
     def test_format_landline_chile(self):
         """Test: Format fijo chileno."""
-        result = format_phone('223456789')
+        result = format_phone_cl('223456789')
         
         assert '22 345 6789' in result or '2 2345 6789' in result
     
     def test_format_already_formatted(self):
         """Test: Ya formateado."""
-        result = format_phone('+56 9 1234 5678')
+        result = format_phone_cl('+56 9 1234 5678')
         
         assert result is not None
     
     def test_format_invalid_returns_original(self):
         """Test: Inválido retorna original."""
-        result = format_phone('invalid')
+        result = format_phone_cl('invalid')
         
         assert result == 'invalid' or result is None
 

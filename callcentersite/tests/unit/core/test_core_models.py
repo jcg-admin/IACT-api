@@ -7,7 +7,7 @@ import pytest
 from datetime import date
 from decimal import Decimal
 from django.db import IntegrityError
-from apps.core.models import CallRecord
+from apps.pipeline.models import CallRecord
 
 
 @pytest.mark.django_db

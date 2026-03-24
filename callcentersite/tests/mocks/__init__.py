@@ -11,24 +11,23 @@ Total Mocks: 81 fixtures
 # DATABASE MOCKS (12)
 # ============================================================================
 
+# =============================================================================
+# DEUDA TÉCNICA — PENDIENTE
+# =============================================================================
+# Fecha de eliminación: 2026-03-21
+# Fixtures IVR desactivadas (mock_ivr_connection, mock_ivr_cursor_quarterly,
+# mock_ivr_cursor_transfers, mock_ivr_empty_result, mock_readonly_violation,
+# mock_database_router, mock_slow_query).
+# Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
+# =============================================================================
+
 from .database_mocks import (
-    # IVR Connection Mocks
-    mock_ivr_connection,
-    mock_ivr_cursor_quarterly,
-    mock_ivr_cursor_transfers,
-    mock_ivr_empty_result,
-    mock_readonly_violation,
-    
     # PostgreSQL Mocks
     mock_postgresql_connection,
-    
-    # Router Mocks
-    mock_database_router,
-    
+
     # Error Mocks
-    mock_slow_query,
     mock_connection_error,
-    
+
     # Helper Mocks
     mock_database_settings,
     mock_transaction_atomic,
@@ -176,18 +175,12 @@ from .external_mocks import (
 # ============================================================================
 
 __all__ = [
-    # Database Mocks (12)
-    'mock_ivr_connection',
-    'mock_ivr_cursor_quarterly',
-    'mock_ivr_cursor_transfers',
-    'mock_ivr_empty_result',
-    'mock_readonly_violation',
+    # Database Mocks activos (4)
     'mock_postgresql_connection',
-    'mock_database_router',
-    'mock_slow_query',
     'mock_connection_error',
     'mock_database_settings',
     'mock_transaction_atomic',
+    # IVR mocks desactivados — DEUDA TÉCNICA 2026-03-21
     
     # Service Mocks (13)
     'mock_etl_service',

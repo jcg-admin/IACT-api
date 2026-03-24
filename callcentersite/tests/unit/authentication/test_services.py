@@ -162,20 +162,107 @@ class TestAuthenticationService:
         assert 'first_login' in result
     
     def test_login_user_invalid_credentials(self):
-        """Test login con credenciales inválidas."""
+        """Test login con credenciales inválidas lanza InvalidCredentialsError."""
         user = UserFactory(password='testpass123')
-        
+
         request = self.factory.post('/login/')
         request.META['REMOTE_ADDR'] = '192.168.1.1'
         request.META['HTTP_USER_AGENT'] = 'Test'
         request.session = {}
-        
+
         with pytest.raises(InvalidCredentialsError):
             self.service.login_user(
                 request=request,
                 username=user.username,
                 password='wrongpassword'
             )
+
+    def test_login_user_account_locked_lanza_account_locked_error(self):
+        """Test login con cuenta bloqueada lanza AccountLockedError."""
+        user = UserFactory()
+        user.set_password('pass1234')
+        user.save()
+
+        # Bloquear la cuenta
+        from apps.authentication.services import LockoutService
+        lockout_service = LockoutService()
+        for _ in range(5):
+            lockout_service.record_failed_attempt(user.username)
+
+        request = self.factory.post('/login/')
+        request.META['REMOTE_ADDR'] = '192.168.1.1'
+        request.META['HTTP_USER_AGENT'] = 'Test'
+        request.session = {}
+
+        with pytest.raises(AccountLockedError):
+            self.service.login_user(
+                request=request,
+                username=user.username,
+                password='pass1234'
+            )
+
+    def test_login_user_inactive_lanza_user_inactive_error(self):
+        """Test login con usuario inactivo lanza UserInactiveError."""
+        from apps.authentication.exceptions import UserInactiveError
+
+        user = UserFactory(is_active=False)
+        user.set_password('pass1234')
+        user.save()
+
+        request = self.factory.post('/login/')
+        request.META['REMOTE_ADDR'] = '192.168.1.1'
+        request.META['HTTP_USER_AGENT'] = 'Test'
+        request.session = {}
+
+        with pytest.raises(UserInactiveError):
+            self.service.login_user(
+                request=request,
+                username=user.username,
+                password='pass1234'
+            )
+
+    def test_login_user_first_login_true_en_primer_acceso(self):
+        """Test que first_login es True cuando no hay LoginAttempts exitosos previos."""
+        user = UserFactory()
+        user.set_password('pass1234')
+        user.save()
+
+        request = self.factory.post('/login/')
+        request.META['REMOTE_ADDR'] = '192.168.1.1'
+        request.META['HTTP_USER_AGENT'] = 'Test'
+        request.session = {}
+
+        result = self.service.login_user(
+            request=request,
+            username=user.username,
+            password='pass1234'
+        )
+
+        assert result['first_login'] is True
+
+    def test_login_user_first_login_false_en_segundo_acceso(self):
+        """Test que first_login es False cuando ya existe un LoginAttempt exitoso previo."""
+        from tests.factories import LoginAttemptFactory
+
+        user = UserFactory()
+        user.set_password('pass1234')
+        user.save()
+
+        # Simular que ya hubo un login exitoso anterior
+        LoginAttemptFactory(user=user, username=user.username, success=True)
+
+        request = self.factory.post('/login/')
+        request.META['REMOTE_ADDR'] = '192.168.1.1'
+        request.META['HTTP_USER_AGENT'] = 'Test'
+        request.session = {}
+
+        result = self.service.login_user(
+            request=request,
+            username=user.username,
+            password='pass1234'
+        )
+
+        assert result['first_login'] is False
 
 
 # ============================================================================

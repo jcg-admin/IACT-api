@@ -70,36 +70,37 @@ check_prerequisites() {
 
 # =============================================================================
 # PASO 2 — Actualizar índice de paquetes
+# Se omite si:
+#   · SKIP_APT_UPDATE=true  (flag --skip-update de bootstrap.sh)
+#   · El índice tiene menos de 1 hora de antigüedad
 # =============================================================================
 update_package_index() {
     log_step 2 $TOTAL_STEPS "Actualizando índice de paquetes apt"
 
-    # Solo actualiza si el índice tiene más de 1 hora de antigüedad
-    local apt_lists="/var/lib/apt/lists"
-    local update_needed=true
+    # Omitir por flag explícito
+    if [[ "${SKIP_APT_UPDATE:-false}" == "true" ]]; then
+        log_info "apt-get update omitido (--skip-update)"
+        return 0
+    fi
 
-    if [[ -d "$apt_lists" ]]; then
-        local age_seconds
-        age_seconds=$(find "$apt_lists" -maxdepth 1 -name "*.lz4" -newer /proc/1 2>/dev/null | wc -l || echo "0")
-        # Si hay archivos recientes, probablemente no necesitamos actualizar
-        local last_update
-        last_update=$(stat -c %Y "${apt_lists}" 2>/dev/null || echo "0")
-        local now
+    # Omitir si el índice ya fue actualizado en la última hora
+    local stamp_file="/var/lib/apt/lists/lock"
+    if [[ -f "$stamp_file" ]]; then
+        local last_update now age
+        last_update=$(stat -c %Y "$stamp_file" 2>/dev/null || echo "0")
         now=$(date +%s)
-        local age=$(( now - last_update ))
+        age=$(( now - last_update ))
         if [[ $age -lt 3600 ]]; then
-            update_needed=false
             log_info "Índice actualizado hace menos de 1 hora — omitiendo apt-get update"
+            return 0
         fi
     fi
 
-    if [[ "$update_needed" == "true" ]]; then
-        log_info "Ejecutando apt-get update"
-        apt-get update -qq 2>/dev/null || {
-            log_warn "apt-get update devolvió errores — continuando de todos modos"
-        }
-        log_success "Índice actualizado"
-    fi
+    log_info "Ejecutando apt-get update"
+    apt-get update -qq 2>/dev/null || {
+        log_warn "apt-get update devolvió errores — continuando de todos modos"
+    }
+    log_success "Índice actualizado"
 }
 
 # =============================================================================

@@ -27,9 +27,11 @@ from apps.core.permissions import (
     IsOwnerOrReadOnly,
     IsSuperUserOrReadOnly,
     IsStaffOrReadOnly,
-    HasServiceAccess,
     AllowOptionsAuthentication,
 )
+# DEUDA TÉCNICA 2026-03-21: HasServiceAccess eliminado en DT-002.
+# La clase TestHasServiceAccess abajo está marcada como skip.
+HasServiceAccess = None  # Sentinel para evitar NameError en el cuerpo del test
 from tests.factories.user_factory import UserFactory, AdminUserFactory
 
 User = get_user_model()
@@ -403,6 +405,7 @@ class TestIsStaffOrReadOnly:
 # TEST HASSERVICEACCESS
 # ============================================================================
 
+@pytest.mark.skip(reason="DEUDA TÉCNICA DT-002: HasServiceAccess eliminado")
 @pytest.mark.django_db
 class TestHasServiceAccess:
     """Tests para HasServiceAccess."""

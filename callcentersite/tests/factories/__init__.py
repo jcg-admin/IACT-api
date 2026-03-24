@@ -48,33 +48,26 @@ from .access_factories import (
     # Module Factories
     ModuleFactory,
     ModuleWithParentFactory,
-    
+
     # Function Factories
     FunctionFactory,
     FunctionCreateFactory,
     FunctionViewFactory,
     FunctionEditFactory,
     FunctionDeleteFactory,
-    
-    # Role Factories
-    RoleFactory,
-    AdminRoleFactory,
-    ManagerRoleFactory,
-    AnalystRoleFactory,
-    ViewerRoleFactory,
-    
+
     # Assignment Factories
     UserModuleAccessFactory,
     UserFunctionAssignmentFactory,
-    UserRoleAssignmentFactory,
-    RoleFunctionAssignmentFactory,
-    
+
     # Helper Factories
     UserWithModuleAccessFactory,
     UserWithFunctionFactory,
-    UserWithRoleFactory,
     CompleteUserFactory,
 )
+# DEUDA TÉCNICA 2026-03-21: RoleFactory, AdminRoleFactory, ManagerRoleFactory,
+# AnalystRoleFactory, ViewerRoleFactory, UserRoleAssignmentFactory,
+# RoleFunctionAssignmentFactory, UserWithRoleFactory eliminados — DT-002.
 
 
 # ============================================================================
@@ -104,188 +97,91 @@ from .audit_factories import (
 
 # ============================================================================
 # IVR FACTORIES (apps/ivr_legacy/)
+# DEUDA TÉCNICA 2026-03-21: Modelos IVR no implementados.
+# Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
 # ============================================================================
-
-from .ivr_factories import (
-    # Quarterly Factories
-    QuarterlyReportFactory,
-    Q1ReportFactory,
-    Q2ReportFactory,
-    Q3ReportFactory,
-    Q4ReportFactory,
-    
-    # Report Factories
-    TransferReportFactory,
-    AbandonedReportFactory,
-    ClientReportFactory,
-    
-    # CallRecord Factories
-    CallRecordQ1Factory,
-    CallRecordQ2Factory,
-    CallRecordQ3Factory,
-    CallRecordQ4Factory,
-    
-    # Stats Factories
-    MonthlyStatsFactory,
-    HourlyStatsFactory,
-    DIDReportFactory,
-    
-    # Helper Factories
-    CompleteQuarterDataFactory,
-    YearDataFactory,
-)
+# (Importaciones deshabilitadas — ivr_factories.py sin clases activas)
 
 
 # ============================================================================
 # PIPELINE FACTORIES (apps/pipeline/)
+# DEUDA TÉCNICA 2026-03-21: ETLJob, ETLError, SchedulerConfig, DataQualityCheck
+# no existen en apps.pipeline.models. Importación silenciosa.
 # ============================================================================
 
-from .pipeline_factories import (
-    # ETLJob Factories
-    ETLJobFactory,
-    PendingETLJobFactory,
-    RunningETLJobFactory,
-    SuccessETLJobFactory,
-    FailedETLJobFactory,
-    
-    # ETLError Factories
-    ETLErrorFactory,
-    ValidationErrorFactory,
-    ConnectionErrorFactory,
-    DataQualityErrorFactory,
-    
-    # SchedulerConfig Factories
-    SchedulerConfigFactory,
-    DailyJobConfigFactory,
-    HourlyJobConfigFactory,
-    HealthCheckConfigFactory,
-    
-    # DataQualityCheck Factories
-    DataQualityCheckFactory,
-    PassedCheckFactory,
-    FailedCheckFactory,
-    
-    # Helper Factories
-    CompleteETLRunFactory,
-    SchedulerHistoryFactory,
-)
+try:
+    from .pipeline_factories import (
+        ETLJobFactory, PendingETLJobFactory, RunningETLJobFactory,
+        SuccessETLJobFactory, FailedETLJobFactory, ETLErrorFactory,
+        ValidationErrorFactory, ConnectionErrorFactory, DataQualityErrorFactory,
+        SchedulerConfigFactory, DailyJobConfigFactory, HourlyJobConfigFactory,
+        HealthCheckConfigFactory, DataQualityCheckFactory, PassedCheckFactory,
+        FailedCheckFactory, CompleteETLRunFactory, SchedulerHistoryFactory,
+    )
+except ImportError:
+    pass  # Modelos Pipeline no implementados aún
 
 
 # ============================================================================
 # REPORT FACTORIES (apps/reports/)
+# DEUDA TÉCNICA 2026-03-21: Importación silenciosa hasta que modelos sean estables.
 # ============================================================================
 
-from .report_factories import (
-    # Report Factories
-    ReportFactory,
-    QuarterlyReportFactory as QuarterlyReportReportFactory,  # Alias para evitar conflicto
-    TransferReportFactory as TransferReportReportFactory,
-    AbandonedReportFactory as AbandonedReportReportFactory,
-    ClientReportFactory as ClientReportReportFactory,
-    CustomReportFactory,
-    
-    # ReportExecution Factories
-    ReportExecutionFactory,
-    PendingExecutionFactory,
-    RunningExecutionFactory,
-    SuccessExecutionFactory,
-    FailedExecutionFactory,
-    
-    # ReportTemplate Factories
-    ReportTemplateFactory,
-    QuarterlyTemplateFactory,
-    TransferTemplateFactory,
-    
-    # ReportSchedule Factories
-    ReportScheduleFactory,
-    QuarterlyScheduleFactory,
-    WeeklyScheduleFactory,
-    
-    # ReportCache Factories
-    ReportCacheFactory,
-    
-    # Helper Factories
-    CompleteReportFactory,
-    TemplateWithScheduleFactory,
-)
+try:
+    from .report_factories import (
+        ReportFactory,
+        QuarterlyReportFactory as QuarterlyReportReportFactory,
+        TransferReportFactory as TransferReportReportFactory,
+        AbandonedReportFactory as AbandonedReportReportFactory,
+        ClientReportFactory as ClientReportReportFactory,
+        CustomReportFactory, ReportExecutionFactory, PendingExecutionFactory,
+        RunningExecutionFactory, SuccessExecutionFactory, FailedExecutionFactory,
+        ReportTemplateFactory, QuarterlyTemplateFactory, TransferTemplateFactory,
+        ReportScheduleFactory, QuarterlyScheduleFactory, WeeklyScheduleFactory,
+        ReportCacheFactory, CompleteReportFactory, TemplateWithScheduleFactory,
+    )
+except ImportError:
+    pass  # Modelos Report no estables aún
 
 
 # ============================================================================
 # DASHBOARD FACTORIES (apps/dashboard/) - FUTURO
+# DEUDA TÉCNICA 2026-03-21: Importación silenciosa hasta implementación.
 # ============================================================================
 
-from .dashboard_factories import (
-    # DashboardConfig Factories
-    DashboardConfigFactory,
-    DefaultDashboardFactory,
-    PublicDashboardFactory,
-    
-    # WidgetConfig Factories
-    WidgetConfigFactory,
-    CallsChartWidgetFactory,
-    TransfersChartWidgetFactory,
-    AbandonmentsChartWidgetFactory,
-    TopClientsWidgetFactory,
-    MetricsSummaryWidgetFactory,
-    
-    # SavedFilter Factories
-    SavedFilterFactory,
-    QuarterlyFilterFactory,
-    MonthlyFilterFactory,
-    
-    # UserDashboardPreference Factories
-    UserDashboardPreferenceFactory,
-    
-    # Helper Factories
-    CompleteDashboardFactory,
-    UserWithDashboardFactory,
-)
+try:
+    from .dashboard_factories import (
+        DashboardConfigFactory, DefaultDashboardFactory, PublicDashboardFactory,
+        WidgetConfigFactory, CallsChartWidgetFactory, TransfersChartWidgetFactory,
+        AbandonmentsChartWidgetFactory, TopClientsWidgetFactory,
+        MetricsSummaryWidgetFactory, SavedFilterFactory, QuarterlyFilterFactory,
+        MonthlyFilterFactory, UserDashboardPreferenceFactory,
+        CompleteDashboardFactory, UserWithDashboardFactory,
+    )
+except ImportError:
+    pass  # Dashboard no implementado aún
 
 
 # ============================================================================
 # ALERT FACTORIES (apps/alerts/) - FUTURO
+# DEUDA TÉCNICA 2026-03-21: Importación silenciosa hasta implementación.
 # ============================================================================
 
-from .alert_factories import (
-    # AlertRule Factories
-    AlertRuleFactory,
-    ThresholdAlertRuleFactory,
-    HighAbandonmentRuleFactory,
-    LowCallVolumeRuleFactory,
-    LongQueueTimeRuleFactory,
-    TrendAlertRuleFactory,
-    AnomalyAlertRuleFactory,
-    
-    # Alert Factories
-    AlertFactory,
-    TriggeredAlertFactory,
-    ResolvedAlertFactory,
-    CriticalAlertFactory,
-    HighAlertFactory,
-    MediumAlertFactory,
-    LowAlertFactory,
-    
-    # AlertNotification Factories
-    AlertNotificationFactory,
-    EmailNotificationFactory,
-    PendingNotificationFactory,
-    SentNotificationFactory,
-    DeliveredNotificationFactory,
-    FailedNotificationFactory,
-    ReadNotificationFactory,
-    
-    # AlertHistory Factories
-    AlertHistoryFactory,
-    TriggeredHistoryFactory,
-    ResolvedHistoryFactory,
-    AcknowledgedHistoryFactory,
-    EscalatedHistoryFactory,
-    
-    # Helper Factories
-    CompleteAlertFactory,
-    AlertLifecycleFactory,
-    UserWithAlertsFactory,
-)
+try:
+    from .alert_factories import (
+        AlertRuleFactory, ThresholdAlertRuleFactory, HighAbandonmentRuleFactory,
+        LowCallVolumeRuleFactory, LongQueueTimeRuleFactory, TrendAlertRuleFactory,
+        AnomalyAlertRuleFactory, AlertFactory, TriggeredAlertFactory,
+        ResolvedAlertFactory, CriticalAlertFactory, HighAlertFactory,
+        MediumAlertFactory, LowAlertFactory, AlertNotificationFactory,
+        EmailNotificationFactory, PendingNotificationFactory, SentNotificationFactory,
+        DeliveredNotificationFactory, FailedNotificationFactory,
+        ReadNotificationFactory, AlertHistoryFactory, TriggeredHistoryFactory,
+        ResolvedHistoryFactory, AcknowledgedHistoryFactory, EscalatedHistoryFactory,
+        CompleteAlertFactory, AlertLifecycleFactory, UserWithAlertsFactory,
+    )
+except ImportError:
+    pass  # Alerts no implementado aún
 
 
 # ============================================================================
@@ -316,18 +212,10 @@ __all__ = [
     'FunctionViewFactory',
     'FunctionEditFactory',
     'FunctionDeleteFactory',
-    'RoleFactory',
-    'AdminRoleFactory',
-    'ManagerRoleFactory',
-    'AnalystRoleFactory',
-    'ViewerRoleFactory',
     'UserModuleAccessFactory',
     'UserFunctionAssignmentFactory',
-    'UserRoleAssignmentFactory',
-    'RoleFunctionAssignmentFactory',
     'UserWithModuleAccessFactory',
     'UserWithFunctionFactory',
-    'UserWithRoleFactory',
     'CompleteUserFactory',
     
     # Audit (13)
