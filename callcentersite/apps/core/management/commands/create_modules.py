@@ -1,165 +1,101 @@
 """
-Management command: create_modules
-Creates the default module hierarchy for the IACT navigation system.
-
-Usage:
-    python manage.py create_modules
-    python manage.py create_modules --verbose
-    python manage.py create_modules --reset
+Management command para crear modulos iniciales del sistema IACT.
 """
-from django.core.management.base import BaseCommand, CommandError
-
-
-DEFAULT_MODULES = [
-    {
-        'name': 'Reportes',
-        'code': 'REPORTS',
-        'icon': 'icons/menu/reports.svg',
-        'order': 1,
-        'children': [
-            {
-                'name': 'Reporte Diario',
-                'code': 'REPORTS_DAILY',
-                'icon': 'icons/submenu/report_daily.svg',
-                'order': 1,
-            },
-            {
-                'name': 'Reporte Acumulado',
-                'code': 'REPORTS_CUMULATIVE',
-                'icon': 'icons/submenu/report_cumulative.svg',
-                'order': 2,
-            },
-        ],
-    },
-    {
-        'name': 'OnBoarding',
-        'code': 'ONBOARDING',
-        'icon': 'icons/menu/onboarding.svg',
-        'order': 2,
-        'children': [
-            {
-                'name': 'Matriz de Asesores',
-                'code': 'ONBOARDING_MATRIX',
-                'icon': 'icons/submenu/advisor_matrix.svg',
-                'order': 1,
-            },
-        ],
-    },
-    {
-        'name': 'Usuarios',
-        'code': 'USERS',
-        'icon': 'icons/menu/users.svg',
-        'order': 3,
-        'children': [],
-    },
-    {
-        'name': 'Auditoria',
-        'code': 'AUDIT',
-        'icon': 'icons/menu/audit.svg',
-        'order': 4,
-        'children': [],
-    },
-    {
-        'name': 'Alertas',
-        'code': 'ALERTS',
-        'icon': 'icons/menu/alerts.svg',
-        'order': 5,
-        'children': [],
-    },
-    {
-        'name': 'Dashboard',
-        'code': 'DASHBOARD',
-        'icon': 'icons/menu/dashboard.svg',
-        'order': 6,
-        'children': [],
-    },
-]
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
-    help = 'Creates the default module hierarchy for the IACT navigation system.'
+    help = 'Crea los modulos iniciales del sistema IACT'
 
     def add_arguments(self, parser):
         parser.add_argument(
             '--verbose',
             action='store_true',
-            help='Show detailed output for each module created.',
-        )
-        parser.add_argument(
-            '--reset',
-            action='store_true',
-            help='Delete all existing modules before creating (USE WITH CAUTION).',
+            help='Muestra informacion detallada durante la creacion',
         )
 
     def handle(self, *args, **options):
+        from apps.access.models import Module
+
         verbose = options['verbose']
-        reset = options['reset']
 
-        try:
-            from apps.access.models import Module
-        except ImportError:
-            raise CommandError(
-                "Cannot import apps.access.models.Module. "
-                "Make sure the 'access' app is installed and migrated."
-            )
+        self.stdout.write('Inicializando modulos del sistema IACT...')
+        self.stdout.write('=' * 80)
 
-        if reset:
-            count, _ = Module.objects.all().delete()
-            self.stdout.write(self.style.WARNING(f'[WARN] Deleted {count} existing modules.'))
+        modules_data = [
+            {
+                'code': 'MOD_REPORTES',
+                'name': 'Reportes',
+                'description': 'Modulo principal de reportes del sistema',
+                'parent_code': None,
+                'order': 1,
+                'url_path': '/reportes',
+                'children': [
+                    {
+                        'code': 'MOD_REPORTES_DIARIO',
+                        'name': 'Reporte Diario',
+                        'description': 'Reporte de actividad diaria',
+                        'order': 1,
+                        'url_path': '/reportes/diario',
+                    },
+                    {
+                        'code': 'MOD_REPORTES_ACUMULADO',
+                        'name': 'Reporte Acumulado',
+                        'description': 'Reporte acumulado de periodo',
+                        'order': 2,
+                        'url_path': '/reportes/acumulado',
+                    },
+                ],
+            },
+            {
+                'code': 'MOD_ONBOARDING',
+                'name': 'OnBoarding',
+                'description': 'Modulo de onboarding de asesores',
+                'parent_code': None,
+                'order': 2,
+                'url_path': '/onboarding',
+                'children': [
+                    {
+                        'code': 'MOD_ONBOARDING_MATRIZ',
+                        'name': 'Matriz de Asesores',
+                        'description': 'Matriz de desempeno de asesores',
+                        'order': 1,
+                        'url_path': '/onboarding/matriz-asesores',
+                    },
+                ],
+            },
+        ]
 
         created_count = 0
-        updated_count = 0
 
-        for module_data in DEFAULT_MODULES:
-            children = module_data.pop('children', [])
+        for parent_data in modules_data:
+            children = parent_data.pop('children', [])
+            parent_data.pop('parent_code', None)
 
             parent, created = Module.objects.get_or_create(
-                code=module_data['code'],
-                defaults={
-                    'name': module_data['name'],
-                    'icon': module_data.get('icon', ''),
-                    'order': module_data.get('order', 0),
-                    'parent': None,
-                },
+                code=parent_data['code'],
+                defaults={**parent_data, 'is_active': True},
             )
-
             if created:
                 created_count += 1
                 if verbose:
                     self.stdout.write(
-                        self.style.SUCCESS(f'[SUCCESS] Created module: {parent.name} ({parent.code})')
+                        self.style.SUCCESS(f'Creado: {parent.code} - {parent.name}')
                     )
-            else:
-                updated_count += 1
-                if verbose:
-                    self.stdout.write(f'[INFO] Module already exists: {parent.name} ({parent.code})')
 
             for child_data in children:
-                child, child_created = Module.objects.get_or_create(
+                child, created = Module.objects.get_or_create(
                     code=child_data['code'],
-                    defaults={
-                        'name': child_data['name'],
-                        'icon': child_data.get('icon', ''),
-                        'order': child_data.get('order', 0),
-                        'parent': parent,
-                    },
+                    defaults={**child_data, 'parent': parent, 'is_active': True},
                 )
-                if child_created:
+                if created:
                     created_count += 1
                     if verbose:
                         self.stdout.write(
-                            self.style.SUCCESS(
-                                f'  [SUCCESS] Created sub-module: {child.name} ({child.code})'
-                            )
-                        )
-                else:
-                    updated_count += 1
-                    if verbose:
-                        self.stdout.write(
-                            f'  [INFO] Sub-module already exists: {child.name} ({child.code})'
+                            self.style.SUCCESS(f'  Creado: {child.code} - {child.name}')
                         )
 
         self.stdout.write('')
-        self.stdout.write(self.style.SUCCESS(
-            f'[SUCCESS] Done. Created: {created_count}, Already existed: {updated_count}.'
-        ))
+        self.stdout.write('=' * 80)
+        self.stdout.write(f'Total modulos creados: {created_count}')
+        self.stdout.write(self.style.SUCCESS('Inicializacion completada'))

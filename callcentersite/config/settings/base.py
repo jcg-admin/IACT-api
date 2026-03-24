@@ -1,20 +1,19 @@
 """
-Base settings for IACT API project.
+Configuracion base del sistema IACT.
 Compliance: CNST v2.2.1
 """
 import os
 from pathlib import Path
 
-from decouple import Csv, config
+from decouple import config
 
-# Build paths
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = config('SECRET_KEY', default='django-insecure-change-me-in-production')
+SECRET_KEY = config('SECRET_KEY', default='change-me-in-production')
 
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1', cast=Csv())
+ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
 # Application definition
 DJANGO_APPS = [
@@ -28,22 +27,23 @@ DJANGO_APPS = [
 
 THIRD_PARTY_APPS = [
     'rest_framework',
+    'django_filters',
     'drf_spectacular',
 ]
 
 LOCAL_APPS = [
     'apps.core',
-    'apps.utils',
     'apps.access',
-    'apps.authentication',
-    'apps.users',
-    'apps.audit',
     'apps.alerts',
-    'apps.pipeline',
-    'apps.reports',
+    'apps.audit',
+    'apps.authentication',
     'apps.dashboard',
     'apps.ivr',
     'apps.ivr_legacy',
+    'apps.pipeline',
+    'apps.reports',
+    'apps.users',
+    'apps.utils',
 ]
 
 INSTALLED_APPS = DJANGO_APPS + THIRD_PARTY_APPS + LOCAL_APPS
@@ -63,7 +63,7 @@ ROOT_URLCONF = 'config.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [],
+        'DIRS': [BASE_DIR / 'templates'],
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -78,7 +78,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# Databases - Dual DB (CNST-003)
+# CNST-003: Dual database
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
@@ -87,9 +87,6 @@ DATABASES = {
         'PASSWORD': config('DB_PASSWORD', default='django_pass'),
         'HOST': config('DB_HOST', default='192.168.56.11'),
         'PORT': config('DB_PORT', default='5432'),
-        'OPTIONS': {
-            'connect_timeout': 10,
-        },
     },
     'legacy': {
         'ENGINE': 'django.db.backends.mysql',
@@ -98,50 +95,42 @@ DATABASES = {
         'PASSWORD': config('LEGACY_DB_PASSWORD', default='django_pass'),
         'HOST': config('LEGACY_DB_HOST', default='192.168.56.10'),
         'PORT': config('LEGACY_DB_PORT', default='3306'),
-        'OPTIONS': {
-            'read_default_file': '',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-        },
+        'OPTIONS': {'charset': 'utf8mb4'},
     },
 }
 
-DATABASE_ROUTERS = ['config.database_router.DatabaseRouter']
+DATABASE_ROUTERS = ['config.database_router.IACTDatabaseRouter']
 
-# Session engine - database backed (CNST-002)
-SESSION_ENGINE = 'django.contrib.sessions.backends.db'
-SESSION_COOKIE_AGE = 28800  # 8 hours
-SESSION_COOKIE_HTTPONLY = True
-SESSION_SAVE_EVERY_REQUEST = False
-
-# Auth model
 AUTH_USER_MODEL = 'users.User'
 
-# Password validation
 AUTH_PASSWORD_VALIDATORS = [
     {'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator'},
-    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator', 'OPTIONS': {'min_length': 8}},
+    {'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator'},
     {'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator'},
     {'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator'},
 ]
 
-# Internationalization
+# CNST-002: Session engine = db
+SESSION_ENGINE = config('SESSION_ENGINE', default='django.contrib.sessions.backends.db')
+
 LANGUAGE_CODE = 'es-mx'
 TIME_ZONE = 'America/Mexico_City'
 USE_I18N = True
 USE_TZ = True
 
-# Static files
 STATIC_URL = '/static/'
-STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
-# Media files
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Django REST Framework (CNST-005)
+# CNST-001: NO email real
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+# CNST-005: Throttling + paginacion
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
@@ -154,54 +143,27 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',
-        'user': '1000/hour',
+        'anon': config('THROTTLE_ANON', default='100/hour'),
+        'user': config('THROTTLE_USER', default='1000/hour'),
     },
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 20,
-    'MAX_PAGE_SIZE': 100,
+    'PAGE_SIZE': 25,
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter',
+        'rest_framework.filters.OrderingFilter',
+    ],
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
-# drf-spectacular
+MAX_PAGE_SIZE = config('MAX_PAGE_SIZE', default=100, cast=int)
+
+# Avatar configuration
+ALLOWED_IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp']
+MAX_AVATAR_SIZE = 2 * 1024 * 1024  # 2 MB
+
 SPECTACULAR_SETTINGS = {
     'TITLE': 'IACT API',
     'DESCRIPTION': 'API REST para el sistema IACT Call Center',
-    'VERSION': '1.0.0',
-}
-
-# Email - console backend only (CNST-001: NO email services)
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-
-# Avatar & image validation settings
-ALLOWED_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png', '.webp']
-MAX_AVATAR_SIZE = 2 * 1024 * 1024  # 2 MB in bytes
-
-# Logging
-LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
-            'formatter': 'verbose',
-        },
-    },
-    'root': {
-        'handlers': ['console'],
-        'level': 'INFO',
-    },
-    'loggers': {
-        'django': {
-            'handlers': ['console'],
-            'level': 'INFO',
-            'propagate': False,
-        },
-    },
+    'VERSION': '2.2.1',
 }

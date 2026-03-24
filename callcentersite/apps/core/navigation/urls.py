@@ -1,10 +1,13 @@
-"""URL patterns for the navigation system."""
+"""
+URLs para el sistema de navegacion.
+"""
 from django.urls import path
 
-from apps.core.navigation import views
+from . import views
 
 app_name = 'navigation'
 
 urlpatterns = [
-    path('', views.get_navigation_view, name='navigation'),
+    path('menu/', views.navigation_menu_view, name='menu'),
+    path('modules/', views.navigation_modules_view, name='modules'),
 ]

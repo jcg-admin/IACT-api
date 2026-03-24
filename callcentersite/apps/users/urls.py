@@ -1,15 +1,14 @@
-"""URL patterns for the users app."""
+"""
+URLs para la gestion de usuarios y perfiles.
+"""
 from django.urls import path
 
-from apps.users import views
+from . import views
 
 app_name = 'users'
 
 urlpatterns = [
-    # Profile
     path('profile/', views.get_user_profile_view, name='profile'),
-
-    # Avatar management
-    path('avatar/upload/', views.upload_avatar_view, name='upload-avatar'),
-    path('avatar/delete/', views.delete_avatar_view, name='delete-avatar'),
+    path('avatar/upload-avatar/', views.upload_avatar_view, name='upload-avatar'),
+    path('avatar/', views.delete_avatar_view, name='delete-avatar'),
 ]

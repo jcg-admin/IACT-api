@@ -1,63 +1,77 @@
 """
-Navigation builders for the IACT API v3.0.0.
-Builds user-specific navigation menus based on RBAC permissions.
+Builders para el sistema de navegacion del menu principal.
 """
-from __future__ import annotations
-
-from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from apps.users.models import User
 
 
-@dataclass
-class NavigationItem:
-    """Represents a single navigation item (module or sub-module)."""
-    id: int
-    name: str
-    code: str
-    icon: str = ''
-    url: str = ''
-    order: int = 0
-    children: list['NavigationItem'] = field(default_factory=list)
+class MenuValidator:
+    """Valida la estructura de datos del menu."""
 
-    def to_dict(self) -> dict:
-        data = {
-            'id': self.id,
-            'name': self.name,
-            'code': self.code,
-            'icon': self.icon,
-            'url': self.url,
-            'order': self.order,
+    def validate_module(self, module_data):
+        required_fields = ('code', 'name', 'url_path')
+        errors = []
+        for field in required_fields:
+            if field not in module_data or not module_data[field]:
+                errors.append(f"Campo requerido faltante o vacio: '{field}'")
+        return errors
+
+    def validate_menu(self, menu_data):
+        errors = []
+        if not isinstance(menu_data, list):
+            return ['menu_data debe ser una lista']
+        for i, item in enumerate(menu_data):
+            item_errors = self.validate_module(item)
+            for err in item_errors:
+                errors.append(f'Item {i}: {err}')
+        return errors
+
+
+class MenuBuilder:
+    """Construye la estructura de navegacion a partir de los modulos."""
+
+    def __init__(self):
+        self.validator = MenuValidator()
+
+    def build_from_modules(self, modules_qs, user=None):
+        """
+        Construye el menu a partir de un queryset de modulos.
+
+        Args:
+            modules_qs: QuerySet de modulos activos.
+            user: Usuario autenticado (para filtrar permisos).
+
+        Returns:
+            list: Estructura de menu serializada.
+        """
+        parent_modules = [m for m in modules_qs if m.parent_id is None]
+        parent_modules.sort(key=lambda m: m.order)
+
+        menu = []
+        for module in parent_modules:
+            children = [
+                m for m in modules_qs
+                if m.parent_id == module.pk
+            ]
+            children.sort(key=lambda m: m.order)
+
+            item = self._serialize_module(module)
+            item['children'] = [self._serialize_module(c) for c in children]
+            menu.append(item)
+
+        return menu
+
+    def _serialize_module(self, module):
+        return {
+            'code': module.code,
+            'name': module.name,
+            'url_path': module.url_path,
+            'icon': getattr(module, 'icon', None),
+            'order': module.order,
+            'is_active': module.is_active,
         }
-        if self.children:
-            data['children'] = [child.to_dict() for child in self.children]
-        return data
 
-
-class NavigationBuilder:
-    """
-    Builds the navigation menu for a given user based on their RBAC permissions.
-    """
-
-    def __init__(self, user: 'User'):
-        self.user = user
-        self._function_codes: list[str] | None = None
-
-    @property
-    def function_codes(self) -> list[str]:
-        if self._function_codes is None:
-            self._function_codes = self.user.get_functions()
-        return self._function_codes
-
-    def build(self) -> list[dict]:
-        """Build and return the navigation menu as a list of dicts."""
-        from apps.access.services import get_navigation_modules
-        modules = get_navigation_modules(self.user)
-        return [item.to_dict() for item in modules]
-
-    @classmethod
-    def for_user(cls, user: 'User') -> list[dict]:
-        """Convenience class method."""
-        return cls(user).build()
+    def build_flat(self, modules_qs):
+        """Retorna una lista plana de todos los modulos."""
+        result = []
+        for module in modules_qs:
+            result.append(self._serialize_module(module))
+        return result
