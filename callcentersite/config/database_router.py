@@ -1,79 +1,38 @@
 """
-Database Router para IACT Call Center.
-
-CNST-003: Base de datos IVR es READ-ONLY.
-
-Arquitectura:
-- default (Analytics): Django ORM completo (read/write)
-- ivr_production (IVR): Solo lectura (NO migrations)
-- ivr_backup (IVR Backup): Solo lectura (NO migrations)
+Database router for dual-database setup.
+PostgreSQL (default) for all apps except ivr_legacy.
+MariaDB (legacy) for ivr_legacy - READ-ONLY (CNST-003).
 """
 
+LEGACY_APPS = {'ivr_legacy'}
+DEFAULT_APPS = {
+    'access', 'alerts', 'audit', 'authentication', 'core',
+    'dashboard', 'ivr', 'pipeline', 'reports', 'users',
+}
 
-class IVRRouter:
+
+class DatabaseRouter:
     """
-    Router base datos dual.
-    
-    CNST-003: IVR solo lectura, NO migrations.
+    Routes ivr_legacy to read-only MariaDB.
+    All other apps use PostgreSQL (default).
     """
-    
-    # Apps que usan IVR legacy
-    ivr_legacy_apps = {'ivr_legacy'}
-    
-    # Bases de datos IVR (read-only)
-    ivr_databases = {'ivr_production', 'ivr_backup', 'ivr_legacy'}
-    
+
     def db_for_read(self, model, **hints):
-        """
-        Lecturas de IVR van a ivr_production.
-        Resto va a default.
-        """
-        if model._meta.app_label in self.ivr_legacy_apps:
-            return 'ivr_production'
+        if model._meta.app_label in LEGACY_APPS:
+            return 'legacy'
         return 'default'
-    
+
     def db_for_write(self, model, **hints):
-        """
-        Escrituras de IVR: PROHIBIDO.
-        
-        CNST-003: IVR es read-only.
-        """
-        if model._meta.app_label in self.ivr_legacy_apps:
-            # IVR es solo lectura
-            return None
+        if model._meta.app_label in LEGACY_APPS:
+            raise Exception("ivr_legacy is READ-ONLY (CNST-003). Write operations are not allowed.")
         return 'default'
-    
+
     def allow_relation(self, obj1, obj2, **hints):
-        """
-        Permitir relaciones dentro de mismo DB.
-        """
-        db1 = obj1._meta.app_label
-        db2 = obj2._meta.app_label
-        
-        # Ambos en IVR
-        if db1 in self.ivr_legacy_apps and db2 in self.ivr_legacy_apps:
-            return True
-        
-        # Ambos en default
-        if db1 not in self.ivr_legacy_apps and db2 not in self.ivr_legacy_apps:
-            return True
-        
-        # Cross-database: NO
-        return False
-    
+        db1 = 'legacy' if obj1._meta.app_label in LEGACY_APPS else 'default'
+        db2 = 'legacy' if obj2._meta.app_label in LEGACY_APPS else 'default'
+        return db1 == db2
+
     def allow_migrate(self, db, app_label, model_name=None, **hints):
-        """
-        Migrations SOLO en default.
-        
-        CNST-003 CRÍTICO: NO migrations en IVR.
-        """
-        # IVR databases: NO migrations NUNCA
-        if db in self.ivr_databases:
-            return False
-        
-        # Apps IVR: NO migrations en ningún DB
-        if app_label in self.ivr_legacy_apps:
-            return db == 'default'  # False si es IVR, True si es default
-        
-        # Resto: default solamente
+        if app_label in LEGACY_APPS:
+            return db == 'legacy'
         return db == 'default'
