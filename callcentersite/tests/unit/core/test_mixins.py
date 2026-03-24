@@ -26,10 +26,12 @@ from apps.core.mixins import (
     AuditMixin,
     AuditCreateMixin,
     AuditUpdateMixin,
-    ServiceFilterMixin,
     PaginationControlMixin,
     ExportMixin,
 )
+# DEUDA TÉCNICA 2026-03-21: ServiceFilterMixin eliminado en DT-002.
+# TestServiceFilterMixin abajo está marcado como skip.
+ServiceFilterMixin = None  # Sentinel para evitar NameError
 from tests.factories.user_factory import UserFactory
 
 User = get_user_model()
@@ -169,6 +171,7 @@ class TestAuditMixin:
 # TEST SERVICEFILTERMIXIN
 # ============================================================================
 
+@pytest.mark.skip(reason="DEUDA TÉCNICA DT-002: ServiceFilterMixin eliminado")
 @pytest.mark.django_db
 class TestServiceFilterMixin:
     """Tests para ServiceFilterMixin."""

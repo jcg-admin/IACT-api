@@ -22,9 +22,9 @@ from django.utils import timezone as tz
 import pytz
 
 from apps.core.middleware.healthcheck import HealthCheckMiddleware
-from apps.core.middleware.logging import LoggingMiddleware
-from apps.core.middleware.security import SecurityMiddleware
-from apps.core.middleware.timezone import TimezoneMiddleware
+from apps.core.middleware.logging import RequestLoggingMiddleware as LoggingMiddleware
+from apps.core.middleware.security import SecurityHeadersMiddleware as SecurityMiddleware
+from apps.core.middleware.timezone import UserTimezoneMiddleware as TimezoneMiddleware
 
 
 # ============================================================================

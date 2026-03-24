@@ -27,11 +27,43 @@ from apps.users.serializers.profile_serializer import (
     AvatarUploadSerializer,
 )
 
-# Auth serializers (2)
+# Auth serializers (2 + aliases para compatibilidad)
 from apps.users.serializers.auth_serializer import (
     PasswordChangeSerializer,
     UserActivationSerializer,
 )
+from apps.authentication.serializers import (
+    LoginSerializer,
+    ChangePasswordSerializer,
+)
+from apps.authentication.serializers.recovery import (
+    PasswordResetRequestSerializer,
+)
+
+# PasswordResetConfirmSerializer: simple serializer de confirmación vía token
+from rest_framework import serializers as _drf_serializers
+
+class PasswordResetConfirmSerializer(_drf_serializers.Serializer):
+    """Confirma reset de password mediante token."""
+    uidb64 = _drf_serializers.CharField(required=True)
+    token = _drf_serializers.CharField(required=True)
+    new_password = _drf_serializers.CharField(
+        required=True, write_only=True, min_length=8,
+        style={'input_type': 'password'}
+    )
+    new_password_confirm = _drf_serializers.CharField(
+        required=True, write_only=True, style={'input_type': 'password'}
+    )
+
+    def validate(self, attrs):
+        if attrs['new_password'] != attrs['new_password_confirm']:
+            raise _drf_serializers.ValidationError(
+                {'new_password_confirm': 'Los passwords no coinciden'}
+            )
+        return attrs
+
+# UserProfileSerializer alias for ProfileSerializer
+UserProfileSerializer = ProfileSerializer
 
 # Session serializer (1)
 from apps.users.serializers.session_serializer import (
@@ -52,9 +84,14 @@ __all__ = [
     'UserSettingsSerializer',
     'AvatarUploadSerializer',
     
-    # Auth (2)
+    # Auth (2 + aliases)
     'PasswordChangeSerializer',
     'UserActivationSerializer',
+    'LoginSerializer',
+    'ChangePasswordSerializer',
+    'PasswordResetRequestSerializer',
+    'PasswordResetConfirmSerializer',
+    'UserProfileSerializer',
     
     # Session (1)
     'SessionHistorySerializer',

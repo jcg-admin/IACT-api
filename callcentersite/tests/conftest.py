@@ -4,7 +4,6 @@ Configuración pytest compartida - FASE 1 Testing Infrastructure v2.0.0.
 Integra:
 - 137 Factories (factory_boy)
 - 81 Mocks (pytest fixtures)
-- Configuración SQLite para tests
 - Fixtures híbridas (factory + mock)
 
 CLEAN_CODE v3.0.1: Organizado por categoría.
@@ -13,9 +12,8 @@ Total Fixtures: 218+ (factories + mocks + híbridas)
 
 import pytest
 from rest_framework.test import APIClient
+from rest_framework.authtoken.models import Token
 from django.contrib.auth import get_user_model
-from rest_framework_simplejwt.tokens import RefreshToken
-from django.conf import settings
 
 
 # ============================================================================
@@ -26,8 +24,9 @@ pytest_plugins = [
     # Fixtures existentes
     'tests.fixtures.users',
     'tests.fixtures.rbac',
-    
-    # Mocks (PARTE 3)
+    'tests.fixtures.authentication',
+
+    # Mocks
     'tests.mocks.database_mocks',
     'tests.mocks.service_mocks',
     'tests.mocks.file_mocks',
@@ -37,53 +36,16 @@ pytest_plugins = [
 
 
 # ============================================================================
-# DATABASE CONFIGURATION - SQLite para Tests
+# DATABASE CONFIGURATION
 # ============================================================================
-
-@pytest.fixture(scope='session')
-def django_db_setup(django_db_setup, django_db_blocker):
-    """
-    Configuración SQLite para tests.
-    
-    CONTEXTO: NO tenemos IPs MySQL/PostgreSQL en desarrollo/tests.
-    
-    Configuración:
-        - default: SQLite (PostgreSQL en producción)
-        - ivr_legacy: SQLite (MariaDB readonly en producción)
-    
-    CNST-002: Dual DB (PostgreSQL + MariaDB IVR readonly).
-    
-    IMPORTANTE: Ejecuta migrations para crear tablas.
-    """
-    from django.core.management import call_command
-    
-    settings.DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': ':memory:',
-            'ATOMIC_REQUESTS': True,
-        },
-        'ivr': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'NAME': ':memory:',
-            'ATOMIC_REQUESTS': False,  # IVR readonly
-        }
-    }
-    
-    # CNST-001: Email console backend
-    settings.EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
-    
-    # CNST-010: Cache locmem (NO Redis)
-    settings.CACHES = {
-        'default': {
-            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
-            'LOCATION': 'test-cache',
-        }
-    }
-    
-    # EJECUTAR MIGRATIONS
-    with django_db_blocker.unblock():
-        call_command('migrate', '--run-syncdb', verbosity=0)
+# Las bases de datos para tests se configuran en config/settings/testing.py:
+#   - default → test_iact_analytics  (PostgreSQL, migrations completas)
+#   - ivr     → test_ivr_legacy      (MariaDB, schema vacío managed=False)
+#
+# La tabla tbl_temp_prueba_ivr es responsabilidad del script MariaDB:
+#   scripts/provisioners/mariadb/schema_temp_prueba.sh
+# Python solo CONSUME (SELECT) — no crea schema desde Python.
+# ============================================================================
 
 
 # ============================================================================
@@ -116,11 +78,11 @@ def authenticated_client(db):
             assert response.status_code == 200
     """
     from tests.factories import UserFactory
-    
+
     user = UserFactory()
     client = APIClient()
-    refresh = RefreshToken.for_user(user)
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    token, _ = Token.objects.get_or_create(user=user)
+    client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
     client.user = user  # Adjuntar user para acceso fácil
     return client
 
@@ -138,11 +100,11 @@ def admin_client(db):
             assert response.status_code == 201
     """
     from tests.factories import AdminUserFactory
-    
+
     admin = AdminUserFactory()
     client = APIClient()
-    refresh = RefreshToken.for_user(admin)
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    token, _ = Token.objects.get_or_create(user=admin)
+    client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
     client.user = admin
     return client
 
@@ -258,16 +220,16 @@ def authenticated_client_with_rbac(db, mock_access_service):
             assert response.status_code == 200
     """
     from tests.factories import CompleteUserFactory
-    
+
     user = CompleteUserFactory()
     client = APIClient()
-    refresh = RefreshToken.for_user(user)
-    client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+    token, _ = Token.objects.get_or_create(user=user)
+    client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
     client.user = user
-    
+
     # Mock RBAC
     mock_access_service.user_has_function.return_value = True
-    
+
     return client
 
 
@@ -555,7 +517,6 @@ def cleanup_files():
 # TOTAL: 218+ fixtures disponibles
 # 
 # CLEAN_CODE v3.0.1: Organizado y documentado [SUCCESS]
-# CNST-001: Email console backend [SUCCESS]
-# CNST-002: Dual DB (SQLite en tests) [SUCCESS]
-# CNST-010: Cache locmem (NO Redis) [SUCCESS]
+# CNST-002: Dual DB (PostgreSQL test_iact_analytics + MariaDB test_ivr_legacy) [SUCCESS]
+# CNST-010: NO cache (DummyCache en testing.py) [SUCCESS]
 # ============================================================================

@@ -350,8 +350,10 @@ LOGGING = {
 
 REST_FRAMEWORK = {
     # Authentication
+    # TokenAuthentication: para clientes API (header: Authorization: Token <key>)
+    # SessionAuthentication: para requests con cookie de sesion Django
     'DEFAULT_AUTHENTICATION_CLASSES': [
-        'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.TokenAuthentication',
         'rest_framework.authentication.SessionAuthentication',
     ],
     

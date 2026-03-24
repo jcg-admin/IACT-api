@@ -1,10 +1,12 @@
-"""Tests para Service Access."""
+# DEUDA TÉCNICA 2026-03-21
+# UserServiceAccess y ServiceAccessService eliminados en DT-002 (2026-01-21).
+# Razón: RBAC puro reemplaza el modelo de acceso por servicio.
+# Reemplazo: Usar RequiresFunctionPermission con funciones CALL_VIEW, SVC_VIEW, etc.
+# TODO: Reescribir tests cuando se defina el nuevo sistema de acceso.
 import pytest
-from django.contrib.auth import get_user_model
-from apps.core.models import Service, Center, UserServiceAccess, CallRecord
-from apps.core.services import ServiceAccessService
-
-User = get_user_model()
+pytestmark = pytest.mark.skip(
+    reason="DEUDA TÉCNICA DT-002: UserServiceAccess/ServiceAccessService eliminados"
+)
 
 
 @pytest.mark.django_db

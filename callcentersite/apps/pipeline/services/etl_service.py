@@ -1,7 +1,6 @@
 """
 ETL Service - IACT Call Center System.
 
-CNST-003: Extrae de IVR legacy (READ-ONLY).
 CNST-004: NO Celery (ejecutar con APScheduler).
 
 Pipeline ETL:
@@ -12,7 +11,21 @@ Pipeline ETL:
 import logging
 from datetime import date
 from typing import List, Dict
-from apps.ivr.adapters import IVRAdapter
+
+# =============================================================================
+# DEUDA TÉCNICA — PENDIENTE
+# =============================================================================
+# Fecha de eliminación: 2026-03-21
+# Motivo: IVRAdapter desactivado. La tabla call_logs no existe en ivr_legacy.
+#         El método extract() retorna lista vacía hasta que el adapter
+#         sea reactivado.
+#         Reactivar cuando:
+#           1. La tabla call_logs exista en ivr_legacy
+#           2. IVRAdapter sea reactivado en apps/ivr/adapters.py
+# Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
+# =============================================================================
+# from apps.ivr.adapters import IVRAdapter
+
 from apps.pipeline.models import CallRecord
 
 logger = logging.getLogger(__name__)
@@ -28,7 +41,8 @@ class ETLService:
     
     def __init__(self):
         """Initialize ETL service."""
-        self.adapter = IVRAdapter()
+        # DEUDA TÉCNICA: self.adapter = IVRAdapter() — desactivado 2026-03-21
+        self.adapter = None
     
     def extract(
         self,
@@ -49,19 +63,10 @@ class ETLService:
         """
         logger.info(f"ETL Extract: {fecha_inicio} a {fecha_fin}")
         
-        try:
-            # Usar IVRAdapter (READ-ONLY)
-            data = self.adapter.get_calls(
-                fecha_inicio=fecha_inicio,
-                fecha_fin=fecha_fin
-            )
-            
-            logger.info(f"ETL Extract: {len(data)} registros extraidos")
-            return data
-        
-        except Exception as e:
-            logger.error(f"ETL Extract error: {e}")
-            raise
+        # DEUDA TÉCNICA: IVRAdapter desactivado — retorna vacío hasta reactivar
+        # Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
+        logger.warning("ETL Extract: IVRAdapter desactivado (deuda técnica) — retornando []")
+        return []
     
     def transform(self, raw_data: List[Dict]) -> List[Dict]:
         """

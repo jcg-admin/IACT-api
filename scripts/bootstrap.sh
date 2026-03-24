@@ -2,10 +2,13 @@
 # =============================================================================
 # bootstrap.sh — IACT API: Entrypoint único de provisioning y verificación
 # =============================================================================
-# Version: 1.1.0
+# Version: 1.2.0
 #
 # UN SOLO COMANDO para todo:
 #   sudo bash scripts/bootstrap.sh
+#
+# Flags:
+#   --skip-update   Omite apt-get update (útil si el índice ya es reciente)
 #
 # Primera vez : instala y configura todo desde cero
 # Veces siguientes: verifica estado de todo (DBs activas, Apache, Python...)
@@ -15,13 +18,25 @@
 # Flujo (todas las fases son idempotentes):
 #   Fase 1 — SO          : Verificar Ubuntu 24.04.x LTS             [FATAL]
 #   Fase 2 — Paquetes    : Instalar dependencias del sistema        [FATAL]
-#   Fase 3 — Python      : Entorno virtual + pip install            [FATAL]
-#   Fase 4 — Bases datos : PostgreSQL (iact_analytics) +            [WARN]
+#   Fase 3 — Python      : Entorno virtual + drivers               [FATAL]
+#   Fase 4 — Bases datos : Arrancar + habilitar servicios +         [WARN]
+#                          PostgreSQL (iact_analytics) +
 #                          MariaDB    (ivr_legacy, read-only)
 #   Fase 5 — Apache      : Virtual host + mod_wsgi + static         [WARN]
 #   Fase 6 — Verificación: Estado completo del entorno              [INFO]
 # =============================================================================
 set -euo pipefail
+
+# =============================================================================
+# ARGUMENTOS
+# =============================================================================
+SKIP_APT_UPDATE=false
+for arg in "$@"; do
+    case "$arg" in
+        --skip-update) SKIP_APT_UPDATE=true ;;
+    esac
+done
+export SKIP_APT_UPDATE
 
 # =============================================================================
 # PATHS
@@ -114,25 +129,14 @@ phase_python() {
     # --- Virtual env ---
     local venv_dir="${PROJECT_ROOT}/venv"
     if exists_dir "$venv_dir" && exists_file "${venv_dir}/bin/pip"; then
-        log_info "venv ya existe: ${venv_dir}"
+        log_success "venv existe: ${venv_dir}"
     else
-        log_info "Creando entorno virtual en ${venv_dir}"
-        python3 -m venv "$venv_dir" || { log_fatal "No se pudo crear el venv"; exit 1; }
-        log_success "venv creado"
-    fi
-
-    # --- pip install ---
-    local venv_pip="${venv_dir}/bin/pip"
-    local req_file="${PROJECT_ROOT}/requirements/development.txt"
-
-    validate_file_exists "$req_file" || {
-        log_fatal "No se encontró: ${req_file}"
+        log_fatal "venv no encontrado en ${venv_dir}"
+        log_fatal "  Crea el entorno manualmente:"
+        log_fatal "    python3 -m venv venv"
+        log_fatal "    venv/bin/pip install -r requirements/development.txt"
         exit 1
-    }
-
-    log_info "pip install -r requirements/development.txt"
-    "$venv_pip" install -r "$req_file" -q || { log_fatal "pip install falló"; exit 1; }
-    log_success "Dependencias Python instaladas"
+    fi
 
     # --- Drivers críticos ---
     local python="${venv_dir}/bin/python3"
@@ -147,11 +151,59 @@ phase_python() {
 
 # =============================================================================
 # FASE 4 — Bases de datos
-# Crea BD y usuario si no existen; verifica conectividad si ya existen
-# No es FATAL: las DBs pueden estar en otro host o no instaladas localmente
+# Arranca y habilita servicios en boot, luego crea BD/usuario si no existen.
+# No es FATAL: las DBs pueden estar en otro host o no instaladas localmente.
 # =============================================================================
+
+# Intenta arrancar un servicio si está inactivo y lo habilita para boot.
+# En entornos con systemd usa systemctl; en contenedores/SysVinit usa `service`.
+# Uso: try_start_service <nombre> <comando_check>
+try_start_service() {
+    local name="$1" check_cmd="$2"
+    local has_systemd=false
+
+    systemctl is-system-running &>/dev/null 2>&1 && has_systemd=true
+
+    if eval "$check_cmd" &>/dev/null 2>&1; then
+        log_success "${name} ya está activo"
+        return 0
+    fi
+
+    log_info "${name} inactivo — intentando arrancar..."
+
+    local started=false
+    if $has_systemd; then
+        if systemctl start "$name" &>/dev/null 2>&1; then
+            started=true
+            log_success "${name} iniciado (systemctl)"
+            systemctl enable "$name" &>/dev/null 2>&1 \
+                && log_info "${name} habilitado en arranque (systemctl enable)" \
+                || log_warn "${name}: no se pudo habilitar en arranque"
+        fi
+    fi
+
+    if ! $started; then
+        # Fallback SysVinit / contenedor (sin systemd)
+        if service "$name" start &>/dev/null 2>&1; then
+            started=true
+            log_success "${name} iniciado (service — entorno sin systemd)"
+            log_info "${name}: systemctl enable no aplica en este entorno"
+        fi
+    fi
+
+    if ! $started; then
+        log_warn "${name}: no se pudo iniciar — puede no estar instalado localmente"
+    fi
+}
+
 phase_databases() {
     log_header "Fase 4/6 — Bases de datos"
+
+    # --- Arrancar servicios si están apagados ---
+    try_start_service "postgresql" "pg_isready -h 127.0.0.1 -p 5432 -q"
+    try_start_service "mariadb"    "mysqladmin ping --silent 2>/dev/null"
+
+    echo ""
 
     local pg_ok=0 my_ok=0
 
@@ -245,8 +297,9 @@ main() {
 
     echo ""
     log_separator 60 "="
-    echo "  IACT API — Bootstrap v1.1.0"
-    echo "  sudo bash scripts/bootstrap.sh"
+    echo "  IACT API — Bootstrap v1.2.0"
+    echo "  sudo bash scripts/bootstrap.sh [--skip-update]"
+    [[ "$SKIP_APT_UPDATE" == "true" ]] && echo "  (--skip-update activo: se omite apt-get update)"
     log_separator 60 "="
     echo ""
 
