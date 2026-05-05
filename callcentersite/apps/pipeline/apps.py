@@ -10,6 +10,7 @@ class PipelineConfig(AppConfig):
     verbose_name = 'ETL Pipeline'
     
     def ready(self):
+        import apps.pipeline.schema  # noqa: F401
         """
         Iniciar scheduler ETL cuando Django inicia.
         

@@ -11,6 +11,7 @@ class AlertsConfig(AppConfig):
     verbose_name = 'Sistema de Alertas Internas'
     
     def ready(self):
+        import apps.alerts.schema  # noqa: F401
         """
         Inicializar APScheduler cuando Django arranca
         

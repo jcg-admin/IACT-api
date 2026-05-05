@@ -20,6 +20,7 @@ class AuthenticationConfig(AppConfig):
     verbose_name = 'Autenticación y Seguridad'
     
     def ready(self):
+        import apps.authentication.schema  # noqa: F401
         """
         Inicialización cuando app está lista.
         

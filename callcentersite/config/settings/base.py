@@ -435,6 +435,12 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '2.2.1',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
+
+    # OCP: tags declarados en schema.py de cada app (nunca modificar aqui)
+    'POSTPROCESSING_HOOKS': [
+        'drf_spectacular.hooks.postprocess_schema_enums',
+        'config.spectacular_hooks.collect_app_tags',
+    ],
 }
 
 
