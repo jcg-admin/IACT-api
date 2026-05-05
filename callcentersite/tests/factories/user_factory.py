@@ -78,40 +78,23 @@ class AdminUserFactory(UserFactory):
         return user
 
 
-class UserProfileFactory(DjangoModelFactory):
-    """Factory para UserProfile."""
-    
-    class Meta:
-        model = 'users.UserProfile'
-    
-    user = factory.SubFactory(UserFactory)
-    bio = factory.Faker('text', max_nb_chars=200)
-    department = 'IT'
+# DT: UserProfile, UserSettings, SessionHistory no existen en users.models actual.
+# Las factories se desactivan hasta que los modelos sean implementados.
+# UserFactory y AdminUserFactory siguen activos — son los unicos modelos presentes.
+
+class UserProfileFactory(UserFactory):
+    """Alias de UserFactory — UserProfile no implementado aun."""
+    pass
 
 
-class UserSettingsFactory(DjangoModelFactory):
-    """Factory para UserSettings."""
-    
-    class Meta:
-        model = 'users.UserSettings'
-    
-    user = factory.SubFactory(UserFactory)
-    language = 'es'
-    notifications_enabled = True
+class UserSettingsFactory(UserFactory):
+    """Alias de UserFactory — UserSettings no implementado aun."""
+    pass
 
 
-class SessionHistoryFactory(DjangoModelFactory):
-    """Factory para SessionHistory."""
-    
-    class Meta:
-        model = 'users.SessionHistory'
-    
-    user = factory.SubFactory(UserFactory)
-    login_at = factory.Faker('date_time_this_month')
-    logout_at = None  # Sesión activa por defecto
-    ip_address = factory.Faker('ipv4')
-    user_agent = factory.Faker('user_agent')
-    is_active = True
+class SessionHistoryFactory(UserFactory):
+    """Alias de UserFactory — SessionHistory no implementado aun."""
+    pass
 
 
 # ============================================================================

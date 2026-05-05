@@ -7,7 +7,7 @@ Configuración común para todos los tests de integración.
 import pytest
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
-from apps.access.models import Function, UserFunctionAssignment
+from apps.access.models import Function, UserPermission
 
 User = get_user_model()
 
@@ -95,17 +95,17 @@ def user_with_permissions(db):
     )
     
     # Asignar funciones al usuario
-    UserFunctionAssignment.objects.create(
+    UserPermission.objects.create(
         user=user,
         function=func_view,
         is_active=True,
     )
-    UserFunctionAssignment.objects.create(
+    UserPermission.objects.create(
         user=user,
         function=func_create,
         is_active=True,
     )
-    UserFunctionAssignment.objects.create(
+    UserPermission.objects.create(
         user=user,
         function=func_edit,
         is_active=True,

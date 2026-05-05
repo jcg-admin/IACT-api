@@ -13,9 +13,10 @@ from factory import fuzzy
 from apps.access.models import (
     Module,
     Function,
-    UserModuleAccess,
-    UserFunctionAssignment,
+    UserPermission,
 )
+# DT: UserPermission y UserPermission eliminados en RBAC v6.0.0
+# Se usa UserPermission como modelo de asignacion actual.
 # DEUDA TÉCNICA 2026-03-21: Role, UserRoleAssignment, RoleFunctionAssignment
 # eliminados en DT-002 junto con UserServiceAccess (RBAC simplificado).
 # TODO: Reescribir factories si se reimplementa sistema de Roles.
@@ -121,42 +122,22 @@ class FunctionDeleteFactory(FunctionFactory):
 # ASSIGNMENT FACTORIES
 # ============================================================================
 
-class UserModuleAccessFactory(DjangoModelFactory):
+# Primera definicion eliminada (UserModuleAccess no existe en RBAC v6.0.0)
+class UserPermissionFactory(DjangoModelFactory):
     """
-    Factory para UserModuleAccess (asignación usuario-módulo).
-    
-    Uso:
-        user = UserFactory()
-        module = ModuleFactory()
-        access = UserModuleAccessFactory(user=user, module=module)
-    """
-    
-    class Meta:
-        model = UserModuleAccess
-    
-    user = factory.SubFactory(UserFactory)
-    module = factory.SubFactory(ModuleFactory)
-    granted_at = factory.Faker('date_time_this_year')
-    granted_by = factory.SubFactory(UserFactory)
-    reason = factory.Faker('sentence', nb_words=8)
-    is_active = True
-
-
-class UserFunctionAssignmentFactory(DjangoModelFactory):
-    """
-    Factory para UserFunctionAssignment (asignación usuario-función).
+    Factory para UserPermission (asignación usuario-función).
     
     Uso:
         user = UserFactory()
         function = FunctionFactory()
-        assignment = UserFunctionAssignmentFactory(
+        assignment = UserPermissionFactory(
             user=user,
             function=function
         )
     """
     
     class Meta:
-        model = UserFunctionAssignment
+        model = UserPermission
     
     user = factory.SubFactory(UserFactory)
     function = factory.SubFactory(FunctionFactory)
@@ -187,10 +168,10 @@ class UserWithModuleAccessFactory(UserFactory):
         if extracted:
             # Lista de módulos pasada
             for module in extracted:
-                UserModuleAccessFactory(user=self, module=module)
+                UserPermissionFactory(user=self, module=module)
         else:
             # Crear 1 módulo por defecto
-            UserModuleAccessFactory(user=self)
+            UserPermissionFactory(user=self)
 
 
 class UserWithFunctionFactory(UserFactory):
@@ -210,10 +191,10 @@ class UserWithFunctionFactory(UserFactory):
         if extracted:
             # Lista de funciones pasada
             for function in extracted:
-                UserFunctionAssignmentFactory(user=self, function=function)
+                UserPermissionFactory(user=self, function=function)
         else:
             # Crear 1 función por defecto
-            UserFunctionAssignmentFactory(user=self)
+            UserPermissionFactory(user=self)
 
 
 class CompleteUserFactory(UserFactory):
@@ -231,11 +212,11 @@ class CompleteUserFactory(UserFactory):
 
         # Crear módulo
         module = ModuleFactory()
-        UserModuleAccessFactory(user=self, module=module)
+        UserPermissionFactory(user=self, module=module)
 
         # Crear función
         function = FunctionFactory(module=module)
-        UserFunctionAssignmentFactory(user=self, function=function)
+        UserPermissionFactory(user=self, function=function)
 
 
 # ============================================================================
@@ -248,8 +229,8 @@ class CompleteUserFactory(UserFactory):
 #   - RoleFactory (+ 4 variantes: Admin, Manager, Analyst, Viewer)
 # 
 # Assignment Factories (4):
-#   - UserModuleAccessFactory
-#   - UserFunctionAssignmentFactory
+#   - UserPermissionFactory
+#   - UserPermissionFactory
 #   - UserRoleAssignmentFactory
 #   - RoleFunctionAssignmentFactory
 # 
