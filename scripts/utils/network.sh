@@ -59,3 +59,27 @@ wait_for_port() {
     log_error "Puerto ${host}:${port} no disponible despues de ${attempts} intentos"
     return 1
 }
+
+# -----------------------------------------------------------------------------
+# wait_for_port <host> <puerto> [intentos] [segundos_espera]
+#   Espera hasta que el puerto este disponible.
+#   Reintenta <intentos> veces con <segundos_espera> entre cada intento.
+#   Retorna 0 si el puerto respondio, 1 si no respondio en el plazo.
+#
+#   Util para esperar que un servicio externo este listo antes de continuar.
+#
+#   Uso:
+#     wait_for_port 127.0.0.1 5432 10 2 || { log_fatal "PostgreSQL no responde"; exit 1; }
+# -----------------------------------------------------------------------------
+wait_for_port() {
+    local host="$1" port="$2" attempts="${3:-10}" sleep_secs="${4:-2}"
+    local i=0
+    while (( i < attempts )); do
+        tcp_is_reachable "$host" "$port" 2 && return 0
+        i=$(( i + 1 ))
+        log_info "Esperando ${host}:${port} ... intento ${i}/${attempts}"
+        sleep "$sleep_secs"
+    done
+    log_error "Puerto ${host}:${port} no disponible despues de ${attempts} intentos"
+    return 1
+}

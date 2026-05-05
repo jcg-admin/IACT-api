@@ -199,9 +199,17 @@ try_start_service() {
 phase_databases() {
     log_header "Fase 4/6 — Bases de datos"
 
-    # --- Arrancar servicios si están apagados ---
+    # --- PostgreSQL: systemctl/service con enable-on-boot ---
     try_start_service "postgresql" "pg_isready -h 127.0.0.1 -p 5432 -q"
-    try_start_service "mariadb"    "mysqladmin ping --silent 2>/dev/null"
+
+    # --- MariaDB: flujo robusto desde database.sh ---
+    # db_start_mariadb: socket Unix -> stale cleanup -> systemd -> directo -> wait
+    # Cubre entornos sin systemd (contenedores) donde try_start_service falla.
+    if ! db_start_mariadb; then
+        log_warn "MariaDB no pudo arrancar automaticamente"
+        log_warn "  Verifica: sudo service mariadb status"
+        log_warn "  O revisa el log: /var/lib/mysql/mysqld_err.log"
+    fi
 
     echo ""
 
