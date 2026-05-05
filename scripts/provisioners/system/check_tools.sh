@@ -26,6 +26,8 @@ source "${PROJECT_ROOT}/scripts/utils/logging.sh"
 # shellcheck disable=SC1091
 source "${PROJECT_ROOT}/scripts/utils/core.sh"
 # shellcheck disable=SC1091
+source "${PROJECT_ROOT}/scripts/utils/network.sh"
+# shellcheck disable=SC1091
 source "${PROJECT_ROOT}/scripts/utils/database.sh"
 
 # =============================================================================
@@ -260,23 +262,63 @@ check_system_tools() {
 }
 
 check_database_connectivity() {
-    log_header "Conectividad a bases de datos (via TCP)"
-    log_info "PostgreSQL: ${POSTGRES_HOST}:${POSTGRES_PORT}"
-    log_info "MariaDB:    ${MARIADB_HOST}:${MARIADB_PORT}"
-    log_separator
+    log_header "Conectividad a bases de datos"
 
-    # PostgreSQL TCP
-    if tcp_is_reachable "$POSTGRES_HOST" "$POSTGRES_PORT" 3; then
-        ok "PostgreSQL alcanzable en ${POSTGRES_HOST}:${POSTGRES_PORT}"
+    # --- PostgreSQL (default DB, READ+WRITE) ---
+    log_info "PostgreSQL: ${POSTGRES_HOST}:${POSTGRES_PORT}"
+    if command_exists pg_isready && pg_isready -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -q 2>/dev/null; then
+        ok "PostgreSQL activo (pg_isready) en ${POSTGRES_HOST}:${POSTGRES_PORT}"
+    elif tcp_is_reachable "$POSTGRES_HOST" "$POSTGRES_PORT" 3; then
+        ok "PostgreSQL alcanzable via TCP en ${POSTGRES_HOST}:${POSTGRES_PORT}"
     else
         warn "PostgreSQL NO alcanzable en ${POSTGRES_HOST}:${POSTGRES_PORT}"
+        warn "  Verifica: sudo pg_ctlcluster 16 main status"
     fi
 
-    # MariaDB TCP
-    if tcp_is_reachable "$MARIADB_HOST" "$MARIADB_PORT" 3; then
-        ok "MariaDB alcanzable en ${MARIADB_HOST}:${MARIADB_PORT}"
-    else
-        warn "MariaDB NO alcanzable en ${MARIADB_HOST}:${MARIADB_PORT}"
+    log_separator
+
+    # --- MariaDB (ivr_legacy, READ-ONLY CNST-003) ---
+    # Intenta socket Unix primero, TCP despues (igual que database.sh)
+    log_info "MariaDB: ${MARIADB_HOST}:${MARIADB_PORT} (ivr_legacy, read-only)"
+    local mariadb_ok=false
+
+    if command_exists mysqladmin; then
+        for sock in /run/mysqld/mysqld.sock /var/run/mysqld/mysqld.sock; do
+            if [[ -S "$sock" ]] && mysqladmin --socket="$sock" ping --silent >/dev/null 2>&1; then
+                ok "MariaDB activo via socket: ${sock}"
+                mariadb_ok=true
+                break
+            fi
+        done
+    fi
+
+    if [[ "$mariadb_ok" != "true" ]]; then
+        if mariadb_is_running "$MARIADB_HOST" "$MARIADB_PORT"; then
+            ok "MariaDB alcanzable via TCP en ${MARIADB_HOST}:${MARIADB_PORT}"
+            mariadb_ok=true
+        else
+            warn "MariaDB NO alcanzable ni via socket ni TCP"
+            warn "  Verifica: sudo service mariadb status"
+            warn "  O revisa: /var/lib/mysql/mysqld_err.log"
+        fi
+    fi
+
+    # Verificar conexion Django con credenciales de ivr_legacy (si MariaDB responde)
+    if [[ "$mariadb_ok" == "true" ]]; then
+        local ivr_db="${IVR_DB_NAME:-ivr_legacy}"
+        local ivr_user="${IVR_DB_USER:-django_user}"
+        local ivr_pass="${IVR_DB_PASSWORD:-django_pass}"
+
+        for sock in /run/mysqld/mysqld.sock /var/run/mysqld/mysqld.sock; do
+            if [[ -S "$sock" ]]; then
+                if mysql --socket="$sock" -u "$ivr_user" -p"${ivr_pass}"                    -e "SELECT 1;" "$ivr_db" &>/dev/null; then
+                    ok "Conexion Django a ivr_legacy OK (socket): ${ivr_user}@${ivr_db}"
+                    return
+                fi
+            fi
+        done
+
+        mysql -h "$MARIADB_HOST" -P "$MARIADB_PORT"             -u "$ivr_user" -p"${ivr_pass}"             -e "SELECT 1;" "$ivr_db" &>/dev/null             && ok "Conexion Django a ivr_legacy OK (TCP): ${ivr_user}@${ivr_db}"             || warn "No se pudo conectar a ivr_legacy como ${ivr_user} — ejecuta mariadb/db_setup.sh"
     fi
 }
 
