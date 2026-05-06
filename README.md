@@ -66,11 +66,22 @@ Edita `.env` con tus valores:
 ```
 DEBUG=True
 SECRET_KEY=tu-clave-secreta-muy-larga-y-aleatoria
-ALLOWED_HOSTS=localhost,127.0.0.1,192.168.56.11
+ALLOWED_HOSTS=localhost,127.0.0.1
 
 # Bases de datos
-DATABASE_URL=postgresql://django_user:django_pass@192.168.56.11:5432/iact_analytics
-LEGACY_DATABASE_URL=mysql://django_user:django_pass@192.168.56.10:3306/ivr_legacy
+# Entorno local (sin Vagrant): usar 127.0.0.1
+# Entorno Vagrant: usar 192.168.56.11 (PostgreSQL) y 192.168.56.10 (MariaDB)
+DB_NAME=iact_analytics
+DB_USER=django_user
+DB_PASSWORD=django_pass
+DB_HOST=127.0.0.1
+DB_PORT=5432
+
+IVR_DB_NAME=ivr_legacy
+IVR_DB_USER=django_user
+IVR_DB_PASSWORD=django_pass
+IVR_DB_HOST=127.0.0.1
+IVR_DB_PORT=3306
 
 # Sesiones
 SESSION_ENGINE=django.contrib.sessions.backends.db
@@ -94,8 +105,10 @@ SESSION_COOKIE_SECURE=False
 # Migraciones de PostgreSQL (default)
 python manage.py migrate
 
-# Migraciones de MariaDB (ivr_legacy - READ-ONLY)
-python manage.py migrate --database=legacy
+# MariaDB (ivr_legacy) no recibe migraciones Django.
+# Sus tablas son gestionadas por el sistema IVR externo (managed=False).
+# Verificar conectividad solamente:
+python manage.py check --database ivr
 ```
 
 ### 6. Crear superuser
@@ -554,7 +567,8 @@ curl http://localhost/api/
 
 ```bash
 # Conexión
-PGPASSWORD='django_pass' psql -h 192.168.56.11 -U django_user -d iact_analytics
+PGPASSWORD='django_pass' psql -h 127.0.0.1 -U django_user -d iact_analytics
+# Con Vagrant: reemplazar 127.0.0.1 por 192.168.56.11
 
 # Migraciones
 python manage.py migrate
@@ -564,13 +578,14 @@ python manage.py migrate
 
 ```bash
 # Conexión
-mysql -h 192.168.56.10 -u django_user -p'django_pass' ivr_legacy
+mysql -h 127.0.0.1 -u django_user -p'django_pass' ivr_legacy
+# Con Vagrant: reemplazar 127.0.0.1 por 192.168.56.10
 
-# Migraciones (si hay)
-python manage.py migrate --database=legacy
+# Verificar conectividad desde Django
+python manage.py check --database ivr
 
-# Nota: Este modelo está configurado como READ-ONLY
-# Solo se leen datos, no se escriben
+# Nota: MariaDB es READ-ONLY. No se ejecuta migrate sobre esta BD.
+# Sus tablas usan managed=False y son gestionadas por el sistema IVR externo.
 ```
 
 ### Database Router
@@ -585,6 +600,35 @@ El archivo `config/database_router.py` define qué apps usan qué base de datos:
 # MariaDB (ivr_legacy - READ-ONLY)
 - ivr_legacy
 ```
+
+## Verificación rápida del entorno local
+
+Después de configurar el entorno, ejecutar este checklist para confirmar
+que todo está operativo:
+
+```bash
+cd callcentersite
+source venv/bin/activate
+
+# 1. Django conecta a ambas BDs
+python manage.py check --database default
+python manage.py check --database ivr
+
+# 2. Sin migraciones pendientes
+python manage.py showmigrations --database default | grep '\[ \]'
+
+# 3. Fixtures cargados
+python manage.py shell -c \
+  "from apps.access.models import Module; print(Module.objects.count(), 'módulos')"
+```
+
+Resultado esperado: 0 issues en ambos check, 0 migraciones pendientes,
+módulos > 0.
+
+Ver `docs/setup/SETUP-LOCAL.md` para el procedimiento completo con
+troubleshooting.
+
+---
 
 ## Contribuciones
 
