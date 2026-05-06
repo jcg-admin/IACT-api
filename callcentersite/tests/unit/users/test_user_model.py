@@ -71,7 +71,7 @@ class TestUserModelFields:
         user.delete_avatar()
         assert not os.path.exists(file_path)
 
-from apps.access.models import UserFunctionAssignment
+from apps.access.models import UserPermission
 
 @pytest.mark.django_db
 class TestUserModelRBAC:
@@ -120,7 +120,7 @@ class TestUserModelRBAC:
         user = user_with_function.user
         # Añadimos una segunda función manualmente para la prueba
         f2 = func_factory(code='view_reports')
-        UserFunctionAssignment.objects.create(
+        UserPermission.objects.create(
             user=user, function=f2, assigned_by=sample_admin
         )
         

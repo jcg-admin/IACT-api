@@ -1,55 +1,56 @@
 """
 Fixtures RBAC (funciones, asignaciones).
-Basado en el archivo rbac.py original, integrado con conftest.py.
+Adaptado al modelo real: UserPermission (no UserFunctionAssignment).
 """
 import pytest
-from apps.access.models import Function, UserFunctionAssignment
+from apps.access.models import Function, UserPermission
+
 
 @pytest.fixture
 def func_factory(db):
-    """
-    Factory para crear funciones bajo demanda.
-    Permite a los tests crear variaciones de funciones sin repetir código.
-    """
-    def _create(code, module='MOD_DEFAULT', name='Test Function', description='Test Description'):
+    """Factory para crear funciones bajo demanda."""
+    def _create(code, module='MOD_DEFAULT', name='Test Function',
+                description='Test Description'):
+        from apps.access.models import Module
+        mod, _ = Module.objects.get_or_create(
+            code=module,
+            defaults={'name': module, 'description': module},
+        )
         return Function.objects.create(
             code=code,
-            module=module,
+            module=mod,
             name=name,
-            description=description
+            description=description,
         )
     return _create
 
+
 @pytest.fixture
 def function_create_user(func_factory):
-    """Función para crear usuarios (usa la factory interna)."""
+    """Funcion para crear usuarios."""
     return func_factory(
         code='create_user',
         module='MOD_USERS',
         name='Crear Usuario',
-        description='Permite crear nuevos usuarios'
+        description='Permite crear nuevos usuarios',
     )
+
 
 @pytest.fixture
 def function_delete_user(func_factory):
-    """Función para eliminar usuarios."""
+    """Funcion para eliminar usuarios."""
     return func_factory(
         code='delete_user',
         module='MOD_USERS',
         name='Eliminar Usuario',
-        description='Permite eliminar usuarios'
+        description='Permite eliminar usuarios',
     )
 
+
 @pytest.fixture
-def user_with_function(db, sample_user, sample_admin, function_create_user):
-    """
-    Usuario con función asignada.
-    INTEGRACIÓN: Cambiado 'basic_user' por 'sample_user' para que coincida con conftest.py.
-    Añadido 'assigned_by' usando 'sample_admin'.
-    """
-    return UserFunctionAssignment.objects.create(
+def user_with_function(db, sample_user, function_create_user):
+    """Usuario con funcion asignada via UserPermission."""
+    return UserPermission.objects.create(
         user=sample_user,
         function=function_create_user,
-        assigned_by=sample_admin,  # Campo requerido en tu modelo
-        reason='Asignación inicial para pruebas'
     )

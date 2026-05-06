@@ -1,10 +1,10 @@
 import pytest
 from django.contrib.auth.models import User
-from apps.access.models import Function, UserFunctionAssignment
-"""Tests para modelos Module y UserModuleAccess."""
+from apps.access.models import Function, UserPermission
+"""Tests para modelos Module y UserPermission."""
 import pytest
 from django.contrib.auth import get_user_model
-from apps.access.models import Module, UserModuleAccess
+from apps.access.models import Module, UserPermission
 
 User = get_user_model()
 
@@ -57,15 +57,15 @@ class TestModuleModel:
 
 
 @pytest.mark.django_db
-class TestUserModuleAccessModel:
-    """Tests para UserModuleAccess model."""
+class TestUserPermissionModel:
+    """Tests para UserPermission model."""
     
     def test_grant_access(self):
         """Test otorgar acceso a módulo."""
         user = User.objects.create_user(username='test')
         module = Module.objects.create(code='MOD_Test', name='Test')
         
-        access = UserModuleAccess.objects.create(
+        access = UserPermission.objects.create(
             user=user,
             module=module,
         )
@@ -81,10 +81,10 @@ class TestUserModuleAccessModel:
         child = Module.objects.create(code='CHILD', name='Child', parent=parent)
         
         # Acceso al padre
-        UserModuleAccess.objects.create(user=user, module=parent)
+        UserPermission.objects.create(user=user, module=parent)
         
         # Debe incluir hijo automáticamente
-        modules = UserModuleAccess.get_user_modules(user)
+        modules = UserPermission.get_user_modules(user)
         assert parent in modules
         assert child in modules
 
@@ -149,7 +149,7 @@ class TestFunction:
 
 @pytest.mark.unit
 @pytest.mark.django_db
-class TestUserFunctionAssignment:
+class TestUserPermission:
     """Tests asignacion funciones a usuarios."""
     
     def test_assign_function_to_user(self):
@@ -162,7 +162,7 @@ class TestUserFunctionAssignment:
             name='Crear Usuarios',
         )
         
-        assignment = UserFunctionAssignment.objects.create(
+        assignment = UserPermission.objects.create(
             user=user,
             function=func,
             assigned_by=admin,
@@ -185,7 +185,7 @@ class TestUserFunctionAssignment:
             name='Test'
         )
         
-        assignment = UserFunctionAssignment.objects.create(
+        assignment = UserPermission.objects.create(
             user=user,
             function=func,
             assigned_by=admin,
@@ -204,13 +204,13 @@ class TestUserFunctionAssignment:
         func3 = Function.objects.create(code='func3', module='MOD3', name='F3')
         
         # Asignar func1 y func2 (activas)
-        UserFunctionAssignment.objects.create(
+        UserPermission.objects.create(
             user=user,
             function=func1,
             assigned_by=admin,
             reason='test'
         )
-        UserFunctionAssignment.objects.create(
+        UserPermission.objects.create(
             user=user,
             function=func2,
             assigned_by=admin,
@@ -218,7 +218,7 @@ class TestUserFunctionAssignment:
         )
         
         # func3 inactiva
-        UserFunctionAssignment.objects.create(
+        UserPermission.objects.create(
             user=user,
             function=func3,
             assigned_by=admin,
@@ -226,7 +226,7 @@ class TestUserFunctionAssignment:
             is_active=False
         )
         
-        active_funcs = UserFunctionAssignment.get_user_functions(user)
+        active_funcs = UserPermission.get_user_functions(user)
         
         assert active_funcs.count() == 2
         codes = [a.function.code for a in active_funcs]
@@ -244,7 +244,7 @@ class TestUserFunctionAssignment:
             name='Test'
         )
         
-        UserFunctionAssignment.objects.create(
+        UserPermission.objects.create(
             user=user,
             function=func,
             assigned_by=admin,
@@ -252,7 +252,7 @@ class TestUserFunctionAssignment:
         )
         
         with pytest.raises(Exception):  # IntegrityError
-            UserFunctionAssignment.objects.create(
+            UserPermission.objects.create(
                 user=user,
                 function=func,
                 assigned_by=admin,

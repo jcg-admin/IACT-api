@@ -2,6 +2,9 @@ from django.apps import AppConfig
 
 
 class ReportsConfig(AppConfig):
+    def ready(self):
+        import apps.reports.schema  # noqa: F401
+
     """
     App Reports - Generación y exportación reportes.
     

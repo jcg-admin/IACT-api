@@ -57,8 +57,7 @@ from .access_factories import (
     FunctionDeleteFactory,
 
     # Assignment Factories
-    UserModuleAccessFactory,
-    UserFunctionAssignmentFactory,
+    UserPermissionFactory,
 
     # Helper Factories
     UserWithModuleAccessFactory,
@@ -212,8 +211,7 @@ __all__ = [
     'FunctionViewFactory',
     'FunctionEditFactory',
     'FunctionDeleteFactory',
-    'UserModuleAccessFactory',
-    'UserFunctionAssignmentFactory',
+    'UserPermissionFactory',
     'UserWithModuleAccessFactory',
     'UserWithFunctionFactory',
     'CompleteUserFactory',

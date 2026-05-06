@@ -3,7 +3,7 @@ import pytest
 from django.urls import reverse
 from rest_framework.test import APIClient
 from django.contrib.auth import get_user_model
-from apps.access.models import Module, UserModuleAccess
+from apps.access.models import Module, UserPermission
 
 User = get_user_model()
 
@@ -16,7 +16,7 @@ class TestMyModulesView:
         """Test obtener módulos propios."""
         user = User.objects.create_user(username='test', password='test')
         module = Module.objects.create(code='MOD_Test', name='Test')
-        UserModuleAccess.objects.create(user=user, module=module)
+        UserPermission.objects.create(user=user, module=module)
         
         client = APIClient()
         client.force_authenticate(user=user)

@@ -158,3 +158,36 @@ def validate_percentage(value) -> None:
     """Validate that a value is between 0 and 100."""
     if not (0 <= value <= 100):
         raise ValidationError(_("El porcentaje debe estar entre 0 y 100."))
+
+
+# ---------------------------------------------------------------------------
+# IACT-specific validators (Call Center domain)
+# ---------------------------------------------------------------------------
+
+def validate_service_800(value: str) -> None:
+    """Validate 800 service number format (e.g. 800-XXX-XXXX or numeric)."""
+    import re
+    cleaned = re.sub(r'[\s\-]', '', str(value))
+    if not re.match(r'^800\d{7}$', cleaned):
+        raise ValidationError(
+            _("Formato de servicio 800 invalido. Use 800XXXXXXX (10 digitos)."),
+        )
+
+
+def validate_codigo_center(value: str) -> None:
+    """Validate call center code format (alphanumeric, 2-10 chars)."""
+    import re
+    if not re.match(r'^[A-Z0-9]{2,10}$', str(value).upper()):
+        raise ValidationError(
+            _("Codigo de centro invalido. Use solo letras y numeros (2-10 caracteres)."),
+        )
+
+
+def validate_rut(value: str) -> None:
+    """Validate Chilean RUT format (XXXXXXXX-X)."""
+    import re
+    cleaned = re.sub(r'[\.\s]', '', str(value))
+    if not re.match(r'^\d{7,8}-[\dkK]$', cleaned):
+        raise ValidationError(
+            _("RUT invalido. Use el formato XXXXXXXX-X."),
+        )

@@ -24,6 +24,7 @@ class DashboardConfig(AppConfig):
     verbose_name = 'Dashboard'
     
     def ready(self):
+        import apps.dashboard.schema  # noqa: F401
         """
         Importar signals cuando la app esté lista.
         """
