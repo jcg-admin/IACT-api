@@ -318,7 +318,7 @@ check_database_connectivity() {
             fi
         done
 
-        mysql -h "$MARIADB_HOST" -P "$MARIADB_PORT"             -u "$ivr_user" -p"${ivr_pass}"             -e "SELECT 1;" "$ivr_db" &>/dev/null             && ok "Conexion Django a ivr_legacy OK (TCP): ${ivr_user}@${ivr_db}"             || warn "No se pudo conectar a ivr_legacy como ${ivr_user} — ejecuta mariadb/db_setup.sh"
+        mysql -h "$MARIADB_HOST" -P "$MARIADB_PORT"             -u "$ivr_user" -p"${ivr_pass}"             -e "SELECT 1;" "$ivr_db" &>/dev/null             && ok "Conexion Django a ivr_legacy OK (TCP): ${ivr_user}@${ivr_db}"             || warn "No se pudo conectar a ivr_legacy como ${ivr_user} — ejecuta IACT-db/setup.sh"
     fi
 }
 

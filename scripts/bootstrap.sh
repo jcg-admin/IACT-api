@@ -2,7 +2,7 @@
 # =============================================================================
 # bootstrap.sh — IACT API: Entrypoint único de provisioning y verificación
 # =============================================================================
-# Version: 1.2.0
+# Version: 2.0.0
 #
 # UN SOLO COMANDO para todo:
 #   sudo bash scripts/bootstrap.sh
@@ -19,9 +19,8 @@
 #   Fase 1 — SO          : Verificar Ubuntu 24.04.x LTS             [FATAL]
 #   Fase 2 — Paquetes    : Instalar dependencias del sistema        [FATAL]
 #   Fase 3 — Python      : Entorno virtual + drivers               [FATAL]
-#   Fase 4 — Bases datos : Arrancar + habilitar servicios +         [WARN]
-#                          PostgreSQL (iact_analytics) +
-#                          MariaDB    (ivr_legacy, read-only)
+#   Fase 4 — Bases datos : Delega en IACT-db/setup.sh               [WARN]
+#                          Requiere IACT_DB_PATH en .env o arg --iact-db
 #   Fase 5 — Apache      : Virtual host + mod_wsgi + static         [WARN]
 #   Fase 6 — Verificación: Estado completo del entorno              [INFO]
 # =============================================================================
@@ -31,9 +30,11 @@ set -euo pipefail
 # ARGUMENTOS
 # =============================================================================
 SKIP_APT_UPDATE=false
+IACT_DB_PATH_ARG=""
 for arg in "$@"; do
     case "$arg" in
-        --skip-update) SKIP_APT_UPDATE=true ;;
+        --skip-update)  SKIP_APT_UPDATE=true ;;
+        --iact-db=*)    IACT_DB_PATH_ARG="${arg#--iact-db=}" ;;
     esac
 done
 export SKIP_APT_UPDATE
@@ -50,6 +51,23 @@ PROVISIONERS_DIR="${SCRIPT_DIR}/provisioners"
 SYSTEM_DIR="${PROVISIONERS_DIR}/system"
 POSTGRES_DIR="${PROVISIONERS_DIR}/postgres"
 MARIADB_DIR="${PROVISIONERS_DIR}/mariadb"
+
+# Ruta a IACT-db (fuente de verdad de infraestructura de BD)
+# Prioridad: 1) flag --iact-db=<ruta>  2) .env IACT_DB_PATH  3) default
+_resolve_iact_db_path() {
+    if [[ -n "${IACT_DB_PATH_ARG:-}" ]]; then
+        echo "$IACT_DB_PATH_ARG"
+        return
+    fi
+    local env_file="${PROJECT_ROOT}/.env"
+    if [[ -f "$env_file" ]]; then
+        local from_env
+        from_env=$(grep '^IACT_DB_PATH=' "$env_file" 2>/dev/null | cut -d= -f2- | tr -d '"')
+        [[ -n "$from_env" ]] && echo "$from_env" && return
+    fi
+    # Default: asume que IACT-db está junto a IACT-api
+    echo "$(cd "${PROJECT_ROOT}/../IACT-db" 2>/dev/null && pwd || echo "")"
+}
 APACHE_DIR="${SCRIPT_DIR}/apache"
 
 # =============================================================================
@@ -197,51 +215,60 @@ try_start_service() {
 }
 
 phase_databases() {
-    log_header "Fase 4/6 — Bases de datos"
+    log_header "Fase 4/6 — Bases de datos (via IACT-db)"
 
-    # --- PostgreSQL: systemctl/service con enable-on-boot ---
+    # La infraestructura de BD es responsabilidad exclusiva de IACT-db.
+    # Este fase:
+    #   1. Arranca los servicios si no están corriendo (MariaDB + PostgreSQL)
+    #   2. Delega el setup (BD, usuario, privilegios) en IACT-db/setup.sh
+    #
+    # Ver: scripts/documents/relacion_con_iact_db.md
+
+    # --- Resolver ruta a IACT-db ---
+    local iact_db_path
+    iact_db_path="$(_resolve_iact_db_path)"
+
+    if [[ -z "$iact_db_path" || ! -d "$iact_db_path" ]]; then
+        log_warn "IACT-db no encontrado en: ${iact_db_path:-<no resuelto>}"
+        log_warn "  Opciones:"
+        log_warn "    1) sudo bash scripts/bootstrap.sh --iact-db=/ruta/a/IACT-db"
+        log_warn "    2) Añadir IACT_DB_PATH=/ruta/a/IACT-db en .env"
+        log_warn "  Saltando setup de BD — asegúrate de ejecutar IACT-db/setup.sh"
+        return 0
+    fi
+
+    log_info "IACT-db: ${iact_db_path}"
+    echo ""
+
+    # --- Paso 1: Arrancar servicios ---
+    log_info "Arrancando PostgreSQL..."
     try_start_service "postgresql" "pg_isready -h 127.0.0.1 -p 5432 -q"
 
-    # --- MariaDB: flujo robusto desde database.sh ---
-    # db_start_mariadb: socket Unix -> stale cleanup -> systemd -> directo -> wait
-    # Cubre entornos sin systemd (contenedores) donde try_start_service falla.
+    log_info "Arrancando MariaDB..."
     if ! db_start_mariadb; then
         log_warn "MariaDB no pudo arrancar automaticamente"
         log_warn "  Verifica: sudo service mariadb status"
-        log_warn "  O revisa el log: /var/lib/mysql/mysqld_err.log"
     fi
 
     echo ""
 
-    local pg_ok=0 my_ok=0
+    # --- Paso 2: Delegar setup en IACT-db ---
+    local setup_script="${iact_db_path}/setup.sh"
 
-    # --- PostgreSQL (iact_analytics, READ+WRITE) ---
-    log_info "PostgreSQL → iact_analytics"
-    if bash "${POSTGRES_DIR}/db_setup.sh" 2>&1; then
-        pg_ok=1
-    else
-        log_warn "PostgreSQL: setup falló o servicio no activo"
-        log_warn "  Verifica: sudo pg_ctlcluster 16 main status"
+    if [[ ! -f "$setup_script" ]]; then
+        log_warn "IACT-db/setup.sh no encontrado: ${setup_script}"
+        log_warn "  Verifica la instalación de IACT-db"
+        return 0
     fi
 
+    log_info "Ejecutando IACT-db/setup.sh..."
     echo ""
 
-    # --- MariaDB (ivr_legacy, READ-ONLY CNST-003) ---
-    log_info "MariaDB → ivr_legacy (read-only)"
-    if bash "${MARIADB_DIR}/db_setup.sh" 2>&1; then
-        my_ok=1
+    if bash "$setup_script"; then
+        log_success "Fase 4 completa — BD configuradas por IACT-db"
     else
-        log_warn "MariaDB: setup falló o servicio no activo"
-        log_warn "  Verifica: sudo service mariadb status"
-    fi
-
-    echo ""
-    if [[ $pg_ok -eq 1 && $my_ok -eq 1 ]]; then
-        log_success "Fase 4 completa — ambas bases de datos OK"
-    elif [[ $pg_ok -eq 1 || $my_ok -eq 1 ]]; then
-        log_warn "Fase 4 parcial — una DB con problemas"
-    else
-        log_warn "Fase 4 sin éxito — ambas DBs inaccesibles"
+        log_warn "IACT-db/setup.sh reportó errores"
+        log_warn "  Ejecuta manualmente: bash ${iact_db_path}/verify.sh"
     fi
 
     return 0   # Siempre continúa
@@ -305,7 +332,7 @@ main() {
 
     echo ""
     log_separator 60 "="
-    echo "  IACT API — Bootstrap v1.2.0"
+    echo "  IACT API — Bootstrap v2.0.0"
     echo "  sudo bash scripts/bootstrap.sh [--skip-update]"
     [[ "$SKIP_APT_UPDATE" == "true" ]] && echo "  (--skip-update activo: se omite apt-get update)"
     log_separator 60 "="
@@ -334,7 +361,8 @@ main() {
     echo ""
     log_info "Siguientes pasos (primera vez):"
     log_info "  source venv/bin/activate"
-    log_info "  cp .env.example .env  # ajusta las variables"
+    log_info "  cp .env.example .env              # ajusta las variables"
+    log_info "  bash /ruta/a/IACT-db/setup.sh     # configurar BDs"
     log_info "  cd callcentersite && python manage.py migrate"
     echo ""
     log_info "Para verificar estado en cualquier momento:"

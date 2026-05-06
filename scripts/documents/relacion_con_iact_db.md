@@ -1,7 +1,7 @@
 # Relación con IACT-db — Separación de responsabilidades
 
 **Fecha:** 2026-05-05  
-**Estado:** Documentado — implementación pendiente
+**Estado:** Completado
 
 ---
 
@@ -139,8 +139,8 @@ scripts de BD.
 | Documentar la separación de responsabilidades | Completado |
 | Crear `IACT-db` con scripts equivalentes | Completado |
 | Verificar que IACT-api funciona con BDs de IACT-db | Completado (287 tests pasan) |
-| Eliminar scripts de BD de IACT-api | Pendiente |
-| Refactorizar `phase_databases` en bootstrap.sh | Pendiente |
+| Eliminar scripts de BD de IACT-api | Completado — archivados en scripts/archive/ |
+| Refactorizar `phase_databases` en bootstrap.sh | Completado — delega en IACT-db/setup.sh |
 
 ---
 
