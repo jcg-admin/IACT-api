@@ -23,6 +23,7 @@ from django.conf import settings
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework.permissions import IsAuthenticated
+from apps.access.permissions.function_permissions import HasFunction
 from rest_framework.response import Response
 from rest_framework import status
 
@@ -58,7 +59,8 @@ class DjangoLogTailView(APIView):
     Retorna las ultimas N lineas del log de Django.
     En produccion se implementa como SSE; aqui se retorna snapshot.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'logs.view'
 
     def get(self, request):
         try:
@@ -90,7 +92,8 @@ class ETLLogTailView(APIView):
 
     Retorna las ultimas entradas del job_execution_log de MariaDB.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'logs.view'
 
     def get(self, request):
         from django.db import connections, OperationalError
@@ -140,7 +143,8 @@ class LogSearchView(APIView):
       level      : DEBUG/INFO/WARNING/ERROR/CRITICAL
       lines      : max lineas (default 200)
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'logs.view'
 
     def get(self, request):
         q         = request.query_params.get('q', '')
@@ -192,9 +196,13 @@ class LogExportView(APIView):
     Nota: Implementacion basica sincrona. En produccion se usa
     Celery para exportacion async a S3.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'logs.export'
 
     def post(self, request):
+        if not (request.user.is_superuser or
+                request.user.has_function('logs.export')):
+            return Response({'error': 'Function logs.export required.'}, status=403)
         date_from = request.data.get('date_from')
         date_to   = request.data.get('date_to')
         formato   = request.data.get('formato', 'txt')
@@ -228,7 +236,8 @@ class InfraLogView(APIView):
 
     GET /api/logs/infra/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'logs.view'
 
     def get(self, request):
         return Response({
@@ -251,7 +260,8 @@ class LogHealthView(APIView):
 
     GET /api/logs/health/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'logs.view'
 
     def get(self, request):
         log_exists = LOG_FILE.exists()
@@ -296,7 +306,8 @@ class LogMetricsView(APIView):
 
     GET /api/logs/metrics/
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'logs.view'
 
     def get(self, request):
         from django.db import connections, OperationalError

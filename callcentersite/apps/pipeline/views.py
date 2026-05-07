@@ -31,6 +31,7 @@ from datetime import datetime, timedelta, timezone
 from django.db import connections, OperationalError
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
+from apps.access.permissions.function_permissions import HasFunction
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
@@ -178,7 +179,7 @@ def _format_run(run: dict | None) -> dict | None:
     tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, HasFunction])
 def etl_status(request):
     """
     UC_PIP_01 — Supervision del status del ETL IVR.
@@ -200,6 +201,12 @@ def etl_status(request):
 
     Fuente: job_execution_log en MariaDB ivr_legacy via connections['ivr'].
     """
+    if not (request.user.is_superuser or
+            request.user.has_function('pipeline.view_status')):
+        return Response(
+            {'error': 'Function pipeline.view_status required.'},
+            status=status.HTTP_403_FORBIDDEN)
+
     try:
         runs = _get_pipeline_runs(limit=20)
     except OperationalError as e:
@@ -258,7 +265,7 @@ def etl_status(request):
     tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, HasFunction])
 def etl_errors(request):
     """
     UC_PIP_02 — Ver errores del pipeline ETL.
@@ -271,6 +278,12 @@ def etl_errors(request):
 
     Fuente: job_execution_log WHERE status='FAILED' en MariaDB.
     """
+    if not (request.user.is_superuser or
+            request.user.has_function('pipeline.view_errors')):
+        return Response(
+            {'error': 'Function pipeline.view_errors required.'},
+            status=status.HTTP_403_FORBIDDEN)
+
     quarter = request.query_params.get('quarter')
     try:
         page      = max(1, int(request.query_params.get('page', 1)))
@@ -338,7 +351,7 @@ def etl_errors(request):
     tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, HasFunction])
 def etl_data_availability(request):
     """
     UC_PIP_03 — Ver disponibilidad de datos por quarter.
@@ -350,6 +363,12 @@ def etl_data_availability(request):
     Retorna el ultimo ETL exitoso para ese quarter y el status de frescura.
     Fuente: job_execution_log WHERE status='SUCCESS' en MariaDB.
     """
+    if not (request.user.is_superuser or
+            request.user.has_function('pipeline.view_data_availability')):
+        return Response(
+            {'error': 'Function pipeline.view_data_availability required.'},
+            status=status.HTTP_403_FORBIDDEN)
+
     quarter = request.query_params.get('quarter')
     if not quarter:
         return Response({'error': 'Parameter quarter is required.'}, status=400)
@@ -435,7 +454,7 @@ def etl_data_availability(request):
     tags=["Estado del Pipeline"]
 )
 @api_view(['POST'])
-@permission_classes([IsAuthenticated])
+@permission_classes([IsAuthenticated, HasFunction])
 def etl_retry(request):
     """
     UC_PIP_04 — Solicitar reintento del pipeline para un quarter.

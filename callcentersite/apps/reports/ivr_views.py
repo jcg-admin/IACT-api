@@ -7,6 +7,7 @@ Cada view valida quarter y segment, invoca el servicio y retorna JSON.
 from django.db import OperationalError
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
+from apps.access.permissions.function_permissions import HasFunction
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
@@ -65,7 +66,8 @@ class ClientesReportView(APIView):
     UC_RPT_17 — Clientes unicos por segment.
     GET /api/reports/ivr/clients/?quarter=Q01_25
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view_ivr'
 
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
@@ -88,7 +90,8 @@ class CentrosTransferenciaView(APIView):
     UC_RPT_12 — Detalle centros de transferencia.
     GET /api/reports/ivr/transfer-centers/?quarter=Q01_25&segment=todas
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view_ivr'
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
@@ -112,7 +115,8 @@ class LlamadasAbandonadasView(APIView):
     UC_RPT_13 — Llamadas abandonadas.
     GET /api/reports/ivr/abandoned/?quarter=Q01_25&segment=todas
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view_ivr'
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
@@ -137,7 +141,8 @@ class CMENUErrorView(APIView):
     UC_RPT_14 — Anomalias cMenu con numero de telefono.
     GET /api/reports/ivr/menu-errors/?quarter=Q01_25&segment=todas
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view_ivr'
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
@@ -161,7 +166,8 @@ class CentrosXSegmentoView(APIView):
     UC_RPT_15 — KPIs SLA por centro y segment.
     GET /api/reports/ivr/centers-by-segment/?quarter=Q01_25
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view_ivr'
 
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
@@ -190,7 +196,8 @@ class MenusIVRView(APIView):
     UC_RPT_16 — Menus IVR (redirigidos o menu_centro).
     GET /api/reports/ivr/menus/?quarter=Q01_25&vista=redirigidos&segment=todas
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view_ivr'
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
