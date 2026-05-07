@@ -1,6 +1,6 @@
 """
 URLs para access app.
-B-05: AccessGroup, SodRule, ExceptionalPermission endpoints.
+B-05: AccessGroup, SeparationRule, ExceptionalPermission endpoints.
 B-07: EffectivePermissions endpoint.
 """
 from django.urls import path, include

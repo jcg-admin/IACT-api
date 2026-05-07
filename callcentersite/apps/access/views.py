@@ -253,11 +253,11 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
     CRUD de reglas de Separacion de Deberes.
 
     UC_ACC_05, UC_ADM_01.
-    GET    /api/access/sod-rules/         — listar reglas
-    POST   /api/access/sod-rules/         — crear regla
-    GET    /api/access/sod-rules/{id}/    — detalle
-    PATCH  /api/access/sod-rules/{id}/    — modificar
-    DELETE /api/access/sod-rules/{id}/    — baja logica
+    GET    /api/access/separation-rules/  — listar reglas
+    POST   /api/access/separation-rules/  — crear regla
+    GET    /api/access/separation-rules/{id}/  — detalle
+    PATCH  /api/access/separation-rules/{id}/ — modificar
+    DELETE /api/access/separation-rules/{id}/ — baja logica
     """
     queryset = SeparationRule.objects.select_related('function_a', 'function_b').all()
     permission_classes = [IsAuthenticated]
@@ -281,7 +281,7 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
     def check_conflict(self, request):
         """
         UC_ACC_05 — Verificar si dos funciones tienen conflicto SoD.
-        GET /api/access/sod-rules/check/?function_a=X&function_b=Y
+        GET /api/access/separation-rules/check/?function_a=X&function_b=Y
         """
         fa = request.query_params.get('function_a')
         fb = request.query_params.get('function_b')

@@ -196,7 +196,7 @@ class SeparationRule(SoftDeleteModel):
     Regla de Separacion de Deberes / Separation of Duties
     (UC_ACC_05, UC_ADM_01).
 
-    Una SodRule define que dos funciones son incompatibles:
+    Una SeparationRule define que dos funciones son incompatibles:
     un usuario no puede tener ambas asignadas simultaneamente.
 
     Ejemplo: 'aprobar_reporte' y 'crear_reporte' pueden ser
@@ -247,7 +247,7 @@ class SeparationRule(SoftDeleteModel):
         verbose_name = _('Regla de separacion')
         verbose_name_plural = _('Reglas de separacion')
         ordering = ['name']
-        db_table = 'access_sod_rule'
+        db_table = 'access_separation_rule'
         constraints = [
             models.UniqueConstraint(
                 fields=['function_a', 'function_b'],
@@ -265,7 +265,7 @@ class ExceptionalPermission(models.Model):
     Permiso temporal excepcional para un usuario (UC_ACC_08, UC_PERM_03..04).
 
     Otorga una Function especifica a un usuario por un periodo limitado,
-    incluso si violaría una SodRule. Requiere justificacion y aprobacion.
+    incluso si violaría una SeparationRule. Requiere justificacion y aprobacion.
     """
     ESTADO_CHOICES = [
         ('pendiente',  'Pendiente de aprobacion'),
