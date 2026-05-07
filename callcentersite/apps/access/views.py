@@ -142,3 +142,268 @@ class MyModulesView(APIView):
             'total_count': all_modules.count(),
             'root_count': root_modules.count(),
         })
+
+
+# ---------------------------------------------------------------------------
+# B-05: AccessGroup ViewSet (UC_ACC_04, UC_PERM_01..06, UC_ADM_03)
+# ---------------------------------------------------------------------------
+from .models import AccessGroup, UserAccessGroup, SodRule, ExceptionalPermission
+from rest_framework import serializers as drf_serializers
+
+
+class AccessGroupViewSet(viewsets.ModelViewSet):
+    """
+    CRUD de grupos de acceso.
+
+    UC_ACC_04, UC_PERM_05, UC_ADM_03.
+    GET    /api/access/groups/            — listar grupos
+    POST   /api/access/groups/            — crear grupo
+    GET    /api/access/groups/{id}/       — detalle
+    PATCH  /api/access/groups/{id}/       — modificar
+    DELETE /api/access/groups/{id}/       — baja logica
+    POST   /api/access/groups/{id}/add-function/    — UC_PERM_06
+    DELETE /api/access/groups/{id}/remove-function/ — UC_PERM_06
+    """
+    queryset = AccessGroup.objects.all()
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from rest_framework import serializers
+
+        class AccessGroupSerializer(serializers.ModelSerializer):
+            function_count = serializers.SerializerMethodField()
+
+            class Meta:
+                model = AccessGroup
+                fields = ['id', 'name', 'code', 'description',
+                          'functions', 'function_count']
+
+            def get_function_count(self, obj):
+                return obj.functions.count()
+
+        return AccessGroupSerializer
+
+    @action(detail=True, methods=['post'], url_path='add-function')
+    def add_function(self, request, pk=None):
+        """UC_PERM_06 — Asignar funcion a grupo."""
+        group = self.get_object()
+        function_id = request.data.get('function_id')
+        try:
+            from .models import Function
+            fn = Function.objects.get(id=function_id)
+            group.functions.add(fn)
+            return Response({'detail': f'Funcion {fn.code} agregada al grupo {group.code}.'})
+        except Function.DoesNotExist:
+            return Response({'error': 'Funcion no encontrada.'}, status=404)
+
+    @action(detail=True, methods=['delete'], url_path='remove-function')
+    def remove_function(self, request, pk=None):
+        """UC_PERM_06 — Remover funcion de grupo."""
+        group = self.get_object()
+        function_id = request.data.get('function_id')
+        try:
+            from .models import Function
+            fn = Function.objects.get(id=function_id)
+            group.functions.remove(fn)
+            return Response({'detail': f'Funcion {fn.code} removida del grupo {group.code}.'})
+        except Function.DoesNotExist:
+            return Response({'error': 'Funcion no encontrada.'}, status=404)
+
+
+class UserAccessGroupViewSet(viewsets.ModelViewSet):
+    """
+    Asignacion/revocacion de AccessGroups a usuarios.
+
+    UC_ACC_04, UC_PERM_01..02.
+    POST   /api/access/user-groups/       — asignar grupo a usuario
+    DELETE /api/access/user-groups/{id}/  — revocar grupo
+    GET    /api/access/user-groups/?user={id} — listar grupos de un usuario
+    """
+    queryset = UserAccessGroup.objects.select_related('user', 'access_group').all()
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from rest_framework import serializers
+
+        class UserAccessGroupSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = UserAccessGroup
+                fields = ['id', 'user', 'access_group', 'granted_at', 'granted_by']
+                read_only_fields = ['granted_at']
+
+        return UserAccessGroupSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user_id = self.request.query_params.get('user')
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(granted_by=self.request.user)
+
+
+# ---------------------------------------------------------------------------
+# B-05: SodRule ViewSet (UC_ACC_05, UC_ADM_01)
+# ---------------------------------------------------------------------------
+
+class SodRuleViewSet(viewsets.ModelViewSet):
+    """
+    CRUD de reglas de Separacion de Deberes.
+
+    UC_ACC_05, UC_ADM_01.
+    GET    /api/access/sod-rules/         — listar reglas
+    POST   /api/access/sod-rules/         — crear regla
+    GET    /api/access/sod-rules/{id}/    — detalle
+    PATCH  /api/access/sod-rules/{id}/    — modificar
+    DELETE /api/access/sod-rules/{id}/    — baja logica
+    """
+    queryset = SodRule.objects.select_related('function_a', 'function_b').all()
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from rest_framework import serializers
+
+        class SodRuleSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = SodRule
+                fields = ['id', 'name', 'function_a', 'function_b',
+                          'justificacion', 'estado', 'creado_por']
+                read_only_fields = ['creado_por']
+
+        return SodRuleSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(creado_por=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='check')
+    def check_conflict(self, request):
+        """
+        UC_ACC_05 — Verificar si dos funciones tienen conflicto SoD.
+        GET /api/access/sod-rules/check/?function_a=X&function_b=Y
+        """
+        fa = request.query_params.get('function_a')
+        fb = request.query_params.get('function_b')
+        conflicto = SodRule.objects.filter(
+            estado='activa'
+        ).filter(
+            models.Q(function_a_id=fa, function_b_id=fb) |
+            models.Q(function_a_id=fb, function_b_id=fa)
+        ).first()
+        return Response({
+            'tiene_conflicto': conflicto is not None,
+            'regla': str(conflicto) if conflicto else None,
+        })
+
+
+# ---------------------------------------------------------------------------
+# B-07: ExceptionalPermission ViewSet (UC_ACC_08, UC_PERM_03..04)
+# ---------------------------------------------------------------------------
+
+class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
+    """
+    Gestion de permisos temporales excepcionales.
+
+    UC_ACC_08, UC_PERM_03..04.
+    POST   /api/access/exceptional/           — solicitar permiso excepcional
+    GET    /api/access/exceptional/           — listar permisos excepcionales
+    PATCH  /api/access/exceptional/{id}/      — aprobar/revocar
+    """
+    queryset = ExceptionalPermission.objects.select_related(
+        'user', 'function', 'otorgado_por'
+    ).all()
+    permission_classes = [IsAuthenticated]
+
+    def get_serializer_class(self):
+        from rest_framework import serializers
+
+        class ExceptionalPermissionSerializer(serializers.ModelSerializer):
+            class Meta:
+                model = ExceptionalPermission
+                fields = ['id', 'user', 'function', 'justificacion',
+                          'estado', 'valido_desde', 'valido_hasta',
+                          'otorgado_por', 'creado_en']
+                read_only_fields = ['estado', 'otorgado_por', 'creado_en']
+
+        return ExceptionalPermissionSerializer
+
+    @action(detail=True, methods=['patch'], url_path='approve')
+    def approve(self, request, pk=None):
+        """UC_ACC_08 / UC_PERM_03 — Aprobar permiso excepcional."""
+        perm = self.get_object()
+        if perm.estado != 'pendiente':
+            return Response({'error': 'Solo se pueden aprobar permisos pendientes.'}, status=400)
+        perm.estado = 'aprobado'
+        perm.otorgado_por = request.user
+        perm.save()
+        return Response({'detail': 'Permiso aprobado.', 'estado': perm.estado})
+
+    @action(detail=True, methods=['patch'], url_path='revoke')
+    def revoke(self, request, pk=None):
+        """UC_PERM_04 — Revocar permiso excepcional."""
+        perm = self.get_object()
+        if perm.estado in ('revocado', 'expirado'):
+            return Response({'error': f'Permiso ya esta en estado {perm.estado}.'}, status=400)
+        perm.estado = 'revocado'
+        perm.save()
+        return Response({'detail': 'Permiso revocado.', 'estado': perm.estado})
+
+
+# ---------------------------------------------------------------------------
+# B-05: EffectivePermissions endpoint (UC_ACC_03, UC_PERM_07)
+# ---------------------------------------------------------------------------
+
+class EffectivePermissionsView(APIView):
+    """
+    UC_ACC_03 / UC_PERM_07 — Consultar permisos efectivos de un usuario.
+
+    GET /api/access/users/{user_id}/effective-permissions/
+
+    Retorna la union de:
+    - UserPermission directos
+    - Funciones de los AccessGroup del usuario
+    - ExceptionalPermission activos
+    Menos cualquier funcion que viole una SodRule activa.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        from apps.access.services import get_user_function_codes
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'Usuario no encontrado.'}, status=404)
+
+        # Funciones directas
+        direct = set(UserPermission.objects.filter(
+            user=user
+        ).values_list('function__code', flat=True))
+
+        # Funciones via AccessGroup
+        group_fns = set(Function.objects.filter(
+            access_groups__memberships__user=user
+        ).values_list('code', flat=True))
+
+        # Funciones excepcionales activas
+        from django.utils import timezone
+        now = timezone.now()
+        exceptional = set(ExceptionalPermission.objects.filter(
+            user=user, estado='aprobado',
+            valido_desde__lte=now, valido_hasta__gte=now
+        ).values_list('function__code', flat=True))
+
+        all_functions = direct | group_fns | exceptional
+
+        return Response({
+            'user_id': user_id,
+            'total_functions': len(all_functions),
+            'sources': {
+                'direct':       list(direct),
+                'from_groups':  list(group_fns),
+                'exceptional':  list(exceptional),
+            },
+            'effective': sorted(all_functions),
+        })

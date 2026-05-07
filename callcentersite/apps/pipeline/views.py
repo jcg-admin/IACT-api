@@ -223,3 +223,209 @@ def etl_status(request):
         },
         'ultimas_ejecuciones': [_format_run(r) for r in runs],
     })
+
+
+# ---------------------------------------------------------------------------
+# B-04: UC_PIP_02 — Errores ETL
+# ---------------------------------------------------------------------------
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def etl_errors(request):
+    """
+    UC_PIP_02 — Ver errores del pipeline ETL.
+
+    GET /api/pipeline/errors/
+    Query params:
+      trimestre (opcional): filtrar por quarter (ej: Q01_25)
+      page      (opcional): pagina (default 1)
+      page_size (opcional): tamano de pagina (default 20, max 100)
+
+    Fuente: job_execution_log WHERE status='FAILED' en MariaDB.
+    """
+    trimestre = request.query_params.get('trimestre')
+    try:
+        page      = max(1, int(request.query_params.get('page', 1)))
+        page_size = min(100, max(1, int(request.query_params.get('page_size', 20))))
+    except (ValueError, TypeError):
+        page, page_size = 1, 20
+
+    offset = (page - 1) * page_size
+
+    conditions = ["status = 'FAILED'"]
+    params = []
+
+    if trimestre:
+        conditions.append("quarter_name = %s")
+        params.append(trimestre)
+
+    where = ' AND '.join(conditions)
+    sql = f"""
+        SELECT id, job_name, quarter_name, step_name, tabla_origen,
+               start_time, end_time, error_message, ejecutado_por
+        FROM job_execution_log
+        WHERE {where}
+        ORDER BY start_time DESC
+        LIMIT %s OFFSET %s
+    """
+    params += [page_size, offset]
+
+    sql_count = f"SELECT COUNT(*) FROM job_execution_log WHERE {where}"
+
+    try:
+        with connections['ivr'].cursor() as cursor:
+            cursor.execute(sql_count, params[:-2] if trimestre else [])
+            total = cursor.fetchone()[0]
+            cursor.execute(sql, params)
+            cols = [c[0] for c in cursor.description]
+            errores = [dict(zip(cols, row)) for row in cursor.fetchall()]
+    except OperationalError as e:
+        return Response({'error': 'No se pudo conectar a MariaDB.', 'detail': str(e)},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    return Response({
+        'total':    total,
+        'page':     page,
+        'page_size':page_size,
+        'errores':  errores,
+    })
+
+
+# ---------------------------------------------------------------------------
+# B-04: UC_PIP_03 — Disponibilidad de datos por quarter
+# ---------------------------------------------------------------------------
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def etl_data_availability(request):
+    """
+    UC_PIP_03 — Ver disponibilidad de datos por quarter.
+
+    GET /api/pipeline/data-availability/
+    Query params:
+      trimestre (requerido): ej Q01_25
+
+    Retorna el ultimo ETL exitoso para ese quarter y el estado de frescura.
+    Fuente: job_execution_log WHERE status='SUCCESS' en MariaDB.
+    """
+    trimestre = request.query_params.get('trimestre')
+    if not trimestre:
+        return Response({'error': 'Parametro trimestre es requerido.'}, status=400)
+
+    sql = """
+        SELECT quarter_name, MAX(end_time) AS ultima_carga,
+               SUM(records_procesados) AS registros_disponibles
+        FROM job_execution_log
+        WHERE status = 'SUCCESS'
+          AND quarter_name = %s
+          AND step_name = 'etl_base_detalle'
+        GROUP BY quarter_name
+    """
+    try:
+        with connections['ivr'].cursor() as cursor:
+            cursor.execute(sql, [trimestre])
+            row = cursor.fetchone()
+    except OperationalError as e:
+        return Response({'error': 'No se pudo conectar a MariaDB.', 'detail': str(e)},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    if not row:
+        return Response({
+            'trimestre':             trimestre,
+            'estado_frescura':       'sin_datos',
+            'ultima_carga':          None,
+            'registros_disponibles': 0,
+            'minutos_desde_etl':     None,
+        })
+
+    quarter_name, ultima_carga, registros = row
+    now = datetime.now(timezone.utc)
+    if ultima_carga:
+        if ultima_carga.tzinfo is None:
+            ultima_carga = ultima_carga.replace(tzinfo=timezone.utc)
+        minutos = int((now - ultima_carga).total_seconds() / 60)
+        if minutos < 60 * 14:
+            frescura = 'fresco'
+        elif minutos < 60 * 24:
+            frescura = 'aceptable'
+        else:
+            frescura = 'vencido'
+    else:
+        minutos = None
+        frescura = 'sin_datos'
+
+    return Response({
+        'trimestre':             quarter_name,
+        'estado_frescura':       frescura,
+        'ultima_carga':          ultima_carga,
+        'registros_disponibles': registros,
+        'minutos_desde_etl':     minutos,
+    })
+
+
+# ---------------------------------------------------------------------------
+# B-04: UC_PIP_04 — Solicitar reintento de pipeline
+# ---------------------------------------------------------------------------
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def etl_retry(request):
+    """
+    UC_PIP_04 — Solicitar reintento del pipeline para un quarter.
+
+    POST /api/pipeline/retry/
+    Body: { "trimestre": "Q01_25", "motivo": "Fallo transitorio de red..." }
+
+    Verifica que no haya ejecucion activa, luego llama sp_etl_historico
+    directamente en MariaDB.
+    Requerimiento: motivo >= 20 caracteres.
+    """
+    trimestre = request.data.get('trimestre')
+    motivo    = request.data.get('motivo', '')
+
+    if not trimestre:
+        return Response({'error': 'trimestre es requerido.'}, status=400)
+    if len(motivo) < 20:
+        return Response({'error': 'motivo debe tener al menos 20 caracteres.'}, status=400)
+
+    # Parsear trimestre: Q01_25 -> year=2025, quarter_num=1
+    try:
+        parts       = trimestre.upper().split('_')   # ['Q01', '25']
+        quarter_num = int(parts[0][1:])              # 1
+        year        = 2000 + int(parts[1])           # 2025
+        assert 1 <= quarter_num <= 4
+        assert 2020 <= year <= 2030
+    except Exception:
+        return Response(
+            {'error': f'trimestre invalido: {trimestre}. Formato esperado: Q01_25'},
+            status=400
+        )
+
+    try:
+        with connections['ivr'].cursor() as cursor:
+            # Verificar que no haya ejecucion activa
+            cursor.execute(
+                "SELECT COUNT(*) FROM job_execution_log WHERE status='RUNNING'"
+            )
+            activos = cursor.fetchone()[0]
+            if activos > 0:
+                return Response(
+                    {'error': 'Hay una ejecucion activa. Esperar a que termine antes de reintentar.'},
+                    status=409
+                )
+
+            # Ejecutar sp_etl_historico
+            cursor.callproc('sp_etl_historico', [year, quarter_num])
+            result = cursor.fetchone()
+
+    except OperationalError as e:
+        return Response({'error': 'No se pudo conectar a MariaDB.', 'detail': str(e)},
+                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    return Response({
+        'detail':    f'Reintento iniciado para {trimestre}.',
+        'trimestre': trimestre,
+        'motivo':    motivo,
+        'resultado': list(result) if result else None,
+        'ejecutado_por': str(request.user),
+    }, status=status.HTTP_202_ACCEPTED)

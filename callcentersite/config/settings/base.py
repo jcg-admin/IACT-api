@@ -76,7 +76,8 @@ INSTALLED_APPS = [
     'apps.audit',
     'apps.pipeline',
     'apps.reports',
-    'apps.alerts',  # <- Sistema de alertas internas
+    'apps.alerts',
+    'apps.logs',  # <- Sistema de alertas internas
     'apps.dashboard',  # <- Sistema de dashboards personalizables
 ]
 
@@ -173,6 +174,9 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            # unix_socket para conexión local (evita TCP cuando HOST='localhost')
+            # Se ignora si HOST no es 'localhost' o ''
+            'unix_socket': config('IVR_DB_SOCKET', default='/run/mysqld/mysqld.sock'),
         },
     },
 }

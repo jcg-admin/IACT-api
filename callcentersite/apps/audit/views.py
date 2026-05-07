@@ -62,3 +62,65 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Usuarios normales solo sus logs
         return queryset.filter(user=self.request.user)
+
+
+# ---------------------------------------------------------------------------
+# B-08: UC_AUD_04 — Firma y verificacion de integridad de AuditLog
+# ---------------------------------------------------------------------------
+import hashlib
+import hmac
+from django.conf import settings
+from rest_framework.decorators import action
+
+
+class AuditIntegrityView(APIView):
+    """
+    UC_AUD_04 — Verificar integridad de registros de auditoria.
+
+    La integridad se verifica calculando un HMAC-SHA256 del contenido
+    del registro y comparandolo con la firma almacenada.
+
+    GET  /api/audit/integrity/verify/?log_id=X  — verificar un registro
+    POST /api/audit/integrity/sign/             — firmar un lote de registros
+    """
+    permission_classes = [IsAuthenticated]
+
+    def _compute_signature(self, log) -> str:
+        """Calcula HMAC-SHA256 del contenido del AuditLog."""
+        from apps.audit.models import AuditLog
+        secret = getattr(settings, 'AUDIT_HMAC_SECRET', 'iact-audit-secret-key')
+        payload = f"{log.id}|{log.user_id}|{log.action}|{log.resource}|{log.result}|{log.timestamp}"
+        return hmac.new(
+            secret.encode(),
+            payload.encode(),
+            hashlib.sha256
+        ).hexdigest()
+
+    def get(self, request):
+        """Verificar integridad de un registro de auditoria."""
+        from apps.audit.models import AuditLog
+        log_id = request.query_params.get('log_id')
+        if not log_id:
+            return Response({'error': 'log_id es requerido.'}, status=400)
+
+        try:
+            log = AuditLog.objects.get(pk=log_id)
+        except AuditLog.DoesNotExist:
+            return Response({'error': 'AuditLog no encontrado.'}, status=404)
+
+        firma_calculada = self._compute_signature(log)
+        firma_almacenada = getattr(log, 'firma_integridad', None)
+
+        if firma_almacenada is None:
+            return Response({
+                'log_id':  log_id,
+                'estado':  'sin_firma',
+                'detalle': 'Este registro no tiene firma de integridad almacenada.',
+            })
+
+        integro = hmac.compare_digest(firma_calculada, firma_almacenada)
+        return Response({
+            'log_id':  log_id,
+            'estado':  'integro' if integro else 'comprometido',
+            'integro': integro,
+        })

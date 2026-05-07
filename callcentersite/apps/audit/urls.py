@@ -13,3 +13,9 @@ app_name = 'audit'
 urlpatterns = [
     path('', include(router.urls)),
 ]
+
+# B-08: UC_AUD_04 — integridad
+from .views import AuditIntegrityView
+urlpatterns += [
+    path('integrity/', AuditIntegrityView.as_view(), name='integrity'),
+]

@@ -1,46 +1,35 @@
 """
-URLs para apps/pipeline/.
-
-CLEAN_CODE v3.0.1: Incluye ViewSets + custom views.
+URLs para pipeline app.
+B-02 (ya corregido): status lee de MariaDB.
+B-04: errores, disponibilidad y reintento.
 """
-
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from apps.pipeline.views import etl_status
-from apps.pipeline.viewsets import (
-    CenterViewSet,
-    ServiceViewSet,
-    CallRecordViewSet,
-    CallNoteViewSet,  # FASE 0.2
+from .views import (
+    CenterViewSet, ServiceViewSet, CallRecordViewSet, CallNoteViewSet,
+    etl_status, etl_errors, etl_data_availability, etl_retry,
 )
+
+router = DefaultRouter()
+router.register(r'centers',    CenterViewSet,     basename='center')
+router.register(r'services',   ServiceViewSet,    basename='service')
+router.register(r'calls',      CallRecordViewSet, basename='callrecord')
+router.register(r'call-notes', CallNoteViewSet,   basename='callnote')
 
 app_name = 'pipeline'
 
-# DRF Router para ViewSets
-router = DefaultRouter()
-router.register(r'centers', CenterViewSet, basename='center')
-router.register(r'services', ServiceViewSet, basename='service')
-router.register(r'calls', CallRecordViewSet, basename='callrecord')
-router.register(r'call-notes', CallNoteViewSet, basename='callnote')  # FASE 0.2
-
 urlpatterns = [
-    # ViewSets (DRF Router)
     path('', include(router.urls)),
-    
-    # Custom views
-    path('status/', etl_status, name='etl_status'),
+
+    # UC_PIP_01 — estado del ETL (B-02 corregido)
+    path('status/',            etl_status,            name='etl-status'),
+
+    # UC_PIP_02 — errores del ETL (B-04)
+    path('errors/',            etl_errors,            name='etl-errors'),
+
+    # UC_PIP_03 — disponibilidad de datos (B-04)
+    path('data-availability/', etl_data_availability, name='etl-data-availability'),
+
+    # UC_PIP_04 — solicitar reintento (B-04)
+    path('retry/',             etl_retry,             name='etl-retry'),
 ]
-
-
-# ============================================================================
-# ENDPOINTS DISPONIBLES
-# 
-# ViewSets (CRUD + custom actions):
-#   /api/v1/pipeline/centers/
-#   /api/v1/pipeline/services/
-#   /api/v1/pipeline/calls/
-#   /api/v1/pipeline/call-notes/                # FASE 0.2
-# 
-# Custom Views:
-#   /api/v1/pipeline/status/
-# ============================================================================
