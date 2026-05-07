@@ -73,7 +73,7 @@ class AccessGroup(SoftDeleteModel):
     """Agrupador de funciones asignable a un usuario."""
 
 class ExceptionalPermission(models.Model):
-    """Permiso temporal fuera del flujo normal de RBAC."""
+    """Permiso temporal fuera del flujo normal de asignacion de funciones."""
 
 # Prohibido
 class SodRule(SoftDeleteModel)           # SOD = acronimo

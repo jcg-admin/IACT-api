@@ -33,7 +33,7 @@ Impacto directo en el plan:
 | D | Schema OpenAPI (drf_spectacular) | 6 | ALTA | PENDIENTE |
 | E | Permisos en endpoints nuevos | 3 | ALTA | PENDIENTE |
 | F | Completar get_functions() en User | 2 | ALTA | PENDIENTE |
-| G | Permisos granulares RBAC | 4 | ALTA | PENDIENTE |
+| G | Permisos granulares de funciones | 4 | ALTA | PENDIENTE |
 | H | APScheduler — tareas programadas | 3 | ALTA | PENDIENTE |
 | I | Hardening pipeline IVR | 3 | ALTA | PENDIENTE |
 | J | Admin Django — modelos nuevos | 2 | MEDIA | PENDIENTE |
@@ -265,7 +265,7 @@ Las siguientes apps tienen `schema.py` pero sin `SPECTACULAR_TAGS` definidos:
 # apps/access/schema.py
 SPECTACULAR_TAGS = [
     {
-        'name': 'RBAC',
+        'name': 'Control de Acceso',
         'description': 'Control de acceso basado en funciones: '
                        'AccessGroup, SeparationRule, ExceptionalPermission.',
     },
@@ -274,7 +274,7 @@ SPECTACULAR_TAGS = [
 # apps/pipeline/schema.py
 SPECTACULAR_TAGS = [
     {
-        'name': 'Pipeline ETL',
+        'name': 'Estado del Pipeline',
         'description': 'Estado, errores, disponibilidad de datos y reintento '
                        'del pipeline ETL que lee de MariaDB ivr_legacy.',
     },
@@ -283,7 +283,7 @@ SPECTACULAR_TAGS = [
 # apps/reports/schema.py
 SPECTACULAR_TAGS = [
     {
-        'name': 'Reportes IVR',
+        'name': 'Reportes de Llamadas',
         'description': 'Reportes generados desde los SPs de MariaDB ivr_legacy.',
     },
     {
@@ -309,7 +309,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiRespon
         200: OpenApiResponse(description="ok | degradado | critico"),
         503: OpenApiResponse(description="MariaDB no disponible"),
     },
-    tags=["Pipeline ETL"]
+    tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
 def etl_status(request): ...
@@ -321,7 +321,7 @@ def etl_status(request): ...
         OpenApiParameter('page', int, default=1),
         OpenApiParameter('page_size', int, default=20),
     ],
-    tags=["Pipeline ETL"]
+    tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
 def etl_errors(request): ...
@@ -330,14 +330,14 @@ def etl_errors(request): ...
     summary="UC_PIP_03 — Disponibilidad de datos",
     parameters=[OpenApiParameter('trimestre', str, required=True)],
     responses={200: OpenApiResponse(description="fresco | aceptable | vencido | sin_datos")},
-    tags=["Pipeline ETL"]
+    tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
 def etl_data_availability(request): ...
 
 @extend_schema(
     summary="UC_PIP_04 — Solicitar reintento del pipeline",
-    tags=["Pipeline ETL"],
+    tags=["Estado del Pipeline"],
     responses={202: OpenApiResponse(description="Reintento iniciado"),
                409: OpenApiResponse(description="Ejecucion activa en curso")}
 )
@@ -346,7 +346,7 @@ def etl_retry(request): ...
 ```
 
 **Criterio:** Los 4 endpoints de pipeline aparecen en `GET /api/schema/`
-bajo el tag "Pipeline ETL".
+bajo el tag "Estado del Pipeline".
 
 ### D-004 — Decorar endpoints IVR de reports con @extend_schema
 
@@ -380,10 +380,10 @@ from drf_spectacular.utils import extend_schema_view, extend_schema
 @extend_schema_view(
     list=extend_schema(
         summary="UC_PERM_05 — Listar grupos de acceso",
-        tags=["RBAC"]),
+        tags=["Control de Acceso"]),
     create=extend_schema(
         summary="UC_PERM_05 — Crear grupo de acceso",
-        tags=["RBAC"]),
+        tags=["Control de Acceso"]),
     ...
 )
 class AccessGroupViewSet(viewsets.ModelViewSet): ...
@@ -407,7 +407,7 @@ con summary y tags.
 **Prerequisito:** Fase D completa.
 **Objetivo:** Los endpoints nuevos de pipeline, reports/ivr y logs usan
 `RequiresFunctionPermission` ademas de `IsAuthenticated`, siguiendo el
-patron RBAC del proyecto.
+patron de control de acceso del proyecto.
 
 ### E-001 — Agregar RequiresFunctionPermission a endpoints de pipeline
 
@@ -541,7 +541,7 @@ retornan exactamente el mismo resultado.
 
 ---
 
-## FASE G — Permisos granulares RBAC
+## FASE G — Permisos granulares de funciones
 
 **Prerequisito:** Fase F completa.
 **Objetivo:** UC_ACC_01/02 — asignar y revocar funciones individuales
@@ -755,7 +755,7 @@ La constante `QUARTERS_VALIDOS` queda eliminada de ivr_services.py.
 ```python
 @extend_schema(
     summary="Estado de la conexion MariaDB IVR",
-    tags=["Pipeline ETL"]
+    tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

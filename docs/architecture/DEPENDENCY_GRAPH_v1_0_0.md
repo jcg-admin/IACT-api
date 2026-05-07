@@ -101,7 +101,7 @@ UC_INC_RPT_01 (SegmentResolver) es incluido por:
 
 ## Cadenas de llamada completas
 
-### Cadena IVR — Reporte de clientes (UC_RPT_17)
+### Cadena de reportes — Reporte de clientes (UC_RPT_17)
 
 ```
 GET /api/reports/ivr/clients/?quarter=Q01_25
@@ -114,7 +114,7 @@ GET /api/reports/ivr/clients/?quarter=Q01_25
                         → SELECT FROM base_ivr_clientes
 ```
 
-### Cadena Pipeline — Estado ETL (UC_PIP_01)
+### Cadena del pipeline — Estado de ejecucion (UC_PIP_01)
 
 ```
 GET /api/pipeline/status/
@@ -140,7 +140,7 @@ POST /api/pipeline/retry/ { trimestre, motivo }
                 → sp_etl_validar()
 ```
 
-### Cadena RBAC — Permisos efectivos (UC_ACC_03 / UC_PERM_07)
+### Cadena de permisos efectivos (UC_ACC_03 / UC_PERM_07)
 
 ```
 GET /api/access/users/{id}/effective-permissions/

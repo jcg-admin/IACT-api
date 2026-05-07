@@ -175,7 +175,7 @@ def _format_run(run: dict | None) -> dict | None:
         200: OpenApiResponse(description="ResumenSalud con estado ok | degradado | critico"),
         503: OpenApiResponse(description="MariaDB ivr_legacy no disponible"),
     },
-    tags=["Pipeline ETL"]
+    tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -255,7 +255,7 @@ def etl_status(request):
         200: OpenApiResponse(description="Lista paginada de errores ETL"),
         503: OpenApiResponse(description="MariaDB no disponible"),
     },
-    tags=["Pipeline ETL"]
+    tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -335,7 +335,7 @@ def etl_errors(request):
         400: OpenApiResponse(description="Parametro trimestre faltante"),
         503: OpenApiResponse(description="MariaDB no disponible"),
     },
-    tags=["Pipeline ETL"]
+    tags=["Estado del Pipeline"]
 )
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -432,7 +432,7 @@ def etl_data_availability(request):
         409: OpenApiResponse(description="Hay una ejecucion activa en curso"),
         503: OpenApiResponse(description="MariaDB no disponible"),
     },
-    tags=["Pipeline ETL"]
+    tags=["Estado del Pipeline"]
 )
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

@@ -58,7 +58,7 @@ def _ivr_response(fn, *args, extra=None):
     responses={200: OpenApiResponse(description="Lista de clientes por segmento"),
                400: OpenApiResponse(description="Quarter invalido"),
                503: OpenApiResponse(description="MariaDB no disponible")},
-    tags=["Reportes IVR"]
+    tags=["Reportes de Llamadas"]
 )
 class ClientesReportView(APIView):
     """
@@ -81,7 +81,7 @@ class ClientesReportView(APIView):
     parameters=[_IVR_QUARTER_PARAM, _IVR_SEGMENTO_PARAM],
     responses={200: OpenApiResponse(description="Detalle de centros de transferencia"),
                503: OpenApiResponse(description="MariaDB no disponible")},
-    tags=["Reportes IVR"]
+    tags=["Reportes de Llamadas"]
 )
 class CentrosTransferenciaView(APIView):
     """
@@ -105,7 +105,7 @@ class CentrosTransferenciaView(APIView):
     parameters=[_IVR_QUARTER_PARAM, _IVR_SEGMENTO_PARAM],
     responses={200: OpenApiResponse(description="Llamadas abandonadas por menu IVR"),
                503: OpenApiResponse(description="MariaDB no disponible")},
-    tags=["Reportes IVR"]
+    tags=["Reportes de Llamadas"]
 )
 class LlamadasAbandonadasView(APIView):
     """
@@ -130,7 +130,7 @@ class LlamadasAbandonadasView(APIView):
     parameters=[_IVR_QUARTER_PARAM, _IVR_SEGMENTO_PARAM],
     responses={200: OpenApiResponse(description="Registros con anomalia cMENU"),
                503: OpenApiResponse(description="MariaDB no disponible")},
-    tags=["Reportes IVR"]
+    tags=["Reportes de Llamadas"]
 )
 class CMENUErrorView(APIView):
     """
@@ -154,7 +154,7 @@ class CMENUErrorView(APIView):
     parameters=[_IVR_QUARTER_PARAM],
     responses={200: OpenApiResponse(description="KPIs de nivel de servicio por centro"),
                503: OpenApiResponse(description="MariaDB no disponible")},
-    tags=["Reportes IVR"]
+    tags=["Reportes de Llamadas"]
 )
 class CentrosXSegmentoView(APIView):
     """
@@ -183,7 +183,7 @@ class CentrosXSegmentoView(APIView):
     ],
     responses={200: OpenApiResponse(description="Datos de menus IVR segun la vista seleccionada"),
                503: OpenApiResponse(description="MariaDB no disponible")},
-    tags=["Reportes IVR"]
+    tags=["Reportes de Llamadas"]
 )
 class MenusIVRView(APIView):
     """

@@ -15,7 +15,7 @@ SPECTACULAR_TAGS sin modificar config/settings/base.py.
 # ─────────────────────────────────────────────────────────────────────
 SPECTACULAR_TAGS = [
     {
-        'name': 'Reportes IVR',
+        'name': 'Reportes de Llamadas',
         'description': (
             'Reportes generados invocando SPs de MariaDB ivr_legacy: clientes, '
             'centros de transferencia, llamadas abandonadas, menus IVR. '

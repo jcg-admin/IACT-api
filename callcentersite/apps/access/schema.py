@@ -15,7 +15,7 @@ SPECTACULAR_TAGS sin modificar config/settings/base.py.
 # ─────────────────────────────────────────────────────────────────────
 SPECTACULAR_TAGS = [
     {
-        'name': 'RBAC',
+        'name': 'Control de Acceso',
         'description': (
             'Control de acceso basado en funciones: AccessGroup, SeparationRule, '
             'ExceptionalPermission. Endpoints compatibles con accessService.js de IACT-ui. '

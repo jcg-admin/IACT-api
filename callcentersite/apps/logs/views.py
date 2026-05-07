@@ -47,7 +47,7 @@ def _read_log_tail(filepath: Path, lines: int = 100) -> list[str]:
     description=("Retorna las ultimas N lineas del archivo log de Django. En produccion ASGI se reemplaza por SSE."),
     parameters=[OpenApiParameter('lines', int, default=100, description='Max 500')],
     responses={200: OpenApiResponse(description='Ultimas N lineas del log Django')},
-    tags=["Logs"]
+    tags=["Registros del Sistema"]
 )
 class DjangoLogTailView(APIView):
     """
@@ -80,7 +80,7 @@ class DjangoLogTailView(APIView):
     description=("Lee las ultimas N entradas de job_execution_log en MariaDB ivr_legacy."),
     parameters=[OpenApiParameter('lines', int, default=50, description='Max 200')],
     responses={200: OpenApiResponse(description='Entradas recientes del pipeline ETL'), 503: OpenApiResponse(description='MariaDB no disponible')},
-    tags=["Logs"]
+    tags=["Registros del Sistema"]
 )
 class ETLLogTailView(APIView):
     """
@@ -126,7 +126,7 @@ class ETLLogTailView(APIView):
     description=("Filtra el log Django por texto, nivel y rango de fechas."),
     parameters=[OpenApiParameter('q', str), OpenApiParameter('date_from', str, required=True), OpenApiParameter('level', str, enum=['DEBUG','INFO','WARNING','ERROR','CRITICAL'])],
     responses={200: OpenApiResponse(description='Resultados filtrados del log')},
-    tags=["Logs"]
+    tags=["Registros del Sistema"]
 )
 class LogSearchView(APIView):
     """
@@ -180,7 +180,7 @@ class LogSearchView(APIView):
     description=("Crea un job de exportacion de logs. POST para crear, GET para listar."),
     parameters=[],
     responses={202: OpenApiResponse(description='Job de exportacion creado')},
-    tags=["Logs"]
+    tags=["Registros del Sistema"]
 )
 class LogExportView(APIView):
     """
@@ -220,7 +220,7 @@ class LogExportView(APIView):
     description=("Logs de host y container. Requiere integracion con Loki/CloudWatch."),
     parameters=[],
     responses={200: OpenApiResponse(description='Estado de disponibilidad de logs de infra')},
-    tags=["Logs"]
+    tags=["Registros del Sistema"]
 )
 class InfraLogView(APIView):
     """
@@ -243,7 +243,7 @@ class InfraLogView(APIView):
     description=("Verifica disponibilidad del archivo log Django y de job_execution_log en MariaDB."),
     parameters=[],
     responses={200: OpenApiResponse(description='Estado de cada fuente de logs')},
-    tags=["Logs"]
+    tags=["Registros del Sistema"]
 )
 class LogHealthView(APIView):
     """
@@ -288,7 +288,7 @@ class LogHealthView(APIView):
     description=("Estadisticas de los ultimos 7 dias desde job_execution_log en MariaDB."),
     parameters=[],
     responses={200: OpenApiResponse(description='Metricas de volumen y estado del pipeline')},
-    tags=["Logs"]
+    tags=["Registros del Sistema"]
 )
 class LogMetricsView(APIView):
     """

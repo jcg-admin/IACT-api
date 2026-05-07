@@ -126,7 +126,7 @@ class UserModuleAccessViewSet(viewsets.ModelViewSet):
     summary="UC_PERM_08 — Menu dinamico del usuario autenticado",
     description="Retorna los modulos accesibles segun las funciones del usuario.",
     responses={200: OpenApiResponse(description="Arbol de modulos accesibles")},
-    tags=["RBAC"]
+    tags=["Control de Acceso"]
 )
 class MyModulesView(APIView):
     """
@@ -174,15 +174,15 @@ from rest_framework import serializers as drf_serializers
 
 @extend_schema_view(
     list=extend_schema(
-        summary="UC_PERM_05 — Listar grupos de acceso", tags=["RBAC"]),
+        summary="UC_PERM_05 — Listar grupos de acceso", tags=["Control de Acceso"]),
     create=extend_schema(
-        summary="UC_PERM_05 — Crear grupo de acceso", tags=["RBAC"]),
+        summary="UC_PERM_05 — Crear grupo de acceso", tags=["Control de Acceso"]),
     retrieve=extend_schema(
-        summary="UC_PERM_05 — Detalle de grupo", tags=["RBAC"]),
+        summary="UC_PERM_05 — Detalle de grupo", tags=["Control de Acceso"]),
     partial_update=extend_schema(
-        summary="UC_PERM_05 — Modificar grupo", tags=["RBAC"]),
+        summary="UC_PERM_05 — Modificar grupo", tags=["Control de Acceso"]),
     destroy=extend_schema(
-        summary="UC_PERM_05 — Eliminar grupo (baja logica)", tags=["RBAC"]),
+        summary="UC_PERM_05 — Eliminar grupo (baja logica)", tags=["Control de Acceso"]),
 )
 class AccessGroupViewSet(viewsets.ModelViewSet):
     """
@@ -265,15 +265,15 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
 
 @extend_schema_view(
     list=extend_schema(
-        summary="UC_ACC_05 — Listar reglas de separacion", tags=["RBAC"]),
+        summary="UC_ACC_05 — Listar reglas de separacion", tags=["Control de Acceso"]),
     create=extend_schema(
-        summary="UC_ACC_05 — Crear regla de separacion", tags=["RBAC"]),
+        summary="UC_ACC_05 — Crear regla de separacion", tags=["Control de Acceso"]),
     retrieve=extend_schema(
-        summary="UC_ACC_05 — Detalle de regla", tags=["RBAC"]),
+        summary="UC_ACC_05 — Detalle de regla", tags=["Control de Acceso"]),
     partial_update=extend_schema(
-        summary="UC_ACC_05 — Modificar regla", tags=["RBAC"]),
+        summary="UC_ACC_05 — Modificar regla", tags=["Control de Acceso"]),
     destroy=extend_schema(
-        summary="UC_ACC_05 — Eliminar regla", tags=["RBAC"]),
+        summary="UC_ACC_05 — Eliminar regla", tags=["Control de Acceso"]),
 )
 class SeparationRuleViewSet(viewsets.ModelViewSet):
     """
@@ -320,13 +320,13 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
 
 @extend_schema_view(
     list=extend_schema(
-        summary="UC_ACC_08 — Listar permisos excepcionales", tags=["RBAC"]),
+        summary="UC_ACC_08 — Listar permisos excepcionales", tags=["Control de Acceso"]),
     create=extend_schema(
-        summary="UC_ACC_08 — Solicitar permiso excepcional", tags=["RBAC"]),
+        summary="UC_ACC_08 — Solicitar permiso excepcional", tags=["Control de Acceso"]),
     retrieve=extend_schema(
-        summary="UC_ACC_08 — Detalle de permiso excepcional", tags=["RBAC"]),
+        summary="UC_ACC_08 — Detalle de permiso excepcional", tags=["Control de Acceso"]),
     partial_update=extend_schema(
-        summary="UC_ACC_08 — Modificar permiso excepcional", tags=["RBAC"]),
+        summary="UC_ACC_08 — Modificar permiso excepcional", tags=["Control de Acceso"]),
 )
 class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
     """
@@ -381,7 +381,7 @@ class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
         200: OpenApiResponse(description="Permisos efectivos con desglose por fuente"),
         404: OpenApiResponse(description="Usuario no encontrado"),
     },
-    tags=["RBAC"]
+    tags=["Control de Acceso"]
 )
 class EffectivePermissionsView(APIView):
     """
@@ -447,7 +447,7 @@ class EffectivePermissionsView(APIView):
     description=(
         "Retorna todas las funciones activas con campo 'category' para FunctionSelector.jsx."
     ),
-    tags=["RBAC"],
+    tags=["Control de Acceso"],
     responses={200: OpenApiResponse(description='Lista de funciones con category')},
 )
 class FunctionListView(APIView):
@@ -473,7 +473,7 @@ class FunctionListView(APIView):
     description=(
         "Alias de /users/{id}/effective-permissions/ para compatibilidad con accessService.js."
     ),
-    tags=["RBAC"],
+    tags=["Control de Acceso"],
     responses={200: OpenApiResponse(description='Permisos efectivos'), 404: OpenApiResponse(description='Usuario no encontrado')},
 )
 class UserEffectivePermissionsAliasView(APIView):
@@ -531,7 +531,7 @@ class UserEffectivePermissionsAliasView(APIView):
     description=(
         "Verifica SeparationRule antes de crear UserPermission. Retorna newFunction para Redux."
     ),
-    tags=["RBAC"],
+    tags=["Control de Acceso"],
     request=inline_serializer('FunctionAssignRequest', fields={
         'userId':     drf_serializers_module.IntegerField(),
         'functionId': drf_serializers_module.IntegerField(),
@@ -615,7 +615,7 @@ class FunctionAssignView(APIView):
     description=(
         "Elimina el UserPermission del usuario."
     ),
-    tags=["RBAC"],
+    tags=["Control de Acceso"],
     request=inline_serializer('FunctionRevokeRequest', fields={
         'userId':     drf_serializers_module.IntegerField(),
         'functionId': drf_serializers_module.IntegerField(),
@@ -662,7 +662,7 @@ class FunctionRevokeView(APIView):
     description=(
         "Retorna conflicts[] con la estructura que consume accessSlice.sodConflicts."
     ),
-    tags=["RBAC"],
+    tags=["Control de Acceso"],
     request=inline_serializer('SeparationValidateRequest', fields={
         'userId':     drf_serializers_module.IntegerField(),
         'functionId': drf_serializers_module.IntegerField(),
@@ -735,7 +735,7 @@ class SeparationRuleValidateView(APIView):
     description=(
         "Alias de /access/groups/ para compatibilidad con accessService.getGroupers()."
     ),
-    tags=["RBAC"],
+    tags=["Control de Acceso"],
     responses={200: OpenApiResponse(description='Lista de AccessGroups activos')},
 )
 class GrouperListView(APIView):
@@ -758,7 +758,7 @@ class GrouperListView(APIView):
     description=(
         "Crea UserAccessGroup. Alias de POST /access/user-groups/."
     ),
-    tags=["RBAC"],
+    tags=["Control de Acceso"],
     request=inline_serializer('GrouperAssignRequest', fields={
         'userId':    drf_serializers_module.IntegerField(),
         'grouperId': drf_serializers_module.IntegerField(),
