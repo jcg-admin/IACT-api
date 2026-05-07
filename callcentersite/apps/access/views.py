@@ -348,9 +348,9 @@ class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
     def approve(self, request, pk=None):
         """UC_ACC_08 / UC_PERM_03 — Aprobar permiso excepcional."""
         perm = self.get_object()
-        if perm.status != 'pendiente':
+        if perm.status != 'pending':
             return Response({'error': 'Solo se pueden aprobar permisos pendientes.'}, status=400)
-        perm.status = 'aprobado'
+        perm.status = 'approved'
         perm.granted_by = request.user
         perm.save()
         return Response({'detail': 'Permiso aprobado.', 'status': perm.status})
@@ -361,7 +361,7 @@ class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
         perm = self.get_object()
         if perm.status in ('revocado', 'expirado'):
             return Response({'error': f'Permiso ya esta en status {perm.status}.'}, status=400)
-        perm.status = 'revocado'
+        perm.status = 'revoked'
         perm.save()
         return Response({'detail': 'Permiso revocado.', 'status': perm.status})
 
@@ -420,7 +420,7 @@ class EffectivePermissionsView(APIView):
         from django.utils import timezone
         now = timezone.now()
         exceptional = set(ExceptionalPermission.objects.filter(
-            user=user, status='aprobado',
+            user=user, status='approved',
             valid_from__lte=now, valid_until__gte=now
         ).values_list('function__code', flat=True))
 
@@ -509,7 +509,7 @@ class UserEffectivePermissionsAliasView(APIView):
 
         now = timezone.now()
         exceptional = set(ExceptionalPermission.objects.filter(
-            user=user, status='aprobado',
+            user=user, status='approved',
             valid_from__lte=now, valid_until__gte=now,
         ).values_list('function__code', flat=True))
 

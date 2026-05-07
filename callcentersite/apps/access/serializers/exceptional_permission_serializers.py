@@ -28,7 +28,7 @@ class ExceptionalPermissionSerializer(serializers.ModelSerializer):
         from django.utils import timezone
         now = timezone.now()
         return (
-            obj.status == 'aprobado'
+            obj.status == 'approved'
             and obj.valid_from <= now <= obj.valid_until
         )
 

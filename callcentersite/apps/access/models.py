@@ -221,9 +221,9 @@ class SeparationRule(SoftDeleteModel):
     propios reportes.
     """
     ESTADO_CHOICES = [
-        ('activa',    'Activa'),
-        ('suspendida','Suspendida'),
-        ('eliminada', 'Eliminada'),
+        ('active',    'Active'),
+        ('suspended', 'Suspended'),
+        ('deleted',   'Deleted'),
     ]
 
     name = models.CharField(
@@ -249,7 +249,7 @@ class SeparationRule(SoftDeleteModel):
     status = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
-        default='activa',
+        default='active',
         verbose_name=_('Estado'),
     )
     created_by = models.ForeignKey(
@@ -285,11 +285,11 @@ class ExceptionalPermission(models.Model):
     incluso si violaría una SeparationRule. Requiere justification y aprobacion.
     """
     ESTADO_CHOICES = [
-        ('pendiente',  'Pendiente de aprobacion'),
-        ('aprobado',   'Aprobado'),
-        ('activo',     'Activo'),
-        ('expirado',   'Expirado'),
-        ('revocado',   'Revocado'),
+        ('pending',  'Pending approval'),
+        ('approved', 'Approved'),
+        ('active',   'Active'),
+        ('expired',  'Expired'),
+        ('revoked',  'Revoked'),
     ]
 
     user = models.ForeignKey(
@@ -311,7 +311,7 @@ class ExceptionalPermission(models.Model):
     status = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
-        default='pendiente',
+        default='pending',
         verbose_name=_('Estado'),
     )
     valid_from = models.DateTimeField(

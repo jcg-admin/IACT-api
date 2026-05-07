@@ -12,21 +12,18 @@ if TYPE_CHECKING:
 
 def get_user_function_codes(user: 'User') -> list[str]:
     """
-    Return a list of function codes that the given user has access to.
-    Combines direct permissions. Superusers get all functions.
+    Returns the effective function codes for the given user.
+
+    Delegates to User.get_functions() as the single source of truth.
+    Superusers get all active function codes.
     """
     if user.is_superuser:
         from apps.access.models import Function
-        return list(Function.objects.filter(is_active=True).values_list('code', flat=True))
-
-    from apps.access.models import UserPermission
-    codes = UserPermission.objects.filter(
-        user=user,
-        function__is_active=True,
-        function__module__is_active=True,
-    ).values_list('function__code', flat=True)
-
-    return list(codes)
+        return sorted(
+            Function.objects.filter(is_active=True)
+            .values_list('code', flat=True)
+        )
+    return user.get_functions()
 
 
 def get_navigation_modules(user: 'User') -> list:
