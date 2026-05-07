@@ -242,17 +242,17 @@ class SeparationRule(SoftDeleteModel):
         related_name='separation_rules_as_b',
         verbose_name=_('Funcion B'),
     )
-    justificacion = models.TextField(
+    justification = models.TextField(
         verbose_name=_('Justificacion'),
         help_text='Razon de negocio por la que estas funciones son incompatibles.',
     )
-    estado = models.CharField(
+    status = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
         default='activa',
         verbose_name=_('Estado'),
     )
-    creado_por = models.ForeignKey(
+    created_by = models.ForeignKey(
         'users.User',
         on_delete=models.SET_NULL,
         null=True,
@@ -282,7 +282,7 @@ class ExceptionalPermission(models.Model):
     Permiso temporal excepcional para un usuario (UC_ACC_08, UC_PERM_03..04).
 
     Otorga una Function especifica a un usuario por un periodo limitado,
-    incluso si violaría una SeparationRule. Requiere justificacion y aprobacion.
+    incluso si violaría una SeparationRule. Requiere justification y aprobacion.
     """
     ESTADO_CHOICES = [
         ('pendiente',  'Pendiente de aprobacion'),
@@ -304,23 +304,23 @@ class ExceptionalPermission(models.Model):
         related_name='exceptional_grants',
         verbose_name=_('Funcion'),
     )
-    justificacion = models.TextField(
+    justification = models.TextField(
         verbose_name=_('Justificacion'),
         help_text='Minimo 50 caracteres explicando la necesidad.',
     )
-    estado = models.CharField(
+    status = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
         default='pendiente',
         verbose_name=_('Estado'),
     )
-    valido_desde = models.DateTimeField(
+    valid_from = models.DateTimeField(
         verbose_name=_('Valido desde'),
     )
-    valido_hasta = models.DateTimeField(
+    valid_until = models.DateTimeField(
         verbose_name=_('Valido hasta'),
     )
-    otorgado_por = models.ForeignKey(
+    granted_by = models.ForeignKey(
         'users.User',
         on_delete=models.SET_NULL,
         null=True,
@@ -328,16 +328,16 @@ class ExceptionalPermission(models.Model):
         related_name='exceptional_permissions_otorgados',
         verbose_name=_('Otorgado por'),
     )
-    creado_en = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = _('Permiso excepcional')
         verbose_name_plural = _('Permisos excepcionales')
-        ordering = ['-creado_en']
+        ordering = ['-created_at']
         db_table = 'access_exceptional_permission'
 
     def __str__(self):
-        return f'Exc: {self.user} -> {self.function.code} [{self.estado}]'
+        return f'Exc: {self.user} -> {self.function.code} [{self.status}]'
 
 
 class UserModuleAccess(models.Model):
@@ -404,8 +404,8 @@ class UserModuleAccess(models.Model):
         db_table = 'access_user_module_access'
 
     def __str__(self):
-        estado = 'activo' if self.is_active else 'revocado'
-        return f'{self.user} -> {self.module.code} [{estado}]'
+        status = 'activo' if self.is_active else 'revocado'
+        return f'{self.user} -> {self.module.code} [{status}]'
 
 
 class UserFunctionAssignment(models.Model):
@@ -461,5 +461,5 @@ class UserFunctionAssignment(models.Model):
         db_table = 'access_user_function_assignment'
 
     def __str__(self):
-        estado = 'activa' if self.is_active else 'revocada'
-        return f'{self.user} -> {self.function.code} [{estado}]'
+        status = 'activa' if self.is_active else 'revocada'
+        return f'{self.user} -> {self.function.code} [{status}]'

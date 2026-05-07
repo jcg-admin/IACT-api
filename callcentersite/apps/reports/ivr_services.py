@@ -28,7 +28,7 @@ def _call_sp(sp_name: str, params: list) -> list[dict]:
         return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
 
-def get_clientes(quarter: str) -> list[dict]:
+def get_clients(quarter: str) -> list[dict]:
     """
     UC_RPT_17 — Clientes unicos por segmento.
     Llama: sp_rpt_clientes(p_quarter)
@@ -37,31 +37,31 @@ def get_clientes(quarter: str) -> list[dict]:
     return _call_sp('sp_rpt_clientes', [quarter])
 
 
-def get_centros_transferencia(quarter: str, segmento: str = 'todas') -> list[dict]:
+def get_transfer_centers(quarter: str, segment: str = 'todas') -> list[dict]:
     """
     UC_RPT_12 — Detalle de centros de transferencia.
     Llama: sp_rpt_centros_transferencia(p_quarter, p_segmento)
     """
-    return _call_sp('sp_rpt_centros_transferencia', [quarter, segmento])
+    return _call_sp('sp_rpt_centros_transferencia', [quarter, segment])
 
 
-def get_llamadas_abandonadas(quarter: str, segmento: str = 'todas') -> list[dict]:
+def get_abandoned_calls(quarter: str, segment: str = 'todas') -> list[dict]:
     """
     UC_RPT_13 — Llamadas abandonadas por menu.
     Llama: sp_rpt_llamadas_abandonadas(p_quarter, p_segmento)
     """
-    return _call_sp('sp_rpt_llamadas_abandonadas', [quarter, segmento])
+    return _call_sp('sp_rpt_llamadas_abandonadas', [quarter, segment])
 
 
-def get_cmenu_error(quarter: str, segmento: str = 'todas') -> list[dict]:
+def get_cmenu_errors(quarter: str, segment: str = 'todas') -> list[dict]:
     """
     UC_RPT_14 — Anomalias: cMenu contiene numero de telefono.
     Llama: sp_rpt_cMENU_ERROR(p_quarter, p_segmento)
     """
-    return _call_sp('sp_rpt_cMENU_ERROR', [quarter, segmento])
+    return _call_sp('sp_rpt_cMENU_ERROR', [quarter, segment])
 
 
-def get_centros_xsegmento(quarter: str) -> list[dict]:
+def get_centers_by_segment(quarter: str) -> list[dict]:
     """
     UC_RPT_15 — KPIs SLA por centro de transferencia y segmento.
     Llama: sp_rpt_centros_xsegmento(p_quarter)
@@ -69,20 +69,20 @@ def get_centros_xsegmento(quarter: str) -> list[dict]:
     return _call_sp('sp_rpt_centros_xsegmento', [quarter])
 
 
-def get_menu_redirigidos(quarter: str, segmento: str = 'todas') -> list[dict]:
+def get_redirected_menus(quarter: str, segment: str = 'todas') -> list[dict]:
     """
     UC_RPT_16 (vista redirigidos) — Menus que dispararon transferencia.
     Llama: sp_rpt_menu_redirigidos(p_quarter, p_segmento)
     """
-    return _call_sp('sp_rpt_menu_redirigidos', [quarter, segmento])
+    return _call_sp('sp_rpt_menu_redirigidos', [quarter, segment])
 
 
-def get_menu_centro(quarter: str, segmento: str = 'todas') -> list[dict]:
+def get_center_menus(quarter: str, segment: str = 'todas') -> list[dict]:
     """
     UC_RPT_16 (vista menu_centro) — Centro -> menus que lo alimentan.
     Llama: sp_rpt_menu_centro(p_quarter, p_segmento)
     """
-    return _call_sp('sp_rpt_menu_centro', [quarter, segmento])
+    return _call_sp('sp_rpt_menu_centro', [quarter, segment])
 
 
 # Segmentos y quarters validos para validacion en views

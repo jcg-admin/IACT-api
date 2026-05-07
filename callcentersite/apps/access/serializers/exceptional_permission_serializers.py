@@ -18,30 +18,30 @@ class ExceptionalPermissionSerializer(serializers.ModelSerializer):
         model = ExceptionalPermission
         fields = [
             'id', 'user', 'function', 'function_code', 'function_name',
-            'justificacion', 'estado', 'valido_desde', 'valido_hasta',
-            'otorgado_por', 'creado_en', 'es_activo',
+            'justification', 'status', 'valid_from', 'valid_until',
+            'granted_by', 'created_at', 'es_activo',
         ]
-        read_only_fields = ['estado', 'otorgado_por', 'creado_en']
+        read_only_fields = ['status', 'granted_by', 'created_at']
 
     @extend_schema_field({'type': 'boolean'})
     def get_es_activo(self, obj):
         from django.utils import timezone
         now = timezone.now()
         return (
-            obj.estado == 'aprobado'
-            and obj.valido_desde <= now <= obj.valido_hasta
+            obj.status == 'aprobado'
+            and obj.valid_from <= now <= obj.valid_until
         )
 
-    def validate_justificacion(self, value):
+    def validate_justification(self, value):
         if len(value) < 50:
             raise serializers.ValidationError(
-                'La justificacion debe tener al menos 50 caracteres.')
+                'La justification debe tener al menos 50 caracteres.')
         return value
 
     def validate(self, data):
-        desde = data.get('valido_desde')
-        hasta = data.get('valido_hasta')
+        desde = data.get('valid_from')
+        hasta = data.get('valid_until')
         if desde and hasta and hasta <= desde:
             raise serializers.ValidationError(
-                'valido_hasta debe ser posterior a valido_desde.')
+                'valid_until debe ser posterior a valid_from.')
         return data

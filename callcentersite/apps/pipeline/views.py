@@ -1,7 +1,7 @@
 """
 Views para app pipeline.
 
-UC_PIP_01: Supervision del estado del ETL IVR.
+UC_PIP_01: Supervision del status del ETL IVR.
   Lee directamente de job_execution_log y etl_runs en MariaDB (ivr_legacy)
   via connections['ivr'].cursor() segun especifica el UC.
 
@@ -11,7 +11,7 @@ UC_PIP_01: Supervision del estado del ETL IVR.
     trimestre      → quarter_name
     started_at     → start_time
     finished_at    → end_time
-    estado         → status  (SUCCESS/FAILED/RUNNING/SKIP)
+    status         → status  (SUCCESS/FAILED/RUNNING/SKIP)
     base_records   → records_procesados
     error_message  → error_message
     executed_by    → ejecutado_por
@@ -79,14 +79,14 @@ def _build_resumen_salud(runs: list[dict]) -> dict:
       critico   — ninguna exitosa en 24h o ultima es fallida
     """
     now = datetime.now(timezone.utc)
-    ventana_14h = now - timedelta(hours=14)
-    ventana_24h = now - timedelta(hours=24)
+    window_14h = now - timedelta(hours=14)
+    window_24h = now - timedelta(hours=24)
 
-    ejecucion_en_curso   = None
-    ultima_exitosa       = None
-    ultima_fallida       = None
-    total_exitosas_24h   = 0
-    total_fallidas_24h   = 0
+    running_execution   = None
+    last_successful       = None
+    last_failed       = None
+    total_successful_24h   = 0
+    total_failed_24h   = 0
 
     for run in runs:
         end = run['end_time']
@@ -99,46 +99,46 @@ def _build_resumen_salud(runs: list[dict]) -> dict:
 
         s = run['status']
 
-        if s == 'RUNNING' and ejecucion_en_curso is None:
-            ejecucion_en_curso = run
+        if s == 'RUNNING' and running_execution is None:
+            running_execution = run
 
         if s == 'SUCCESS':
-            if ultima_exitosa is None:
-                ultima_exitosa = run
-            if end and end >= ventana_24h:
-                total_exitosas_24h += 1
+            if last_successful is None:
+                last_successful = run
+            if end and end >= window_24h:
+                total_successful_24h += 1
 
         if s == 'FAILED':
-            if ultima_fallida is None:
-                ultima_fallida = run
-            if end and end >= ventana_24h:
-                total_fallidas_24h += 1
+            if last_failed is None:
+                last_failed = run
+            if end and end >= window_24h:
+                total_failed_24h += 1
 
-    # Calcular estado general
-    if ultima_exitosa:
-        end_exitosa = ultima_exitosa['end_time']
-        if end_exitosa and hasattr(end_exitosa, 'tzinfo') and end_exitosa.tzinfo is None:
-            end_exitosa = end_exitosa.replace(tzinfo=timezone.utc)
+    # Calcular status general
+    if last_successful:
+        last_successful_end = last_successful['end_time']
+        if last_successful_end and hasattr(last_successful_end, 'tzinfo') and last_successful_end.tzinfo is None:
+            last_successful_end = last_successful_end.replace(tzinfo=timezone.utc)
 
-        if end_exitosa and end_exitosa >= ventana_14h:
-            estado_general = 'ok'
-        elif end_exitosa and end_exitosa >= ventana_24h:
-            estado_general = 'degradado'
+        if last_successful_end and last_successful_end >= window_14h:
+            status_general = 'ok'
+        elif last_successful_end and last_successful_end >= window_24h:
+            status_general = 'degradado'
         else:
-            estado_general = 'critico'
+            status_general = 'critico'
     else:
-        estado_general = 'critico'
+        status_general = 'critico'
 
-    if ultima_fallida and ultima_exitosa is None:
-        estado_general = 'critico'
+    if last_failed and last_successful is None:
+        status_general = 'critico'
 
     return {
-        'estado_general':           estado_general,
-        'ejecucion_en_curso':       ultima_exitosa if ejecucion_en_curso else None,
-        'ultima_ejecucion_exitosa': ultima_exitosa,
-        'ultima_ejecucion_fallida': ultima_fallida,
-        'total_exitosas_24h':       total_exitosas_24h,
-        'total_fallidas_24h':       total_fallidas_24h,
+        'status_general':           status_general,
+        'running_execution':       last_successful if running_execution else None,
+        'last_successful_execution': last_successful,
+        'last_failed_execution': last_failed,
+        'total_successful_24h':       total_successful_24h,
+        'total_failed_24h':       total_failed_24h,
     }
 
 
@@ -153,7 +153,7 @@ def _format_run(run: dict | None) -> dict | None:
         'step_name':         run['step_name'],
         'started_at':        run['start_time'],
         'finished_at':       run['end_time'],
-        'estado':            run['status'],
+        'status':            run['status'],
         'base_records':      run['records_procesados'],
         'duracion_seg':      run['duracion_seg'],
         'error_message':     run['error_message'],
@@ -169,10 +169,10 @@ def _format_run(run: dict | None) -> dict | None:
     summary="UC_PIP_01 — Estado del pipeline ETL IVR",
     description=(
         "Resumen de salud del pipeline. Lee job_execution_log en MariaDB ivr_legacy. "
-        "Retorna estado: ok (ultima exitosa < 14h), degradado (14-24h) o critico (> 24h)."
+        "Retorna status: ok (ultima exitosa < 14h), degradado (14-24h) o critico (> 24h)."
     ),
     responses={
-        200: OpenApiResponse(description="ResumenSalud con estado ok | degradado | critico"),
+        200: OpenApiResponse(description="ResumenSalud con status ok | degradado | critico"),
         503: OpenApiResponse(description="MariaDB ivr_legacy no disponible"),
     },
     tags=["Estado del Pipeline"]
@@ -181,19 +181,19 @@ def _format_run(run: dict | None) -> dict | None:
 @permission_classes([IsAuthenticated])
 def etl_status(request):
     """
-    UC_PIP_01 — Supervision del estado del ETL IVR.
+    UC_PIP_01 — Supervision del status del ETL IVR.
 
     GET /api/pipeline/status/
 
     Response:
     {
         "resumen": {
-            "estado_general": "ok" | "degradado" | "critico",
-            "ejecucion_en_curso": {...} | null,
+            "status_general": "ok" | "degradado" | "critico",
+            "running_execution": {...} | null,
             "ultima_ejecucion_exitosa": {...} | null,
             "ultima_ejecucion_fallida": {...} | null,
-            "total_exitosas_24h": int,
-            "total_fallidas_24h": int
+            "total_successful_24h": int,
+            "total_failed_24h": int
         },
         "ultimas_ejecuciones": [...]
     }
@@ -212,14 +212,14 @@ def etl_status(request):
     if not runs:
         return Response({
             'resumen': {
-                'estado_general':           'critico',
-                'ejecucion_en_curso':       None,
-                'ultima_ejecucion_exitosa': None,
-                'ultima_ejecucion_fallida': None,
-                'total_exitosas_24h':       0,
-                'total_fallidas_24h':       0,
+                'status_general':           'critico',
+                'running_execution':       None,
+                'last_successful_execution': None,
+                'last_failed_execution': None,
+                'total_successful_24h':       0,
+                'total_failed_24h':       0,
             },
-            'ultimas_ejecuciones': [],
+            'latest_executions': [],
             'message': 'No hay ejecuciones ETL registradas.'
         })
 
@@ -227,14 +227,14 @@ def etl_status(request):
 
     return Response({
         'resumen': {
-            'estado_general':           resumen['estado_general'],
-            'ejecucion_en_curso':       _format_run(resumen['ejecucion_en_curso']),
-            'ultima_ejecucion_exitosa': _format_run(resumen['ultima_ejecucion_exitosa']),
-            'ultima_ejecucion_fallida': _format_run(resumen['ultima_ejecucion_fallida']),
-            'total_exitosas_24h':       resumen['total_exitosas_24h'],
-            'total_fallidas_24h':       resumen['total_fallidas_24h'],
+            'status_general':           resumen['status_general'],
+            'running_execution':       _format_run(resumen['running_execution']),
+            'last_successful_execution': _format_run(resumen['last_successful_execution']),
+            'last_failed_execution': _format_run(resumen['last_failed_execution']),
+            'total_successful_24h':       resumen['total_successful_24h'],
+            'total_failed_24h':       resumen['total_failed_24h'],
         },
-        'ultimas_ejecuciones': [_format_run(r) for r in runs],
+        'latest_executions': [_format_run(r) for r in runs],
     })
 
 
@@ -271,7 +271,7 @@ def etl_errors(request):
 
     Fuente: job_execution_log WHERE status='FAILED' en MariaDB.
     """
-    trimestre = request.query_params.get('trimestre')
+    quarter = request.query_params.get('quarter')
     try:
         page      = max(1, int(request.query_params.get('page', 1)))
         page_size = min(100, max(1, int(request.query_params.get('page_size', 20))))
@@ -283,9 +283,9 @@ def etl_errors(request):
     conditions = ["status = 'FAILED'"]
     params = []
 
-    if trimestre:
+    if quarter:
         conditions.append("quarter_name = %s")
-        params.append(trimestre)
+        params.append(quarter)
 
     where = ' AND '.join(conditions)
     sql = f"""
@@ -302,11 +302,11 @@ def etl_errors(request):
 
     try:
         with connections['ivr'].cursor() as cursor:
-            cursor.execute(sql_count, params[:-2] if trimestre else [])
+            cursor.execute(sql_count, params[:-2] if quarter else [])
             total = cursor.fetchone()[0]
             cursor.execute(sql, params)
             cols = [c[0] for c in cursor.description]
-            errores = [dict(zip(cols, row)) for row in cursor.fetchall()]
+            errors = [dict(zip(cols, row)) for row in cursor.fetchall()]
     except OperationalError as e:
         return Response({'error': 'No se pudo conectar a MariaDB.', 'detail': str(e)},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
@@ -315,7 +315,7 @@ def etl_errors(request):
         'total':    total,
         'page':     page,
         'page_size':page_size,
-        'errores':  errores,
+        'errors': errors,
     })
 
 
@@ -347,12 +347,12 @@ def etl_data_availability(request):
     Query params:
       trimestre (requerido): ej Q01_25
 
-    Retorna el ultimo ETL exitoso para ese quarter y el estado de frescura.
+    Retorna el ultimo ETL exitoso para ese quarter y el status de frescura.
     Fuente: job_execution_log WHERE status='SUCCESS' en MariaDB.
     """
-    trimestre = request.query_params.get('trimestre')
-    if not trimestre:
-        return Response({'error': 'Parametro trimestre es requerido.'}, status=400)
+    quarter = request.query_params.get('quarter')
+    if not quarter:
+        return Response({'error': 'Parameter quarter is required.'}, status=400)
 
     sql = """
         SELECT quarter_name, MAX(end_time) AS ultima_carga,
@@ -365,7 +365,7 @@ def etl_data_availability(request):
     """
     try:
         with connections['ivr'].cursor() as cursor:
-            cursor.execute(sql, [trimestre])
+            cursor.execute(sql, [quarter])
             row = cursor.fetchone()
     except OperationalError as e:
         return Response({'error': 'No se pudo conectar a MariaDB.', 'detail': str(e)},
@@ -374,7 +374,7 @@ def etl_data_availability(request):
     if not row:
         return Response({
             'trimestre':             trimestre,
-            'estado_frescura':       'sin_datos',
+            'status_frescura':       'sin_datos',
             'ultima_carga':          None,
             'registros_disponibles': 0,
             'minutos_desde_etl':     None,
@@ -398,7 +398,7 @@ def etl_data_availability(request):
 
     return Response({
         'trimestre':             quarter_name,
-        'estado_frescura':       frescura,
+        'status_frescura':       frescura,
         'ultima_carga':          ultima_carga,
         'registros_disponibles': registros,
         'minutos_desde_etl':     minutos,
@@ -447,24 +447,24 @@ def etl_retry(request):
     directamente en MariaDB.
     Requerimiento: motivo >= 20 caracteres.
     """
-    trimestre = request.data.get('trimestre')
+    quarter = request.data.get('quarter')
     motivo    = request.data.get('motivo', '')
 
-    if not trimestre:
-        return Response({'error': 'trimestre es requerido.'}, status=400)
+    if not quarter:
+        return Response({'error': 'quarter is required.'}, status=400)
     if len(motivo) < 20:
         return Response({'error': 'motivo debe tener al menos 20 caracteres.'}, status=400)
 
     # Parsear trimestre: Q01_25 -> year=2025, quarter_num=1
     try:
-        parts       = trimestre.upper().split('_')   # ['Q01', '25']
+        parts       = quarter.upper().split('_')   # ['Q01', '25']
         quarter_num = int(parts[0][1:])              # 1
         year        = 2000 + int(parts[1])           # 2025
         assert 1 <= quarter_num <= 4
         assert 2020 <= year <= 2030
     except Exception:
         return Response(
-            {'error': f'trimestre invalido: {trimestre}. Formato esperado: Q01_25'},
+            {'error': f'Invalid quarter: {quarter}. Formato esperado: Q01_25'},
             status=400
         )
 
@@ -490,8 +490,8 @@ def etl_retry(request):
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     return Response({
-        'detail':    f'Reintento iniciado para {trimestre}.',
-        'trimestre': trimestre,
+        'detail':    f'Retry initiated for {quarter}.',
+        'quarter': quarter,
         'motivo':    motivo,
         'resultado': list(result) if result else None,
         'ejecutado_por': str(request.user),

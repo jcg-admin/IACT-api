@@ -10,7 +10,7 @@ El endpoint check retorna:
 
 El endpoint list retorna:
   [{ id, name, function_a, function_a_code, function_b, function_b_code,
-     justificacion, estado, creado_por }]
+     justification, status, created_by }]
 """
 from rest_framework import serializers
 from apps.access.models import SeparationRule
@@ -32,9 +32,9 @@ class SeparationRuleSerializer(serializers.ModelSerializer):
             'id', 'name',
             'function_a', 'function_a_code', 'function_a_name',
             'function_b', 'function_b_code', 'function_b_name',
-            'justificacion', 'estado', 'creado_por',
+            'justification', 'status', 'created_by',
         ]
-        read_only_fields = ['creado_por']
+        read_only_fields = ['created_by']
 
 
 class SeparationRuleCheckSerializer(serializers.Serializer):

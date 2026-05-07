@@ -2,7 +2,7 @@
 Views de reportes IVR — B-01.
 
 Expone los SPs de MariaDB como endpoints DRF.
-Cada view valida quarter y segmento, invoca el servicio y retorna JSON.
+Cada view valida quarter y segment, invoca el servicio y retorna JSON.
 """
 from django.db import OperationalError
 from rest_framework.views import APIView
@@ -20,20 +20,20 @@ _IVR_QUARTER_PARAM = OpenApiParameter(
     required=True,
 )
 _IVR_SEGMENTO_PARAM = OpenApiParameter(
-    'segmento', str,
+    'segment', str,
     enum=['todas', 'nacional_A', 'nacional_B', 'puebla'],
     default='todas',
     description="Segmento de negocio. Default: todas",
 )
 
 
-def _validate(quarter=None, segmento=None):
-    errores = []
+def _validate(quarter=None, segment=None):
+    errors = []
     if quarter and quarter not in svc.QUARTERS_VALIDOS:
         errores.append(f'quarter invalido: {quarter}. Validos: {sorted(svc.QUARTERS_VALIDOS)}')
-    if segmento and segmento not in svc.SEGMENTOS_VALIDOS:
-        errores.append(f'segmento invalido: {segmento}. Validos: {sorted(svc.SEGMENTOS_VALIDOS)}')
-    return errores
+    if segment and segment not in svc.SEGMENTOS_VALIDOS:
+        errores.append(f'segment invalido: {segment}. Validos: {sorted(svc.SEGMENTOS_VALIDOS)}')
+    return errors
 
 
 def _ivr_response(fn, *args, extra=None):
@@ -45,33 +45,33 @@ def _ivr_response(fn, *args, extra=None):
             {'error': 'No se pudo conectar a la base de datos IVR.', 'detail': str(e)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
-    payload = {'total_filas': len(data), 'datos': data}
+    payload = {'total_rows': len(data), 'data': data}
     if extra:
         payload.update(extra)
     return Response(payload)
 
 
 @extend_schema(
-    summary="UC_RPT_17 — Clientes unicos por segmento",
+    summary="UC_RPT_17 — Clientes unicos por segment",
     description="Invoca sp_rpt_clientes(p_quarter) en MariaDB. Retorna 3 filas: nacional_A, nacional_B, puebla.",
     parameters=[_IVR_QUARTER_PARAM],
-    responses={200: OpenApiResponse(description="Lista de clientes por segmento"),
+    responses={200: OpenApiResponse(description="Lista de clientes por segment"),
                400: OpenApiResponse(description="Quarter invalido"),
                503: OpenApiResponse(description="MariaDB no disponible")},
     tags=["Reportes de Llamadas"]
 )
 class ClientesReportView(APIView):
     """
-    UC_RPT_17 — Clientes unicos por segmento.
+    UC_RPT_17 — Clientes unicos por segment.
     GET /api/reports/ivr/clients/?quarter=Q01_25
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
-        errores = _validate(quarter=quarter)
-        if errores:
-            return Response({'errores': errores}, status=400)
+        errors = _validate(quarter=quarter)
+        if errors:
+            return Response({'errors': errors}, status=400)
         return _ivr_response(svc.get_clientes, quarter,
                               extra={'quarter': quarter})
 
@@ -86,18 +86,18 @@ class ClientesReportView(APIView):
 class CentrosTransferenciaView(APIView):
     """
     UC_RPT_12 — Detalle centros de transferencia.
-    GET /api/reports/ivr/transfer-centers/?quarter=Q01_25&segmento=todas
+    GET /api/reports/ivr/transfer-centers/?quarter=Q01_25&segment=todas
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
-        segmento = request.query_params.get('segmento', 'todas')
-        errores = _validate(quarter=quarter, segmento=segmento)
-        if errores:
-            return Response({'errores': errores}, status=400)
-        return _ivr_response(svc.get_centros_transferencia, quarter, segmento,
-                              extra={'quarter': quarter, 'segmento': segmento})
+        segment = request.query_params.get('segment', 'todas')
+        errors = _validate(quarter=quarter, segment=segment)
+        if errors:
+            return Response({'errors': errors}, status=400)
+        return _ivr_response(svc.get_centros_transferencia, quarter, segment,
+                              extra={'quarter': quarter, 'segment': segment})
 
 
 @extend_schema(
@@ -110,18 +110,18 @@ class CentrosTransferenciaView(APIView):
 class LlamadasAbandonadasView(APIView):
     """
     UC_RPT_13 — Llamadas abandonadas.
-    GET /api/reports/ivr/abandoned/?quarter=Q01_25&segmento=todas
+    GET /api/reports/ivr/abandoned/?quarter=Q01_25&segment=todas
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
-        segmento = request.query_params.get('segmento', 'todas')
-        errores = _validate(quarter=quarter, segmento=segmento)
-        if errores:
-            return Response({'errores': errores}, status=400)
-        return _ivr_response(svc.get_llamadas_abandonadas, quarter, segmento,
-                              extra={'quarter': quarter, 'segmento': segmento})
+        segment = request.query_params.get('segment', 'todas')
+        errors = _validate(quarter=quarter, segment=segment)
+        if errors:
+            return Response({'errors': errors}, status=400)
+        return _ivr_response(svc.get_llamadas_abandonadas, quarter, segment,
+                              extra={'quarter': quarter, 'segment': segment})
 
 
 @extend_schema(
@@ -135,22 +135,22 @@ class LlamadasAbandonadasView(APIView):
 class CMENUErrorView(APIView):
     """
     UC_RPT_14 — Anomalias cMenu con numero de telefono.
-    GET /api/reports/ivr/menu-errors/?quarter=Q01_25&segmento=todas
+    GET /api/reports/ivr/menu-errors/?quarter=Q01_25&segment=todas
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
-        segmento = request.query_params.get('segmento', 'todas')
-        errores = _validate(quarter=quarter, segmento=segmento)
-        if errores:
-            return Response({'errores': errores}, status=400)
-        return _ivr_response(svc.get_cmenu_error, quarter, segmento,
-                              extra={'quarter': quarter, 'segmento': segmento})
+        segment = request.query_params.get('segment', 'todas')
+        errors = _validate(quarter=quarter, segment=segment)
+        if errors:
+            return Response({'errors': errors}, status=400)
+        return _ivr_response(svc.get_cmenu_error, quarter, segment,
+                              extra={'quarter': quarter, 'segment': segment})
 
 
 @extend_schema(
-    summary="UC_RPT_15 — KPIs SLA por centro y segmento",
+    summary="UC_RPT_15 — KPIs SLA por centro y segment",
     parameters=[_IVR_QUARTER_PARAM],
     responses={200: OpenApiResponse(description="KPIs de nivel de servicio por centro"),
                503: OpenApiResponse(description="MariaDB no disponible")},
@@ -158,16 +158,16 @@ class CMENUErrorView(APIView):
 )
 class CentrosXSegmentoView(APIView):
     """
-    UC_RPT_15 — KPIs SLA por centro y segmento.
+    UC_RPT_15 — KPIs SLA por centro y segment.
     GET /api/reports/ivr/centers-by-segment/?quarter=Q01_25
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
-        errores = _validate(quarter=quarter)
-        if errores:
-            return Response({'errores': errores}, status=400)
+        errors = _validate(quarter=quarter)
+        if errors:
+            return Response({'errors': errors}, status=400)
         return _ivr_response(svc.get_centros_xsegmento, quarter,
                               extra={'quarter': quarter})
 
@@ -188,21 +188,21 @@ class CentrosXSegmentoView(APIView):
 class MenusIVRView(APIView):
     """
     UC_RPT_16 — Menus IVR (redirigidos o menu_centro).
-    GET /api/reports/ivr/menus/?quarter=Q01_25&vista=redirigidos&segmento=todas
+    GET /api/reports/ivr/menus/?quarter=Q01_25&vista=redirigidos&segment=todas
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
         vista    = request.query_params.get('vista',    'redirigidos')
-        segmento = request.query_params.get('segmento', 'todas')
+        segment = request.query_params.get('segment', 'todas')
 
-        errores = _validate(quarter=quarter, segmento=segmento)
+        errors = _validate(quarter=quarter, segment=segment)
         if vista not in ('redirigidos', 'menu_centro'):
             errores.append('vista invalida: usar redirigidos o menu_centro')
-        if errores:
-            return Response({'errores': errores}, status=400)
+        if errors:
+            return Response({'errors': errors}, status=400)
 
         fn = svc.get_menu_redirigidos if vista == 'redirigidos' else svc.get_menu_centro
-        return _ivr_response(fn, quarter, segmento,
-                              extra={'quarter': quarter, 'vista': vista, 'segmento': segmento})
+        return _ivr_response(fn, quarter, segment,
+                              extra={'quarter': quarter, 'vista': vista, 'segment': segment})

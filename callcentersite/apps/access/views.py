@@ -292,7 +292,7 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
     serializer_class = SeparationRuleSerializer
 
     def perform_create(self, serializer):
-        serializer.save(creado_por=self.request.user)
+        serializer.save(created_by=self.request.user)
 
     @action(detail=False, methods=['get'], url_path='check')
     def check_conflict(self, request):
@@ -303,7 +303,7 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
         fa = request.query_params.get('function_a')
         fb = request.query_params.get('function_b')
         conflicto = SeparationRule.objects.filter(
-            estado='activa'
+            status='activa'
         ).filter(
             models.Q(function_a_id=fa, function_b_id=fb) |
             models.Q(function_a_id=fb, function_b_id=fa)
@@ -338,7 +338,7 @@ class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
     PATCH  /api/access/exceptional/{id}/      — aprobar/revocar
     """
     queryset = ExceptionalPermission.objects.select_related(
-        'user', 'function', 'otorgado_por'
+        'user', 'function', 'granted_by'
     ).all()
     permission_classes = [IsAuthenticated]
 
@@ -348,22 +348,22 @@ class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
     def approve(self, request, pk=None):
         """UC_ACC_08 / UC_PERM_03 — Aprobar permiso excepcional."""
         perm = self.get_object()
-        if perm.estado != 'pendiente':
+        if perm.status != 'pendiente':
             return Response({'error': 'Solo se pueden aprobar permisos pendientes.'}, status=400)
-        perm.estado = 'aprobado'
-        perm.otorgado_por = request.user
+        perm.status = 'aprobado'
+        perm.granted_by = request.user
         perm.save()
-        return Response({'detail': 'Permiso aprobado.', 'estado': perm.estado})
+        return Response({'detail': 'Permiso aprobado.', 'status': perm.status})
 
     @action(detail=True, methods=['patch'], url_path='revoke')
     def revoke(self, request, pk=None):
         """UC_PERM_04 — Revocar permiso excepcional."""
         perm = self.get_object()
-        if perm.estado in ('revocado', 'expirado'):
-            return Response({'error': f'Permiso ya esta en estado {perm.estado}.'}, status=400)
-        perm.estado = 'revocado'
+        if perm.status in ('revocado', 'expirado'):
+            return Response({'error': f'Permiso ya esta en status {perm.status}.'}, status=400)
+        perm.status = 'revocado'
         perm.save()
-        return Response({'detail': 'Permiso revocado.', 'estado': perm.estado})
+        return Response({'detail': 'Permiso revocado.', 'status': perm.status})
 
 
 # ---------------------------------------------------------------------------
@@ -420,8 +420,8 @@ class EffectivePermissionsView(APIView):
         from django.utils import timezone
         now = timezone.now()
         exceptional = set(ExceptionalPermission.objects.filter(
-            user=user, estado='aprobado',
-            valido_desde__lte=now, valido_hasta__gte=now
+            user=user, status='aprobado',
+            valid_from__lte=now, valid_until__gte=now
         ).values_list('function__code', flat=True))
 
         all_functions = direct | group_fns | exceptional
@@ -509,8 +509,8 @@ class UserEffectivePermissionsAliasView(APIView):
 
         now = timezone.now()
         exceptional = set(ExceptionalPermission.objects.filter(
-            user=user, estado='aprobado',
-            valido_desde__lte=now, valido_hasta__gte=now,
+            user=user, status='aprobado',
+            valid_from__lte=now, valid_until__gte=now,
         ).values_list('function__code', flat=True))
 
         all_functions = sorted(direct | from_groups | exceptional)
@@ -580,7 +580,7 @@ class FunctionAssignView(APIView):
         # Verificar conflicto de SeparationRule
         existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
         conflict = SeparationRule.objects.filter(
-            estado='activa'
+            status='activa'
         ).filter(
             dj_models.Q(function_a=function, function_b__code__in=existing_codes) |
             dj_models.Q(function_b=function, function_a__code__in=existing_codes)
@@ -710,7 +710,7 @@ class SeparationRuleValidateView(APIView):
 
         existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
         rules = SeparationRule.objects.filter(
-            estado='activa'
+            status='activa'
         ).filter(
             dj_models.Q(function_a=function) | dj_models.Q(function_b=function)
         ).select_related('function_a', 'function_b')
@@ -721,7 +721,7 @@ class SeparationRuleValidateView(APIView):
             if other_fn.code in existing_codes:
                 conflicts.append({
                     'rule':     rule.name,
-                    'ruleDesc': rule.justificacion,
+                    'ruleDesc': rule.justification,
                     'setA':     [function.code],
                     'setB':     [other_fn.code],
                     'message':  f'{rule.name}: {function.code} incompatible con {other_fn.code}',
