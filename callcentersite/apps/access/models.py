@@ -191,7 +191,7 @@ class UserAccessGroup(models.Model):
         return f'{self.user} -> {self.access_group.code}'
 
 
-class SodRule(SoftDeleteModel):
+class SeparationRule(SoftDeleteModel):
     """
     Regla de Separacion de Deberes / Separation of Duties
     (UC_ACC_05, UC_ADM_01).
@@ -216,13 +216,13 @@ class SodRule(SoftDeleteModel):
     function_a = models.ForeignKey(
         Function,
         on_delete=models.CASCADE,
-        related_name='sod_rules_as_a',
+        related_name='separation_rules_as_a',
         verbose_name=_('Funcion A'),
     )
     function_b = models.ForeignKey(
         Function,
         on_delete=models.CASCADE,
-        related_name='sod_rules_as_b',
+        related_name='separation_rules_as_b',
         verbose_name=_('Funcion B'),
     )
     justificacion = models.TextField(
@@ -239,25 +239,25 @@ class SodRule(SoftDeleteModel):
         'users.User',
         on_delete=models.SET_NULL,
         null=True,
-        related_name='sod_rules_creadas',
+        related_name='separation_rules_created',
         verbose_name=_('Creado por'),
     )
 
     class Meta:
-        verbose_name = _('Regla SoD')
-        verbose_name_plural = _('Reglas SoD')
+        verbose_name = _('Regla de separacion')
+        verbose_name_plural = _('Reglas de separacion')
         ordering = ['name']
         db_table = 'access_sod_rule'
         constraints = [
             models.UniqueConstraint(
                 fields=['function_a', 'function_b'],
                 condition=models.Q(deleted_at__isnull=True),
-                name='unique_sod_pair_active',
+                name='unique_separation_pair_active',
             )
         ]
 
     def __str__(self):
-        return f'SoD: {self.function_a.code} ⊕ {self.function_b.code}'
+        return f'SepRule: {self.function_a.code} ⊕ {self.function_b.code}'
 
 
 class ExceptionalPermission(models.Model):

@@ -9,7 +9,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ModuleViewSet, UserModuleAccessViewSet, MyModulesView,
     AccessGroupViewSet, UserAccessGroupViewSet,
-    SodRuleViewSet, ExceptionalPermissionViewSet,
+    SeparationRuleViewSet, ExceptionalPermissionViewSet,
     EffectivePermissionsView,
 )
 
@@ -18,7 +18,7 @@ router.register(r'modules',           ModuleViewSet,            basename='module
 router.register(r'module-accesses',   UserModuleAccessViewSet,  basename='moduleaccess')
 router.register(r'groups',            AccessGroupViewSet,       basename='accessgroup')
 router.register(r'user-groups',       UserAccessGroupViewSet,   basename='useraccessgroup')
-router.register(r'sod-rules',         SodRuleViewSet,           basename='sodrule')
+router.register(r'separation-rules',   SeparationRuleViewSet,    basename='separationrule')
 router.register(r'exceptional',       ExceptionalPermissionViewSet, basename='exceptional')
 
 app_name = 'access'

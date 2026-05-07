@@ -147,7 +147,7 @@ class MyModulesView(APIView):
 # ---------------------------------------------------------------------------
 # B-05: AccessGroup ViewSet (UC_ACC_04, UC_PERM_01..06, UC_ADM_03)
 # ---------------------------------------------------------------------------
-from .models import AccessGroup, UserAccessGroup, SodRule, ExceptionalPermission
+from .models import AccessGroup, UserAccessGroup, SeparationRule, ExceptionalPermission
 from rest_framework import serializers as drf_serializers
 
 
@@ -245,10 +245,10 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
 
 
 # ---------------------------------------------------------------------------
-# B-05: SodRule ViewSet (UC_ACC_05, UC_ADM_01)
+# B-05: SeparationRule ViewSet (UC_ACC_05, UC_ADM_01)
 # ---------------------------------------------------------------------------
 
-class SodRuleViewSet(viewsets.ModelViewSet):
+class SeparationRuleViewSet(viewsets.ModelViewSet):
     """
     CRUD de reglas de Separacion de Deberes.
 
@@ -259,20 +259,20 @@ class SodRuleViewSet(viewsets.ModelViewSet):
     PATCH  /api/access/sod-rules/{id}/    — modificar
     DELETE /api/access/sod-rules/{id}/    — baja logica
     """
-    queryset = SodRule.objects.select_related('function_a', 'function_b').all()
+    queryset = SeparationRule.objects.select_related('function_a', 'function_b').all()
     permission_classes = [IsAuthenticated]
 
     def get_serializer_class(self):
         from rest_framework import serializers
 
-        class SodRuleSerializer(serializers.ModelSerializer):
+        class SeparationRuleSerializer(serializers.ModelSerializer):
             class Meta:
-                model = SodRule
+                model = SeparationRule
                 fields = ['id', 'name', 'function_a', 'function_b',
                           'justificacion', 'estado', 'creado_por']
                 read_only_fields = ['creado_por']
 
-        return SodRuleSerializer
+        return SeparationRuleSerializer
 
     def perform_create(self, serializer):
         serializer.save(creado_por=self.request.user)
@@ -285,7 +285,7 @@ class SodRuleViewSet(viewsets.ModelViewSet):
         """
         fa = request.query_params.get('function_a')
         fb = request.query_params.get('function_b')
-        conflicto = SodRule.objects.filter(
+        conflicto = SeparationRule.objects.filter(
             estado='activa'
         ).filter(
             models.Q(function_a_id=fa, function_b_id=fb) |
@@ -364,7 +364,7 @@ class EffectivePermissionsView(APIView):
     - UserPermission directos
     - Funciones de los AccessGroup del usuario
     - ExceptionalPermission activos
-    Menos cualquier funcion que viole una SodRule activa.
+    Menos cualquier funcion que viole una SeparationRule activa.
     """
     permission_classes = [IsAuthenticated]
 
