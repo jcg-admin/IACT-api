@@ -11,6 +11,14 @@ from .views import (
     AccessGroupViewSet, UserAccessGroupViewSet,
     SeparationRuleViewSet, ExceptionalPermissionViewSet,
     EffectivePermissionsView,
+    # Endpoints requeridos por accessService.js (IACT-ui)
+    FunctionListView,
+    UserEffectivePermissionsAliasView,
+    FunctionAssignView,
+    FunctionRevokeView,
+    SeparationRuleValidateView,
+    GrouperListView,
+    GrouperAssignView,
 )
 
 router = DefaultRouter()
@@ -26,8 +34,39 @@ app_name = 'access'
 urlpatterns = [
     path('', include(router.urls)),
     path('my-modules/', MyModulesView.as_view(), name='my-modules'),
-    # UC_ACC_03 / UC_PERM_07 — permisos efectivos de un usuario
+
+    # UC_ACC_03 / UC_PERM_07 — permisos efectivos (endpoint DRF)
     path('users/<int:user_id>/effective-permissions/',
          EffectivePermissionsView.as_view(),
          name='effective-permissions'),
+
+    # ── Endpoints para compatibilidad con IACT-ui accessService.js ──
+
+    # accessService.getAllFunctions()
+    path('functions/',
+         FunctionListView.as_view(), name='function-list'),
+
+    # accessService.getUserPermissions(userId)
+    path('permissions/<int:user_id>/',
+         UserEffectivePermissionsAliasView.as_view(), name='user-permissions'),
+
+    # accessService.assignFunction()
+    path('functions/assign',
+         FunctionAssignView.as_view(), name='function-assign'),
+
+    # accessService.revokeFunction()
+    path('functions/revoke',
+         FunctionRevokeView.as_view(), name='function-revoke'),
+
+    # accessService.validateSoD() — URL del contrato frontend (string opaco)
+    path('validate-sod',
+         SeparationRuleValidateView.as_view(), name='validate-separation'),
+
+    # accessService.getGroupers()
+    path('groupers/',
+         GrouperListView.as_view(), name='grouper-list'),
+
+    # accessService.assignGrouper()
+    path('groupers/assign',
+         GrouperAssignView.as_view(), name='grouper-assign'),
 ]

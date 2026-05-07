@@ -9,12 +9,23 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 
-from .models import Module, UserModuleAccess
+from .models import (
+    Module, UserModuleAccess, Function, UserPermission,
+    AccessGroup, UserAccessGroup,
+    SeparationRule, ExceptionalPermission,
+)
 from .serializers import (
     ModuleSerializer,
     ModuleTreeSerializer,
     UserModuleAccessSerializer,
     MyModulesSerializer,
+    AccessGroupSerializer,
+    AccessGroupListSerializer,
+    UserAccessGroupSerializer,
+    SeparationRuleSerializer,
+    SeparationRuleCheckSerializer,
+    ExceptionalPermissionSerializer,
+    FunctionSerializer,
 )
 from .services import ModuleAccessService
 
@@ -167,20 +178,11 @@ class AccessGroupViewSet(viewsets.ModelViewSet):
     queryset = AccessGroup.objects.all()
     permission_classes = [IsAuthenticated]
 
+    serializer_class = AccessGroupSerializer
+
     def get_serializer_class(self):
-        from rest_framework import serializers
-
-        class AccessGroupSerializer(serializers.ModelSerializer):
-            function_count = serializers.SerializerMethodField()
-
-            class Meta:
-                model = AccessGroup
-                fields = ['id', 'name', 'code', 'description',
-                          'functions', 'function_count']
-
-            def get_function_count(self, obj):
-                return obj.functions.count()
-
+        if self.action == 'list':
+            return AccessGroupListSerializer
         return AccessGroupSerializer
 
     @action(detail=True, methods=['post'], url_path='add-function')
@@ -222,16 +224,7 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
     queryset = UserAccessGroup.objects.select_related('user', 'access_group').all()
     permission_classes = [IsAuthenticated]
 
-    def get_serializer_class(self):
-        from rest_framework import serializers
-
-        class UserAccessGroupSerializer(serializers.ModelSerializer):
-            class Meta:
-                model = UserAccessGroup
-                fields = ['id', 'user', 'access_group', 'granted_at', 'granted_by']
-                read_only_fields = ['granted_at']
-
-        return UserAccessGroupSerializer
+    serializer_class = UserAccessGroupSerializer
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -262,17 +255,7 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
     queryset = SeparationRule.objects.select_related('function_a', 'function_b').all()
     permission_classes = [IsAuthenticated]
 
-    def get_serializer_class(self):
-        from rest_framework import serializers
-
-        class SeparationRuleSerializer(serializers.ModelSerializer):
-            class Meta:
-                model = SeparationRule
-                fields = ['id', 'name', 'function_a', 'function_b',
-                          'justificacion', 'estado', 'creado_por']
-                read_only_fields = ['creado_por']
-
-        return SeparationRuleSerializer
+    serializer_class = SeparationRuleSerializer
 
     def perform_create(self, serializer):
         serializer.save(creado_por=self.request.user)
@@ -315,18 +298,7 @@ class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
     ).all()
     permission_classes = [IsAuthenticated]
 
-    def get_serializer_class(self):
-        from rest_framework import serializers
-
-        class ExceptionalPermissionSerializer(serializers.ModelSerializer):
-            class Meta:
-                model = ExceptionalPermission
-                fields = ['id', 'user', 'function', 'justificacion',
-                          'estado', 'valido_desde', 'valido_hasta',
-                          'otorgado_por', 'creado_en']
-                read_only_fields = ['estado', 'otorgado_por', 'creado_en']
-
-        return ExceptionalPermissionSerializer
+    serializer_class = ExceptionalPermissionSerializer
 
     @action(detail=True, methods=['patch'], url_path='approve')
     def approve(self, request, pk=None):
@@ -407,3 +379,280 @@ class EffectivePermissionsView(APIView):
             },
             'effective': sorted(all_functions),
         })
+
+
+# ---------------------------------------------------------------------------
+# Endpoints requeridos por IACT-ui (accessService.js)
+# ---------------------------------------------------------------------------
+
+class FunctionListView(APIView):
+    """
+    accessService.getAllFunctions()
+    GET /api/access/functions/
+
+    FunctionSelector.jsx espera:
+      [{ id, code, name, description, category, permission_django, is_active }]
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = Function.objects.filter(
+            is_active=True
+        ).select_related('module').order_by('module__code', 'code')
+        serializer = FunctionSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class UserEffectivePermissionsAliasView(APIView):
+    """
+    accessService.getUserPermissions(userId)
+    GET /api/access/permissions/{userId}/
+
+    Alias de /api/access/users/{id}/effective-permissions/
+    para compatibilidad con accessService.js del frontend.
+
+    Retorna estructura que Redux espera en state.access.userPermissions:
+      { user_id, functions: [...codes], sources: {...} }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, user_id):
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+        User = get_user_model()
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'Usuario no encontrado.'}, status=404)
+
+        direct = set(UserPermission.objects.filter(
+            user=user
+        ).values_list('function__code', flat=True))
+
+        from_groups = set(Function.objects.filter(
+            access_groups__memberships__user=user
+        ).values_list('code', flat=True))
+
+        now = timezone.now()
+        exceptional = set(ExceptionalPermission.objects.filter(
+            user=user, estado='aprobado',
+            valido_desde__lte=now, valido_hasta__gte=now,
+        ).values_list('function__code', flat=True))
+
+        all_functions = sorted(direct | from_groups | exceptional)
+
+        return Response({
+            'user_id':   user_id,
+            'functions': all_functions,
+            'sources': {
+                'direct':      sorted(direct),
+                'from_groups': sorted(from_groups),
+                'exceptional': sorted(exceptional),
+            },
+        })
+
+
+class FunctionAssignView(APIView):
+    """
+    accessService.assignFunction(userId, functionId)
+    POST /api/access/functions/assign
+    Body: { userId, functionId, expiresAt? }
+
+    assignFunction.fulfilled actualiza:
+      state.userPermissions.functions.push(action.payload.newFunction)
+    Retorna: { newFunction: { id, code, name }, user_id }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        from django.db import models as dj_models
+        User = get_user_model()
+
+        user_id     = request.data.get('userId')
+        function_id = request.data.get('functionId')
+
+        if not user_id or not function_id:
+            return Response(
+                {'error': 'userId y functionId son requeridos.'}, status=400)
+
+        try:
+            user     = User.objects.get(pk=user_id)
+            function = Function.objects.get(pk=function_id, is_active=True)
+        except User.DoesNotExist:
+            return Response({'error': 'Usuario no encontrado.'}, status=404)
+        except Function.DoesNotExist:
+            return Response({'error': 'Funcion no encontrada o inactiva.'}, status=404)
+
+        # Verificar conflicto de SeparationRule
+        existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
+        conflict = SeparationRule.objects.filter(
+            estado='activa'
+        ).filter(
+            dj_models.Q(function_a=function, function_b__code__in=existing_codes) |
+            dj_models.Q(function_b=function, function_a__code__in=existing_codes)
+        ).first()
+
+        if conflict:
+            return Response({
+                'error':   'Conflicto de separacion de funciones detectado.',
+                'message': str(conflict),
+                'conflict_rule': conflict.name,
+            }, status=409)
+
+        perm, created = UserPermission.objects.get_or_create(
+            user=user, function=function)
+
+        if not created:
+            return Response(
+                {'error': 'La funcion ya esta asignada al usuario.'}, status=409)
+
+        return Response({
+            'newFunction': {
+                'id':   function.id,
+                'code': function.code,
+                'name': function.name,
+            },
+            'user_id': user_id,
+        }, status=201)
+
+
+class FunctionRevokeView(APIView):
+    """
+    accessService.revokeFunction(userId, functionId)
+    POST /api/access/functions/revoke
+    Body: { userId, functionId }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        user_id     = request.data.get('userId')
+        function_id = request.data.get('functionId')
+
+        if not user_id or not function_id:
+            return Response(
+                {'error': 'userId y functionId son requeridos.'}, status=400)
+
+        deleted, _ = UserPermission.objects.filter(
+            user_id=user_id, function_id=function_id
+        ).delete()
+
+        if not deleted:
+            return Response(
+                {'error': 'Asignacion no encontrada.'}, status=404)
+
+        return Response({'detail': 'Funcion revocada correctamente.'})
+
+
+class SeparationRuleValidateView(APIView):
+    """
+    accessService.validateSoD(userId, functionId)
+    POST /api/access/validate-sod
+    Body: { userId, functionId }
+
+    NOTA: El nombre del endpoint respeta el contrato del frontend
+    (strings opacos de API). El nombre de la clase en Python sigue
+    CLEAN_CODE_NAMING_PRINCIPLES (sin acronimos).
+
+    Retorna estructura que consume accessSlice:
+      { conflicts: [{ rule, ruleDesc, setA, setB, message }] }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        from django.db import models as dj_models
+        User = get_user_model()
+
+        user_id     = request.data.get('userId')
+        function_id = request.data.get('functionId')
+
+        if not user_id or not function_id:
+            return Response(
+                {'error': 'userId y functionId son requeridos.'}, status=400)
+
+        try:
+            user     = User.objects.get(pk=user_id)
+            function = Function.objects.get(pk=function_id)
+        except (User.DoesNotExist, Function.DoesNotExist) as e:
+            return Response({'error': str(e)}, status=404)
+
+        existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
+        rules = SeparationRule.objects.filter(
+            estado='activa'
+        ).filter(
+            dj_models.Q(function_a=function) | dj_models.Q(function_b=function)
+        ).select_related('function_a', 'function_b')
+
+        conflicts = []
+        for rule in rules:
+            other_fn = rule.function_b if rule.function_a == function else rule.function_a
+            if other_fn.code in existing_codes:
+                conflicts.append({
+                    'rule':     rule.name,
+                    'ruleDesc': rule.justificacion,
+                    'setA':     [function.code],
+                    'setB':     [other_fn.code],
+                    'message':  f'{rule.name}: {function.code} incompatible con {other_fn.code}',
+                })
+
+        return Response({'conflicts': conflicts})
+
+
+class GrouperListView(APIView):
+    """
+    accessService.getGroupers()
+    GET /api/access/groupers/
+
+    Alias de /api/access/groups/ para compatibilidad con frontend.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        qs = AccessGroup.objects.filter(is_active=True).order_by('name')
+        serializer = AccessGroupListSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+class GrouperAssignView(APIView):
+    """
+    accessService.assignGrouper(userId, grouperId)
+    POST /api/access/groupers/assign
+    Body: { userId, grouperId }
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        user_id   = request.data.get('userId')
+        grouper_id = request.data.get('grouperId')
+
+        if not user_id or not grouper_id:
+            return Response(
+                {'error': 'userId y grouperId son requeridos.'}, status=400)
+
+        try:
+            user   = User.objects.get(pk=user_id)
+            group  = AccessGroup.objects.get(pk=grouper_id, is_active=True)
+        except User.DoesNotExist:
+            return Response({'error': 'Usuario no encontrado.'}, status=404)
+        except AccessGroup.DoesNotExist:
+            return Response({'error': 'Agrupador no encontrado.'}, status=404)
+
+        membership, created = UserAccessGroup.objects.get_or_create(
+            user=user, access_group=group,
+            defaults={'granted_by': request.user}
+        )
+
+        if not created:
+            return Response(
+                {'error': 'El usuario ya pertenece a este agrupador.'}, status=409)
+
+        serializer = UserAccessGroupSerializer(membership)
+        return Response(serializer.data, status=201)

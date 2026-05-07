@@ -1,90 +1,49 @@
 """
-Serializers para Funciones RBAC v6.0.0.
+Serializer para Function.
 
-Responsabilidad: Serialización de funciones del sistema RBAC.
+accessService.getAllFunctions() espera:
+  [{ id, code, name, description, category, permission_django, is_active }]
 
-Serializers:
-- FunctionSerializer: Función completa con todos los campos
-- FunctionListSerializer: Función simplificada para listados
-
-Principios aplicados:
-- SRP: Responsabilidad única (funciones RBAC)
-- RBAC v6.0.0: Uso de permission_django (namespaces)
-- Clean Code: Nombres descriptivos y documentación
-
-RBAC v6.0.0:
-- permission_django: Namespace Django (PK funcional)
-- Status: activo, planificado, deprecado
-- Validaciones integradas
+FunctionSelector.jsx usa: func.id, func.code, func.name,
+  func.description, func.category
 """
-
 from rest_framework import serializers
 from apps.access.models import Function
 
 
 class FunctionSerializer(serializers.ModelSerializer):
-    """
-    Serializer para funciones RBAC v6.0.0.
-    
-    RBAC v6.0.0: Usa permission_django (namespaces) como identificador.
-    
-    Read-only fields:
-    - id, created_at, updated_at
-    
-    Fields:
-    - permission_django: Namespace Django (PK funcional)
-    - code: Código legacy (para compatibilidad)
-    - module: Módulo al que pertenece
-    - name: Nombre descriptivo
-    - description: Descripción de la función
-    - status: activo, planificado, deprecado
-    - is_active: Activo/inactivo
-    
-    Examples:
-        >>> func = Function.objects.get(permission_django='users.view')
-        >>> serializer = FunctionSerializer(func)
-        >>> serializer.data['permission_django']
-        'users.view'
-        >>> serializer.data['status']
-        'activo'
-    """
-    
+    category = serializers.SerializerMethodField()
+    module_code = serializers.CharField(
+        source='module.code', read_only=True)
+
     class Meta:
         model = Function
         fields = [
-            'id',
-            'permission_django',
-            'code',
-            'module',
-            'name',
-            'description',
-            'status',
-            'is_active',
-            'created_at',
-            'updated_at',
+            'id', 'code', 'name', 'description',
+            'permission_django', 'is_active', 'status',
+            'category', 'module_code',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at']
 
-
-class FunctionListSerializer(serializers.ModelSerializer):
-    """
-    Serializer simplificado para listado de funciones.
-    
-    Solo incluye campos esenciales para listas.
-    Optimizado para performance en listados grandes.
-    """
-    
-    class Meta:
-        model = Function
-        # CLEAN CODE: Explicit is better than implicit (PEP 20)
-        fields = (
-            'id',
-            'permission_django',
-            'code',
-            'name',
-            'module',
-            'status',
-            'is_active',
-        )
-        # List views are typically read-only
-        read_only_fields = fields
+    def get_category(self, obj):
+        """
+        Mapea el codigo del modulo a la categoria que espera FunctionSelector.
+        FunctionSelector usa: PIPELINE, USUARIO, AUDITORIA, ACCESO,
+        CONFIGURACION, DASHBOARD.
+        """
+        code_upper = obj.module.code.upper() if obj.module else ''
+        mapping = {
+            'PIPELINE': 'PIPELINE',
+            'USERS':    'USUARIO',
+            'USER':     'USUARIO',
+            'AUDIT':    'AUDITORIA',
+            'ACCESS':   'ACCESO',
+            'CONFIG':   'CONFIGURACION',
+            'DASHBOARD':'DASHBOARD',
+            'ALERTS':   'CONFIGURACION',
+            'LOGS':     'AUDITORIA',
+            'REPORTS':  'DASHBOARD',
+        }
+        for key, val in mapping.items():
+            if key in code_upper:
+                return val
+        return 'CONFIGURACION'
