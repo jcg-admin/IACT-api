@@ -8,13 +8,11 @@ CLEAN_CODE v3.0.1: Nombres auto-documentados.
 """
 
 from django.db import transaction
-from django.core.cache import cache
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 from typing import Dict, List, Optional, Tuple
 
 from apps.pipeline.models import Service, Center
-from apps.utils.constants import CACHE_TTL_MEDIUM, CACHE_KEY_USER_SERVICES
 
 
 class ServiceService:

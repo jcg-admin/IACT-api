@@ -75,6 +75,23 @@ class Function(SoftDeleteModel):
         blank=True,
         verbose_name=_('Descripcion'),
     )
+    permission_django = models.CharField(
+        max_length=100,
+        unique=True,
+        blank=True,
+        verbose_name=_('Namespace Django'),
+        help_text='Formato: app.accion. Ej: reports.view, dashboard.export',
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('Activa'),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=[('activo', 'Activo'), ('inactivo', 'Inactivo')],
+        default='activo',
+        verbose_name=_('Estado'),
+    )
 
     class Meta:
         verbose_name = _('Funcion')
@@ -251,7 +268,7 @@ class SeparationRule(SoftDeleteModel):
         constraints = [
             models.UniqueConstraint(
                 fields=['function_a', 'function_b'],
-                condition=models.Q(deleted_at__isnull=True),
+                condition=models.Q(is_active=True),
                 name='unique_separation_pair_active',
             )
         ]
@@ -321,3 +338,128 @@ class ExceptionalPermission(models.Model):
 
     def __str__(self):
         return f'Exc: {self.user} -> {self.function.code} [{self.estado}]'
+
+
+class UserModuleAccess(models.Model):
+    """
+    Acceso de un usuario a un modulo completo (granularidad gruesa).
+
+    Complementa a UserPermission (funcion individual) y AccessGroup.
+    Controla si el usuario puede ver el modulo en la navegacion.
+
+    Nota: La autorizacion fina de acciones dentro del modulo
+    se controla mediante UserPermission y AccessGroup.
+    """
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='module_accesses',
+        verbose_name=_('Usuario'),
+    )
+    module = models.ForeignKey(
+        Module,
+        on_delete=models.CASCADE,
+        related_name='user_accesses',
+        verbose_name=_('Modulo'),
+    )
+    reason = models.CharField(
+        max_length=200,
+        blank=True,
+        verbose_name=_('Motivo'),
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('Activo'),
+    )
+    granted_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Otorgado en'),
+    )
+    granted_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='module_accesses_granted',
+        verbose_name=_('Otorgado por'),
+    )
+    revoked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Revocado en'),
+    )
+    revoked_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='module_accesses_revoked',
+        verbose_name=_('Revocado por'),
+    )
+
+    class Meta:
+        verbose_name = _('Acceso a modulo')
+        verbose_name_plural = _('Accesos a modulos')
+        unique_together = [('user', 'module')]
+        db_table = 'access_user_module_access'
+
+    def __str__(self):
+        estado = 'activo' if self.is_active else 'revocado'
+        return f'{self.user} -> {self.module.code} [{estado}]'
+
+
+class UserFunctionAssignment(models.Model):
+    """
+    Asignacion de una funcion especifica a un usuario (RBAC granular).
+
+    Modelo completo con soporte de soft-delete (is_active),
+    trazabilidad (assigned_by, reason) y auditoria.
+
+    Coexiste con UserPermission (modelo simplificado) durante la
+    transicion. UserFunctionAssignment es la fuente de verdad para
+    la asignacion de funciones con historial completo.
+    """
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='function_assignments',
+        verbose_name=_('Usuario'),
+    )
+    function = models.ForeignKey(
+        Function,
+        on_delete=models.CASCADE,
+        related_name='user_assignments',
+        verbose_name=_('Funcion'),
+    )
+    reason = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_('Motivo'),
+        help_text='Razon de la asignacion (opcional).',
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('Activa'),
+    )
+    assigned_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name=_('Asignada en'),
+    )
+    assigned_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='function_assignments_granted',
+        verbose_name=_('Asignada por'),
+    )
+
+    class Meta:
+        verbose_name = _('Asignacion de funcion')
+        verbose_name_plural = _('Asignaciones de funcion')
+        unique_together = [('user', 'function')]
+        db_table = 'access_user_function_assignment'
+
+    def __str__(self):
+        estado = 'activa' if self.is_active else 'revocada'
+        return f'{self.user} -> {self.function.code} [{estado}]'

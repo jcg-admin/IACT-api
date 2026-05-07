@@ -28,3 +28,8 @@ def get_client_ip(request) -> str:
 def hash_sensitive_value(value: str) -> str:
     """Return SHA-256 hash of a sensitive value (for safe logging)."""
     return hashlib.sha256(value.encode()).hexdigest()[:16]
+
+
+def get_user_agent(request) -> str:
+    """Extract User-Agent string from request headers."""
+    return request.META.get('HTTP_USER_AGENT', '')

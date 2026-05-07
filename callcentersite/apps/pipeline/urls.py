@@ -5,10 +5,8 @@ B-04: errores, disponibilidad y reintento.
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import (
-    CenterViewSet, ServiceViewSet, CallRecordViewSet, CallNoteViewSet,
-    etl_status, etl_errors, etl_data_availability, etl_retry,
-)
+from .viewsets import CenterViewSet, ServiceViewSet, CallRecordViewSet, CallNoteViewSet
+from .views import etl_status, etl_errors, etl_data_availability, etl_retry
 
 router = DefaultRouter()
 router.register(r'centers',    CenterViewSet,     basename='center')

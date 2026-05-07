@@ -191,3 +191,19 @@ def validate_rut(value: str) -> None:
         raise ValidationError(
             _("RUT invalido. Use el formato XXXXXXXX-X."),
         )
+
+
+def validate_email(value: str) -> bool:
+    """Valida formato de email. Retorna True si es valido."""
+    import re as _re
+    pattern = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
+    return bool(_re.match(pattern, value))
+
+
+def validate_export_row_limit(value: int, max_rows: int = 50000) -> bool:
+    """
+    Valida que el numero de filas solicitado para exportacion
+    no exceda el limite configurado.
+    CNST-010: sin cache, el limite se evalua en cada request.
+    """
+    return 0 < value <= max_rows
