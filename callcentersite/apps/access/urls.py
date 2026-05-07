@@ -11,7 +11,7 @@ from .views import (
     AccessGroupViewSet, UserAccessGroupViewSet,
     SeparationRuleViewSet, ExceptionalPermissionViewSet,
     EffectivePermissionsView,
-    # Endpoints requeridos por accessService.js (IACT-ui)
+    # Endpoints compatibilidad IACT-ui (Fase C)
     FunctionListView,
     UserEffectivePermissionsAliasView,
     FunctionAssignView,
@@ -19,6 +19,9 @@ from .views import (
     SeparationRuleValidateView,
     GrouperListView,
     GrouperAssignView,
+    # Fase G — endpoints DRF con auditoría (UC_ACC_01/02)
+    UserFunctionAssignView,
+    UserFunctionRevokeView,
 )
 
 router = DefaultRouter()
@@ -69,4 +72,10 @@ urlpatterns = [
     # accessService.assignGrouper()
     path('groupers/assign',
          GrouperAssignView.as_view(), name='grouper-assign'),
+
+    # G-003: UC_ACC_01/02 — asignar/revocar función con auditoría
+    path('users/<int:user_id>/functions/',
+         UserFunctionAssignView.as_view(), name='user-function-assign'),
+    path('users/<int:user_id>/functions/<int:function_id>/',
+         UserFunctionRevokeView.as_view(), name='user-function-revoke'),
 ]

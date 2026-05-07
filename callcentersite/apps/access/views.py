@@ -2,6 +2,7 @@
 Views para sistema de acceso y módulos.
 """
 from rest_framework import viewsets, status
+from apps.access.permissions.function_permissions import HasFunction
 from drf_spectacular.utils import (
     extend_schema, extend_schema_view, OpenApiParameter,
     OpenApiResponse, inline_serializer)
@@ -256,6 +257,40 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
         return qs
 
     def perform_create(self, serializer):
+        """
+        G-004: Verificar SeparationRule antes de asignar el AccessGroup.
+
+        Cada función del grupo se verifica contra las funciones actuales
+        del usuario. Si alguna genera conflicto, se rechaza con 400.
+        """
+        from django.db import models as dj_models
+        from rest_framework.exceptions import ValidationError
+
+        user  = serializer.validated_data["user"]
+        group = serializer.validated_data["access_group"]
+
+        existing_codes = user.get_functions()
+
+        for fn in group.functions.filter(is_active=True):
+            conflict = SeparationRule.objects.filter(
+                status="active"
+            ).filter(
+                dj_models.Q(function_a=fn, function_b__code__in=existing_codes) |
+                dj_models.Q(function_b=fn, function_a__code__in=existing_codes)
+            ).first()
+
+            if conflict:
+                raise ValidationError({
+                    "error":         "Separation rule conflict detected.",
+                    "conflict_rule": conflict.name,
+                    "function":      fn.code,
+                    "conflicts_with": (
+                        conflict.function_b.code
+                        if conflict.function_a == fn
+                        else conflict.function_a.code
+                    ),
+                })
+
         serializer.save(granted_by=self.request.user)
 
 
@@ -303,7 +338,7 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
         fa = request.query_params.get('function_a')
         fb = request.query_params.get('function_b')
         conflicto = SeparationRule.objects.filter(
-            status='activa'
+            status='active'
         ).filter(
             models.Q(function_a_id=fa, function_b_id=fb) |
             models.Q(function_a_id=fb, function_b_id=fa)
@@ -580,7 +615,7 @@ class FunctionAssignView(APIView):
         # Verificar conflicto de SeparationRule
         existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
         conflict = SeparationRule.objects.filter(
-            status='activa'
+            status='active'
         ).filter(
             dj_models.Q(function_a=function, function_b__code__in=existing_codes) |
             dj_models.Q(function_b=function, function_a__code__in=existing_codes)
@@ -710,7 +745,7 @@ class SeparationRuleValidateView(APIView):
 
         existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
         rules = SeparationRule.objects.filter(
-            status='activa'
+            status='active'
         ).filter(
             dj_models.Q(function_a=function) | dj_models.Q(function_b=function)
         ).select_related('function_a', 'function_b')
@@ -806,3 +841,151 @@ class GrouperAssignView(APIView):
 
         serializer = UserAccessGroupSerializer(membership)
         return Response(serializer.data, status=201)
+
+
+# ---------------------------------------------------------------------------
+# G-001: UserFunctionAssignView — UC_ACC_01 (endpoint DRF con auditoría)
+# Distinto de FunctionAssignView (Fase C, compatibilidad IACT-ui)
+# ---------------------------------------------------------------------------
+
+@extend_schema(
+    summary="UC_ACC_01 — Asignar función a usuario (con auditoría)",
+    description=(
+        "Asigna una Function a un usuario creando un UserPermission. "
+        "Verifica SeparationRule activa antes de asignar. "
+        "Emite evento de auditoría ACTION=ACCESS_FUNCTION_ASSIGNED."
+    ),
+    request=inline_serializer("AssignFunctionByIdRequest", fields={
+        "function_id": drf_serializers_module.IntegerField(),
+    }),
+    responses={
+        201: OpenApiResponse(description="Función asignada correctamente"),
+        409: OpenApiResponse(description="Función ya asignada o conflicto de separación"),
+        404: OpenApiResponse(description="Usuario o función no encontrados"),
+    },
+    tags=["Control de Acceso"]
+)
+class UserFunctionAssignView(APIView):
+    """
+    POST /api/access/users/{user_id}/functions/
+    Body: { "function_id": 42 }
+
+    Verifica SeparationRule activa antes de crear UserPermission.
+    Emite AuditLog con action=ACCESS_FUNCTION_ASSIGNED.
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = "access.assign_functions"
+
+    def post(self, request, user_id):
+        from django.contrib.auth import get_user_model
+        from django.db import models as dj_models
+        from apps.audit.models import AuditLog
+
+        User = get_user_model()
+        function_id = request.data.get("function_id")
+
+        if not function_id:
+            return Response(
+                {"error": "function_id is required."}, status=400)
+
+        try:
+            target_user = User.objects.get(pk=user_id)
+            function    = Function.objects.get(pk=function_id, is_active=True)
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=404)
+        except Function.DoesNotExist:
+            return Response({"error": "Function not found or inactive."}, status=404)
+
+        # Verify no duplicate
+        if UserPermission.objects.filter(user=target_user, function=function).exists():
+            return Response(
+                {"error": "Function already assigned to this user."}, status=409)
+
+        # Verify SeparationRule
+        existing_codes = target_user.get_functions()
+        conflict = SeparationRule.objects.filter(
+            status="active"
+        ).filter(
+            dj_models.Q(function_a=function, function_b__code__in=existing_codes) |
+            dj_models.Q(function_b=function, function_a__code__in=existing_codes)
+        ).first()
+
+        if conflict:
+            AuditLog.record(
+                user=request.user,
+                action="ACCESS_FUNCTION_ASSIGN_DENIED",
+                resource=f"User:{user_id}/Function:{function.code}",
+                result="FAILURE",
+                details={"reason": "separation_rule_conflict",
+                         "rule": conflict.name}
+            )
+            return Response({
+                "error":         "Separation rule conflict detected.",
+                "conflict_rule": conflict.name,
+                "function_a":    conflict.function_a.code,
+                "function_b":    conflict.function_b.code,
+            }, status=409)
+
+        # Create UserPermission
+        UserPermission.objects.create(user=target_user, function=function)
+
+        AuditLog.record(
+            user=request.user,
+            action="ACCESS_FUNCTION_ASSIGNED",
+            resource=f"User:{user_id}/Function:{function.code}",
+            result="SUCCESS",
+            details={"function_code":          function.code,
+                     "function_permission_django": function.permission_django}
+        )
+
+        return Response({
+            "function_id":   function.id,
+            "function_code": function.code,
+            "user_id":       user_id,
+        }, status=201)
+
+
+# ---------------------------------------------------------------------------
+# G-002: UserFunctionRevokeView — UC_ACC_02 (endpoint DRF con auditoría)
+# ---------------------------------------------------------------------------
+
+@extend_schema(
+    summary="UC_ACC_02 — Revocar función de usuario (con auditoría)",
+    description=(
+        "Elimina el UserPermission de un usuario para una función. "
+        "Emite evento de auditoría ACTION=ACCESS_FUNCTION_REVOKED."
+    ),
+    responses={
+        204: OpenApiResponse(description="Función revocada correctamente"),
+        404: OpenApiResponse(description="UserPermission no encontrado"),
+    },
+    tags=["Control de Acceso"]
+)
+class UserFunctionRevokeView(APIView):
+    """
+    DELETE /api/access/users/{user_id}/functions/{function_id}/
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = "access.assign_functions"
+
+    def delete(self, request, user_id, function_id):
+        from apps.audit.models import AuditLog
+
+        try:
+            perm = UserPermission.objects.select_related("function").get(
+                user_id=user_id, function_id=function_id)
+        except UserPermission.DoesNotExist:
+            return Response({"error": "UserPermission not found."}, status=404)
+
+        fn_code = perm.function.code
+        perm.delete()
+
+        AuditLog.record(
+            user=request.user,
+            action="ACCESS_FUNCTION_REVOKED",
+            resource=f"User:{user_id}/Function:{fn_code}",
+            result="SUCCESS",
+            details={"function_code": fn_code}
+        )
+
+        return Response(status=204)
