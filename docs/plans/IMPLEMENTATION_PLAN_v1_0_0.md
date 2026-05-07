@@ -71,6 +71,29 @@ a nivel de arquitectura (sin logica de negocio en views, sin queries en
 serializers, etc.)
 **Criterio:** El archivo existe y cubre al menos 10 restricciones.
 
+**Estado:** HECHO — 10 restricciones RA-001..RA-010
+
+
+### A-005 — Eliminar concepto de role del código de producción
+
+**Problema:** El sistema RBAC de IACT se basa en funciones directas
+(`Function`, `UserPermission`) y agrupadores (`AccessGroup`). El concepto
+de `role` no existe como entidad del dominio. Sin embargo existían cuatro
+lugares con referencias incorrectas:
+
+| Archivo | Problema | Corrección |
+|---|---|---|
+| `utils/constants.py` | `ROLE_ADMIN`, `ROLE_SUPERVISOR`, `ROLE_AGENT`, `ROLE_READONLY`, `ROLE_CHOICES` — código muerto no importado en ningún archivo | Eliminar bloque completo |
+| `users/models.py` | Docstring de `get_functions()`: "heredadas por roles" — el método solo lee `UserPermission` directos | Corregir a "heredadas via AccessGroup" |
+| `dashboard/rbac.py` | Docstring del módulo: "RBAC (Role-Based Access Control)" — los decoradores verifican ownership y funciones, no roles | Corregir descripción |
+| `core/permissions.py` | Comentario `# Role-based:` agrupa `IsSuperUserOrReadOnly` e `IsStaffOrReadOnly` — son flags de Django, no roles del dominio | Corregir a "Flags de Django (is_superuser / is_staff)" |
+
+**Criterio:** `grep -rn "ROLE_\|role\b\|Role\b" apps/` retorna 0 resultados
+en código de producción (excluye tests y migraciones).
+
+**Estado:** HECHO
+
+
 ---
 
 ## FASE B — Migraciones Django
