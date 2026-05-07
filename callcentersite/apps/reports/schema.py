@@ -15,9 +15,17 @@ SPECTACULAR_TAGS sin modificar config/settings/base.py.
 # ─────────────────────────────────────────────────────────────────────
 SPECTACULAR_TAGS = [
     {
+        'name': 'Reportes IVR',
+        'description': (
+            'Reportes generados invocando SPs de MariaDB ivr_legacy: clientes, '
+            'centros de transferencia, llamadas abandonadas, menus IVR. '
+            'UC_RPT_12..17. CNST-003: READ-ONLY sobre ivr_legacy.'
+        ),
+    },
+    {
         'name': 'Reportes',
         'description': (
-            'Generacion, programacion y exportacion de reportes analiticos del call center.'
+            'Gestion, programacion y exportacion de reportes analiticos. UC_RPT_01..11.'
         ),
     },
 ]

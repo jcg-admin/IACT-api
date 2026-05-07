@@ -21,6 +21,7 @@ from pathlib import Path
 
 from django.conf import settings
 from rest_framework.views import APIView
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
@@ -41,6 +42,13 @@ def _read_log_tail(filepath: Path, lines: int = 100) -> list[str]:
         return [f'[ERROR] No se pudo leer el log: {e}']
 
 
+@extend_schema(
+    summary="UC_LOG_01 — Tail del log Django",
+    description=("Retorna las ultimas N lineas del archivo log de Django. En produccion ASGI se reemplaza por SSE."),
+    parameters=[OpenApiParameter('lines', int, default=100, description='Max 500')],
+    responses={200: OpenApiResponse(description='Ultimas N lineas del log Django')},
+    tags=["Logs"]
+)
 class DjangoLogTailView(APIView):
     """
     UC_LOG_01 — Tail de logs Django.
@@ -67,6 +75,13 @@ class DjangoLogTailView(APIView):
         })
 
 
+@extend_schema(
+    summary="UC_LOG_02 — Tail del log ETL desde MariaDB",
+    description=("Lee las ultimas N entradas de job_execution_log en MariaDB ivr_legacy."),
+    parameters=[OpenApiParameter('lines', int, default=50, description='Max 200')],
+    responses={200: OpenApiResponse(description='Entradas recientes del pipeline ETL'), 503: OpenApiResponse(description='MariaDB no disponible')},
+    tags=["Logs"]
+)
 class ETLLogTailView(APIView):
     """
     UC_LOG_02 — Log del pipeline ETL en tiempo real.
@@ -106,6 +121,13 @@ class ETLLogTailView(APIView):
         })
 
 
+@extend_schema(
+    summary="UC_LOG_03 — Busqueda en logs",
+    description=("Filtra el log Django por texto, nivel y rango de fechas."),
+    parameters=[OpenApiParameter('q', str), OpenApiParameter('date_from', str, required=True), OpenApiParameter('level', str, enum=['DEBUG','INFO','WARNING','ERROR','CRITICAL'])],
+    responses={200: OpenApiResponse(description='Resultados filtrados del log')},
+    tags=["Logs"]
+)
 class LogSearchView(APIView):
     """
     UC_LOG_03 — Consulta libre sobre el log store.
@@ -153,6 +175,13 @@ class LogSearchView(APIView):
         })
 
 
+@extend_schema(
+    summary="UC_LOG_04 — Exportar logs",
+    description=("Crea un job de exportacion de logs. POST para crear, GET para listar."),
+    parameters=[],
+    responses={202: OpenApiResponse(description='Job de exportacion creado')},
+    tags=["Logs"]
+)
 class LogExportView(APIView):
     """
     UC_LOG_04 — Export async de logs.
@@ -186,6 +215,13 @@ class LogExportView(APIView):
         return Response({'jobs': [], 'nota': 'Historial de exports pendiente de persistencia.'})
 
 
+@extend_schema(
+    summary="UC_LOG_05 — Logs de infraestructura",
+    description=("Logs de host y container. Requiere integracion con Loki/CloudWatch."),
+    parameters=[],
+    responses={200: OpenApiResponse(description='Estado de disponibilidad de logs de infra')},
+    tags=["Logs"]
+)
 class InfraLogView(APIView):
     """
     UC_LOG_05 — Logs de infraestructura (host, container).
@@ -202,6 +238,13 @@ class InfraLogView(APIView):
         })
 
 
+@extend_schema(
+    summary="UC_LOG_06 — Estado del sistema de logs",
+    description=("Verifica disponibilidad del archivo log Django y de job_execution_log en MariaDB."),
+    parameters=[],
+    responses={200: OpenApiResponse(description='Estado de cada fuente de logs')},
+    tags=["Logs"]
+)
 class LogHealthView(APIView):
     """
     UC_LOG_06 — Estado general del sistema de logs.
@@ -240,6 +283,13 @@ class LogHealthView(APIView):
         })
 
 
+@extend_schema(
+    summary="UC_LOG_07 — Metricas de logs",
+    description=("Estadisticas de los ultimos 7 dias desde job_execution_log en MariaDB."),
+    parameters=[],
+    responses={200: OpenApiResponse(description='Metricas de volumen y estado del pipeline')},
+    tags=["Logs"]
+)
 class LogMetricsView(APIView):
     """
     UC_LOG_07 — Metricas de logs (volumen, pipelines, errores).

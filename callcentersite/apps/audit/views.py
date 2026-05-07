@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 """
 Views para consulta de AuditLog.
 """
@@ -75,6 +76,16 @@ from django.conf import settings
 from rest_framework.decorators import action
 
 
+@extend_schema(
+    summary="UC_AUD_04 — Verificar integridad de AuditLog (HMAC-SHA256)",
+    parameters=[OpenApiParameter('log_id', int, required=True,
+        description="ID del registro de AuditLog a verificar")],
+    responses={
+        200: OpenApiResponse(description="estado: integro | comprometido | sin_firma"),
+        404: OpenApiResponse(description="AuditLog no encontrado"),
+    },
+    tags=["Auditoria"]
+)
 class AuditIntegrityView(APIView):
     """
     UC_AUD_04 — Verificar integridad de registros de auditoria.

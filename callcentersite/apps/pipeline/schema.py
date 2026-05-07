@@ -15,7 +15,15 @@ SPECTACULAR_TAGS sin modificar config/settings/base.py.
 # ─────────────────────────────────────────────────────────────────────
 SPECTACULAR_TAGS = [
     {
-        'name': 'Pipeline',
+        'name': 'Pipeline ETL',
+        'description': (
+            'Estado, errores, disponibilidad de datos y reintento del pipeline ETL. '
+            'Lee directamente de job_execution_log en MariaDB ivr_legacy. '
+            'UC_PIP_01..04. CNST-003: dual DB, CNST-004: sin Celery.'
+        ),
+    },
+    {
+        'name': 'Pipeline Llamadas',
         'description': (
             'Registro de llamadas del call center: centros, servicios, llamadas y notas.'
         ),

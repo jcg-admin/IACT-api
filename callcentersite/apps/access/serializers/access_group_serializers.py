@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 """
 Serializers para AccessGroup y UserAccessGroup.
 C-001: Serializacion correcta para IACT-ui.
@@ -23,6 +24,8 @@ class AccessGroupSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['is_active']
 
+    @extend_schema_field({'type': 'integer'})
+    @extend_schema_field({'type': 'integer'})
     def get_function_count(self, obj):
         return obj.functions.count()
 
@@ -35,6 +38,7 @@ class AccessGroupListSerializer(serializers.ModelSerializer):
         model = AccessGroup
         fields = ['id', 'name', 'code', 'description', 'function_count']
 
+    @extend_schema_field({'type': 'integer'})
     def get_function_count(self, obj):
         return obj.functions.count()
 

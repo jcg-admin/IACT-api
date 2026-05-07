@@ -9,8 +9,22 @@ from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 
 from . import ivr_services as svc
+
+# Parametros comunes a todos los endpoints IVR
+_IVR_QUARTER_PARAM = OpenApiParameter(
+    'quarter', str,
+    description="Quarter a consultar. Valores validos: Q01_25..Q02_26",
+    required=True,
+)
+_IVR_SEGMENTO_PARAM = OpenApiParameter(
+    'segmento', str,
+    enum=['todas', 'nacional_A', 'nacional_B', 'puebla'],
+    default='todas',
+    description="Segmento de negocio. Default: todas",
+)
 
 
 def _validate(quarter=None, segmento=None):
@@ -37,6 +51,15 @@ def _ivr_response(fn, *args, extra=None):
     return Response(payload)
 
 
+@extend_schema(
+    summary="UC_RPT_17 — Clientes unicos por segmento",
+    description="Invoca sp_rpt_clientes(p_quarter) en MariaDB. Retorna 3 filas: nacional_A, nacional_B, puebla.",
+    parameters=[_IVR_QUARTER_PARAM],
+    responses={200: OpenApiResponse(description="Lista de clientes por segmento"),
+               400: OpenApiResponse(description="Quarter invalido"),
+               503: OpenApiResponse(description="MariaDB no disponible")},
+    tags=["Reportes IVR"]
+)
 class ClientesReportView(APIView):
     """
     UC_RPT_17 — Clientes unicos por segmento.
@@ -53,6 +76,13 @@ class ClientesReportView(APIView):
                               extra={'quarter': quarter})
 
 
+@extend_schema(
+    summary="UC_RPT_12 — Centros de transferencia",
+    parameters=[_IVR_QUARTER_PARAM, _IVR_SEGMENTO_PARAM],
+    responses={200: OpenApiResponse(description="Detalle de centros de transferencia"),
+               503: OpenApiResponse(description="MariaDB no disponible")},
+    tags=["Reportes IVR"]
+)
 class CentrosTransferenciaView(APIView):
     """
     UC_RPT_12 — Detalle centros de transferencia.
@@ -70,6 +100,13 @@ class CentrosTransferenciaView(APIView):
                               extra={'quarter': quarter, 'segmento': segmento})
 
 
+@extend_schema(
+    summary="UC_RPT_13 — Llamadas abandonadas por menu",
+    parameters=[_IVR_QUARTER_PARAM, _IVR_SEGMENTO_PARAM],
+    responses={200: OpenApiResponse(description="Llamadas abandonadas por menu IVR"),
+               503: OpenApiResponse(description="MariaDB no disponible")},
+    tags=["Reportes IVR"]
+)
 class LlamadasAbandonadasView(APIView):
     """
     UC_RPT_13 — Llamadas abandonadas.
@@ -87,6 +124,14 @@ class LlamadasAbandonadasView(APIView):
                               extra={'quarter': quarter, 'segmento': segmento})
 
 
+@extend_schema(
+    summary="UC_RPT_14 — Anomalias cMenu con telefono",
+    description="Invoca sp_rpt_cMENU_ERROR. Detecta menus que contienen numero de telefono en el campo cMENU.",
+    parameters=[_IVR_QUARTER_PARAM, _IVR_SEGMENTO_PARAM],
+    responses={200: OpenApiResponse(description="Registros con anomalia cMENU"),
+               503: OpenApiResponse(description="MariaDB no disponible")},
+    tags=["Reportes IVR"]
+)
 class CMENUErrorView(APIView):
     """
     UC_RPT_14 — Anomalias cMenu con numero de telefono.
@@ -104,6 +149,13 @@ class CMENUErrorView(APIView):
                               extra={'quarter': quarter, 'segmento': segmento})
 
 
+@extend_schema(
+    summary="UC_RPT_15 — KPIs SLA por centro y segmento",
+    parameters=[_IVR_QUARTER_PARAM],
+    responses={200: OpenApiResponse(description="KPIs de nivel de servicio por centro"),
+               503: OpenApiResponse(description="MariaDB no disponible")},
+    tags=["Reportes IVR"]
+)
 class CentrosXSegmentoView(APIView):
     """
     UC_RPT_15 — KPIs SLA por centro y segmento.
@@ -120,6 +172,19 @@ class CentrosXSegmentoView(APIView):
                               extra={'quarter': quarter})
 
 
+@extend_schema(
+    summary="UC_RPT_16 — Menus IVR",
+    description="Vista redirigidos: menus que dispararon transferencia. Vista menu_centro: centro → menus que lo alimentan.",
+    parameters=[
+        _IVR_QUARTER_PARAM,
+        _IVR_SEGMENTO_PARAM,
+        OpenApiParameter('vista', str,
+            enum=['redirigidos', 'menu_centro'], default='redirigidos'),
+    ],
+    responses={200: OpenApiResponse(description="Datos de menus IVR segun la vista seleccionada"),
+               503: OpenApiResponse(description="MariaDB no disponible")},
+    tags=["Reportes IVR"]
+)
 class MenusIVRView(APIView):
     """
     UC_RPT_16 — Menus IVR (redirigidos o menu_centro).

@@ -33,6 +33,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework import status
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 
 
 # ---------------------------------------------------------------------------
@@ -164,6 +165,18 @@ def _format_run(run: dict | None) -> dict | None:
 # Views
 # ---------------------------------------------------------------------------
 
+@extend_schema(
+    summary="UC_PIP_01 — Estado del pipeline ETL IVR",
+    description=(
+        "Resumen de salud del pipeline. Lee job_execution_log en MariaDB ivr_legacy. "
+        "Retorna estado: ok (ultima exitosa < 14h), degradado (14-24h) o critico (> 24h)."
+    ),
+    responses={
+        200: OpenApiResponse(description="ResumenSalud con estado ok | degradado | critico"),
+        503: OpenApiResponse(description="MariaDB ivr_legacy no disponible"),
+    },
+    tags=["Pipeline ETL"]
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def etl_status(request):
@@ -229,6 +242,21 @@ def etl_status(request):
 # B-04: UC_PIP_02 — Errores ETL
 # ---------------------------------------------------------------------------
 
+@extend_schema(
+    summary="UC_PIP_02 — Errores del pipeline ETL",
+    parameters=[
+        OpenApiParameter('trimestre', str,
+            description="Filtrar por quarter. Ej: Q01_25"),
+        OpenApiParameter('page', int, default=1),
+        OpenApiParameter('page_size', int, default=20,
+            description="Max 100 registros por pagina"),
+    ],
+    responses={
+        200: OpenApiResponse(description="Lista paginada de errores ETL"),
+        503: OpenApiResponse(description="MariaDB no disponible"),
+    },
+    tags=["Pipeline ETL"]
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def etl_errors(request):
@@ -295,6 +323,20 @@ def etl_errors(request):
 # B-04: UC_PIP_03 — Disponibilidad de datos por quarter
 # ---------------------------------------------------------------------------
 
+@extend_schema(
+    summary="UC_PIP_03 — Disponibilidad de datos por quarter",
+    parameters=[
+        OpenApiParameter('trimestre', str, required=True,
+            description="Quarter a consultar. Ej: Q01_25"),
+    ],
+    responses={
+        200: OpenApiResponse(
+            description="Estado frescura: fresco | aceptable | vencido | sin_datos"),
+        400: OpenApiResponse(description="Parametro trimestre faltante"),
+        503: OpenApiResponse(description="MariaDB no disponible"),
+    },
+    tags=["Pipeline ETL"]
+)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def etl_data_availability(request):
@@ -367,6 +409,31 @@ def etl_data_availability(request):
 # B-04: UC_PIP_04 — Solicitar reintento de pipeline
 # ---------------------------------------------------------------------------
 
+@extend_schema(
+    summary="UC_PIP_04 — Solicitar reintento del pipeline",
+    description=(
+        "Llama sp_etl_historico(year, quarter_num) en MariaDB. "
+        "Requiere que no haya ejecucion RUNNING activa. "
+        "El motivo debe tener al menos 20 caracteres."
+    ),
+    request={
+        "application/json": {
+            "type": "object",
+            "properties": {
+                "trimestre": {"type": "string", "example": "Q01_25"},
+                "motivo":    {"type": "string", "minLength": 20},
+            },
+            "required": ["trimestre", "motivo"],
+        }
+    },
+    responses={
+        202: OpenApiResponse(description="Reintento iniciado"),
+        400: OpenApiResponse(description="Parametros invalidos o motivo muy corto"),
+        409: OpenApiResponse(description="Hay una ejecucion activa en curso"),
+        503: OpenApiResponse(description="MariaDB no disponible"),
+    },
+    tags=["Pipeline ETL"]
+)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def etl_retry(request):

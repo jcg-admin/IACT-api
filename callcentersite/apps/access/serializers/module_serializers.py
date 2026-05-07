@@ -25,8 +25,6 @@ class ModuleSerializer(serializers.ModelSerializer):
     Incluye información de jerarquía y estado.
     """
     
-    level = serializers.IntegerField(read_only=True, source='get_level')
-    is_root = serializers.BooleanField(read_only=True)
     parent_code = serializers.CharField(source='parent.code', read_only=True, allow_null=True)
     parent_name = serializers.CharField(source='parent.name', read_only=True, allow_null=True)
     children_count = serializers.SerializerMethodField()
@@ -37,16 +35,12 @@ class ModuleSerializer(serializers.ModelSerializer):
             'id',
             'code',
             'name',
-            'description',
             'parent',
             'parent_code',
             'parent_name',
             'order',
             'icon',
-            'url_path',
             'is_active',
-            'level',
-            'is_root',
             'children_count',
             'created_at',
             'updated_at',
@@ -66,7 +60,6 @@ class ModuleTreeSerializer(serializers.ModelSerializer):
     """
     
     children = serializers.SerializerMethodField()
-    level = serializers.IntegerField(read_only=True, source='get_level')
     
     class Meta:
         model = Module
@@ -74,12 +67,9 @@ class ModuleTreeSerializer(serializers.ModelSerializer):
             'id',
             'code',
             'name',
-            'description',
             'icon',
-            'url_path',
             'order',
             'is_active',
-            'level',
             'children',
         ]
     

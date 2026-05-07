@@ -1,3 +1,4 @@
+from drf_spectacular.utils import extend_schema_field
 """
 Serializers para ExceptionalPermission.
 C-003.
@@ -22,6 +23,7 @@ class ExceptionalPermissionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['estado', 'otorgado_por', 'creado_en']
 
+    @extend_schema_field({'type': 'boolean'})
     def get_es_activo(self, obj):
         from django.utils import timezone
         now = timezone.now()
