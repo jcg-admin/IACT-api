@@ -330,7 +330,7 @@ class IsStaffOrReadOnly(permissions.BasePermission):
 # Ownership:
 #   [SUCCESS] IsOwnerOrReadOnly - Solo owner puede editar
 # 
-# Role-based:
+# Flags de Django (is_superuser / is_staff — no son roles del dominio):
 #   [SUCCESS] IsSuperUserOrReadOnly - Solo superuser puede editar
 #   [SUCCESS] IsStaffOrReadOnly - Solo staff puede editar
 # 

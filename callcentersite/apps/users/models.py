@@ -56,7 +56,7 @@ class User(AbstractUser):
         """
         Retorna las funciones/permisos asignados al usuario.
 
-        Incluye funciones directas y las heredadas por roles.
+        Incluye funciones directas y las heredadas via AccessGroup.
         """
         functions = set()
         if hasattr(self, 'user_functions'):

@@ -1,5 +1,7 @@
 """
-Sistema RBAC (Role-Based Access Control) para la app Dashboard.
+Control de acceso basado en funciones para la app Dashboard.
+
+Verifica ownership y funciones asignadas al usuario, no roles.
 
 Decoradores para vistas basadas en funciones (FBV):
 - require_dashboard_owner
