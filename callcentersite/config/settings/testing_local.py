@@ -32,18 +32,25 @@ DATABASES = {
 
     # MariaDB — ivr_legacy (READ-ONLY, CNST-003)
     # Alias 'ivr' requerido por config/db_router.py
+    # Usa socket en entorno local (sin systemd, sin TCP en 3306)
     'ivr': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': 'ivr_legacy',
-        'USER': 'django_user',
-        'PASSWORD': 'django_pass',
-        'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'USER': 'root',
+        'PASSWORD': '',
+        'HOST': '',          # vacío → usa socket
+        'PORT': '',
         'OPTIONS': {
             'charset': 'utf8mb4',
+            'unix_socket': '/run/mysqld/mysqld.sock',
+            'read_default_file': '',
         },
         'TEST': {
             'NAME': 'test_ivr_legacy',
+            # IACT-db provee el schema — Django no gestiona esta BD.
+            # pytest-django no debe destruirla ni correr migraciones en ella.
+            'MIGRATE': False,
+            'CREATE_DB': False,
         },
     },
 }

@@ -67,9 +67,9 @@ def _get_pipeline_runs(limit: int = 20) -> list[dict]:
         ORDER BY start_time DESC
         LIMIT %s
     """
-    timeout_ms = getattr(settings, 'IVR_QUERY_TIMEOUT_SEC', 30) * 1000
+    timeout_sec = getattr(settings, 'IVR_QUERY_TIMEOUT_SEC', 30)
     with connections['ivr'].cursor() as cursor:
-        cursor.execute(f"SET SESSION MAX_EXECUTION_TIME={timeout_ms}")
+        cursor.execute(f"SET SESSION MAX_STATEMENT_TIME={timeout_sec}")
         cursor.execute(sql, [limit])
         cols = [c[0] for c in cursor.description]
         return [dict(zip(cols, row)) for row in cursor.fetchall()]

@@ -22,9 +22,9 @@ def _call_sp(sp_name: str, params: list) -> list[dict]:
     Applies IVR_QUERY_TIMEOUT_SEC timeout before each call.
     Handles SPs that return 0 rows (cursor.description is None).
     """
-    timeout_ms = getattr(settings, 'IVR_QUERY_TIMEOUT_SEC', 30) * 1000
+    timeout_sec = getattr(settings, 'IVR_QUERY_TIMEOUT_SEC', 30)
     with connections['ivr'].cursor() as cursor:
-        cursor.execute(f"SET SESSION MAX_EXECUTION_TIME={timeout_ms}")
+        cursor.execute(f"SET SESSION MAX_STATEMENT_TIME={timeout_sec}")
         cursor.callproc(sp_name, params)
         if cursor.description is None:
             return []

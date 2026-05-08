@@ -1,148 +1,132 @@
 """
 tests/fixtures/ivr.py
 
-Pytest fixtures for integration tests that use the 'ivr' MariaDB connection.
+Fixtures para tests de integración que usan la conexión 'ivr' (MariaDB).
 
-Usage:
-    @pytest.mark.django_db(databases=['default', 'ivr'])
-    def test_something(ivr_schema, ivr_job_execution_data):
-        from apps.reports import ivr_services as svc
-        clients = svc.get_clients('Q01_25')
-        assert len(clients) >= 0
+Arquitectura:
+    test_ivr_legacy persiste entre sesiones de pytest.
+    pytest-django NO la destruye ni la gestiona (MIGRATE=False, CREATE_DB=False).
+    El schema se crea una vez en el conftest de integración (ensure_mariadb).
+
+    Los fixtures de datos usan subprocess para insertar y limpiar.
+    Esto garantiza COMMIT inmediato — los datos son visibles para el endpoint
+    en cualquier conexión, incluyendo la del request Django del test.
+
+Responsabilidades:
+    ivr_schema            — verifica que las tablas existen (session-scoped)
+    ivr_job_execution_data — siembra job_execution_log, limpia al final
+    ivr_quarter_data       — siembra base_ivr_clientes + detalle, limpia al final
 """
+import subprocess
+
 import pytest
 from django.db import connections
 
 
+SOCKET = '/run/mysqld/mysqld.sock'
+DB     = 'test_ivr_legacy'
+
+
+def _sql(statements: str) -> subprocess.CompletedProcess:
+    """Ejecuta SQL directamente en test_ivr_legacy via mysql CLI.
+    Commit implícito — los datos son visibles para todas las conexiones.
+    """
+    return subprocess.run(
+        ['mysql', f'--socket={SOCKET}', DB],
+        input=statements,
+        text=True,
+        capture_output=True,
+    )
+
+
+# ---------------------------------------------------------------------------
+# ivr_schema — session-scoped, verifica que el schema existe
+# ---------------------------------------------------------------------------
+
 @pytest.fixture(scope='session')
-def ivr_schema(django_db_setup, django_db_blocker):
+def ivr_schema(ensure_mariadb):
     """
-    Creates the minimum IVR schema needed for integration tests.
+    Garantiza que test_ivr_legacy tiene el schema IVR mínimo.
+    El schema lo crea ensure_mariadb (conftest de integración).
+    Este fixture es el punto de dependencia declarativa para los fixtures
+    de datos — hace que el orden de setup sea explícito.
 
-    Creates:
-      - job_execution_log  (pipeline status tests)
-      - base_ivr_detalle   (quarter validation and report tests)
-      - base_ivr_clientes  (client report tests)
-
-    Scope: session — created once, shared across all tests.
-    CNST-003: uses connections['ivr'] directly (no Django ORM).
+    No destruye tablas al final: test_ivr_legacy persiste entre sesiones.
     """
-    with django_db_blocker.unblock():
-        with connections['ivr'].cursor() as cursor:
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS job_execution_log (
-                    id               INT AUTO_INCREMENT PRIMARY KEY,
-                    job_name         VARCHAR(100) NOT NULL,
-                    quarter_name     VARCHAR(20),
-                    step_name        VARCHAR(50),
-                    tabla_origen     VARCHAR(100),
-                    start_time       DATETIME NOT NULL,
-                    end_time         DATETIME,
-                    status           ENUM('RUNNING','SUCCESS','PARTIAL',
-                                         'FAILED','SKIP','TIMEOUT')
-                                     NOT NULL DEFAULT 'RUNNING',
-                    records_procesados INT DEFAULT 0,
-                    duracion_seg     INT AS (TIMESTAMPDIFF(SECOND, start_time, end_time)) STORED,
-                    error_message    TEXT,
-                    ejecutado_por    VARCHAR(50)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS base_ivr_detalle (
-                    id                   INT AUTO_INCREMENT PRIMARY KEY,
-                    trimestre            VARCHAR(10) NOT NULL,
-                    fecha                VARCHAR(6)  NOT NULL,
-                    segmento             VARCHAR(20) NOT NULL,
-                    centro_transferencia VARCHAR(100) NOT NULL,
-                    menu                 VARCHAR(100) NOT NULL,
-                    opcion               VARCHAR(100) NOT NULL,
-                    total_llamadas       INT NOT NULL DEFAULT 0,
-                    misma_linea          INT NOT NULL DEFAULT 0,
-                    linea_diferente      INT NOT NULL DEFAULT 0,
-                    no_digito_telefono   INT NOT NULL DEFAULT 0,
-                    llamadas_entre_semana INT NOT NULL DEFAULT 0,
-                    llamadas_fines_semana INT NOT NULL DEFAULT 0,
-                    cargado_en           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-                    INDEX idx_trimestre (trimestre)
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS base_ivr_clientes (
-                    id          INT AUTO_INCREMENT PRIMARY KEY,
-                    trimestre   VARCHAR(10) NOT NULL,
-                    segmento    VARCHAR(20) NOT NULL,
-                    clientes    INT NOT NULL DEFAULT 0,
-                    cargado_en  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-                ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4
-            """)
+    # Verificar que las tablas existen — si no, el conftest falló
+    result = _sql("SHOW TABLES;")
+    tables = result.stdout.strip().splitlines()
+    required = {'job_execution_log', 'base_ivr_detalle', 'base_ivr_clientes'}
+    missing  = required - set(tables)
+    if missing:
+        pytest.fail(
+            f"test_ivr_legacy no tiene las tablas requeridas: {missing}. "
+            "Verificar ensure_mariadb en conftest de integración."
+        )
     yield
-    # Cleanup: drop test tables after session
-    with django_db_blocker.unblock():
-        with connections['ivr'].cursor() as cursor:
-            for table in ('base_ivr_clientes', 'base_ivr_detalle',
-                          'job_execution_log'):
-                cursor.execute(f"DROP TABLE IF EXISTS {table}")
+    # Sin teardown — la DB persiste entre sesiones
 
+
+# ---------------------------------------------------------------------------
+# ivr_job_execution_data — datos para TestETLStatus y TestETLLogTail
+# ---------------------------------------------------------------------------
 
 @pytest.fixture
-def ivr_job_execution_data(ivr_schema, django_db_blocker):
+def ivr_job_execution_data(ivr_schema):
     """
-    Seeds job_execution_log with test data for pipeline tests.
-    Inserts rows for Q01_25 with SUCCESS status.
+    Siembra job_execution_log con ejecuciones SUCCESS para Q01_25.
+    Usa subprocess — commit inmediato, visible para el endpoint.
     """
-    with django_db_blocker.unblock():
-        with connections['ivr'].cursor() as cursor:
-            cursor.execute("DELETE FROM job_execution_log")
-            cursor.execute("""
-                INSERT INTO job_execution_log
-                    (job_name, quarter_name, step_name, tabla_origen,
-                     start_time, end_time, status, records_procesados, ejecutado_por)
-                VALUES
-                    ('etl_Q01_25', 'Q01_25', 'etl_base_detalle', 'base_ivr_detalle',
-                     NOW() - INTERVAL 1 HOUR, NOW(), 'SUCCESS', 1000, 'test'),
-                    ('etl_Q01_25', 'Q01_25', 'etl_base_clientes', 'base_ivr_clientes',
-                     NOW() - INTERVAL 30 MINUTE, NOW(), 'SUCCESS', 3, 'test')
-            """)
+    _sql("""
+        DELETE FROM job_execution_log;
+        INSERT INTO job_execution_log
+            (job_name, quarter_name, step_name, tabla_origen,
+             start_time, end_time, status, records_procesados, ejecutado_por)
+        VALUES
+            ('etl_Q01_25', 'Q01_25', 'etl_base_detalle', 'base_ivr_detalle',
+             NOW() - INTERVAL 1 HOUR, NOW(), 'SUCCESS', 1000, 'test'),
+            ('etl_Q01_25', 'Q01_25', 'etl_base_clientes', 'base_ivr_clientes',
+             NOW() - INTERVAL 30 MINUTE, NOW(), 'SUCCESS', 3, 'test');
+    """)
     yield
-    with django_db_blocker.unblock():
-        with connections['ivr'].cursor() as cursor:
-            cursor.execute("DELETE FROM job_execution_log")
+    _sql("DELETE FROM job_execution_log;")
 
+
+# ---------------------------------------------------------------------------
+# ivr_quarter_data — datos para TestIVRClientsReport
+# ---------------------------------------------------------------------------
 
 @pytest.fixture
-def ivr_quarter_data(ivr_schema, django_db_blocker):
+def ivr_quarter_data(ivr_schema):
     """
-    Seeds base_ivr_detalle and base_ivr_clientes with test data for Q01_25.
+    Siembra base_ivr_detalle y base_ivr_clientes con datos de Q01_25.
+    Usa subprocess — commit inmediato, visible para sp_rpt_clientes.
     """
-    with django_db_blocker.unblock():
-        with connections['ivr'].cursor() as cursor:
-            cursor.execute("DELETE FROM base_ivr_detalle")
-            cursor.execute("DELETE FROM base_ivr_clientes")
-            # base_ivr_detalle — sample rows
-            cursor.execute("""
-                INSERT INTO base_ivr_detalle
-                    (trimestre, fecha, segmento, centro_transferencia, menu, opcion,
-                     total_llamadas, misma_linea, linea_diferente, no_digito_telefono,
-                     llamadas_entre_semana, llamadas_fines_semana)
-                VALUES
-                    ('Q01_25', '202501', 'nacional_A', 'CentroA', 'MenuPrincipal',
-                     'Opcion1', 500, 300, 150, 50, 400, 100),
-                    ('Q01_25', '202502', 'nacional_B', 'CentroB', 'MenuPrincipal',
-                     'Opcion2', 300, 200, 80, 20, 250, 50),
-                    ('Q01_25', '202503', 'puebla', 'CentroC', 'MenuSecundario',
-                     'Opcion1', 200, 120, 60, 20, 160, 40)
-            """)
-            # base_ivr_clientes — one row per segment
-            cursor.execute("""
-                INSERT INTO base_ivr_clientes
-                    (trimestre, segmento, clientes)
-                VALUES
-                    ('Q01_25', 'nacional_A', 1500),
-                    ('Q01_25', 'nacional_B', 800),
-                    ('Q01_25', 'puebla', 400)
-            """)
+    _sql("""
+        DELETE FROM base_ivr_detalle;
+        DELETE FROM base_ivr_clientes;
+
+        INSERT INTO base_ivr_detalle
+            (trimestre, fecha, segmento, centro_transferencia, menu, opcion,
+             total_llamadas, misma_linea, linea_diferente, no_digito_telefono,
+             llamadas_entre_semana, llamadas_fines_semana)
+        VALUES
+            ('Q01_25', '202501', 'nacional_A', 'CentroA', 'MenuPrincipal',
+             'Opcion1', 500, 300, 150, 50, 400, 100),
+            ('Q01_25', '202502', 'nacional_B', 'CentroB', 'MenuPrincipal',
+             'Opcion2', 300, 200, 80, 20, 250, 50),
+            ('Q01_25', '202503', 'puebla', 'CentroC', 'MenuSecundario',
+             'Opcion1', 200, 120, 60, 20, 160, 40);
+
+        INSERT INTO base_ivr_clientes
+            (trimestre, segmento, clientes_unicos)
+        VALUES
+            ('Q01_25', 'nacional_A', 1500),
+            ('Q01_25', 'nacional_B', 800),
+            ('Q01_25', 'puebla', 400);
+    """)
     yield
-    with django_db_blocker.unblock():
-        with connections['ivr'].cursor() as cursor:
-            cursor.execute("DELETE FROM base_ivr_detalle")
-            cursor.execute("DELETE FROM base_ivr_clientes")
+    _sql("""
+        DELETE FROM base_ivr_detalle;
+        DELETE FROM base_ivr_clientes;
+    """)

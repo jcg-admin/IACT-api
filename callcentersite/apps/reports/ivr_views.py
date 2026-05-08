@@ -87,7 +87,7 @@ class ClientesReportView(APIView):
         errors = _validate(quarter=quarter)
         if errors:
             return Response({'errors': errors}, status=400)
-        return _ivr_response(svc.get_clientes, quarter,
+        return _ivr_response(svc.get_clients, quarter,
                               extra={'quarter': quarter})
 
 
@@ -112,7 +112,7 @@ class CentrosTransferenciaView(APIView):
         errors = _validate(quarter=quarter, segment=segment)
         if errors:
             return Response({'errors': errors}, status=400)
-        return _ivr_response(svc.get_centros_transferencia, quarter, segment,
+        return _ivr_response(svc.get_transfer_centers, quarter, segment,
                               extra={'quarter': quarter, 'segment': segment})
 
 
@@ -137,7 +137,7 @@ class LlamadasAbandonadasView(APIView):
         errors = _validate(quarter=quarter, segment=segment)
         if errors:
             return Response({'errors': errors}, status=400)
-        return _ivr_response(svc.get_llamadas_abandonadas, quarter, segment,
+        return _ivr_response(svc.get_abandoned_calls, quarter, segment,
                               extra={'quarter': quarter, 'segment': segment})
 
 
@@ -163,7 +163,7 @@ class CMENUErrorView(APIView):
         errors = _validate(quarter=quarter, segment=segment)
         if errors:
             return Response({'errors': errors}, status=400)
-        return _ivr_response(svc.get_cmenu_error, quarter, segment,
+        return _ivr_response(svc.get_cmenu_errors, quarter, segment,
                               extra={'quarter': quarter, 'segment': segment})
 
 
@@ -187,7 +187,7 @@ class CentrosXSegmentoView(APIView):
         errors = _validate(quarter=quarter)
         if errors:
             return Response({'errors': errors}, status=400)
-        return _ivr_response(svc.get_centros_xsegmento, quarter,
+        return _ivr_response(svc.get_centers_by_segment, quarter,
                               extra={'quarter': quarter})
 
 
@@ -223,6 +223,6 @@ class MenusIVRView(APIView):
         if errors:
             return Response({'errors': errors}, status=400)
 
-        fn = svc.get_menu_redirigidos if vista == 'redirigidos' else svc.get_menu_centro
+        fn = svc.get_redirected_menus if vista == 'redirigidos' else svc.get_center_menus
         return _ivr_response(fn, quarter, segment,
                               extra={'quarter': quarter, 'vista': vista, 'segment': segment})
