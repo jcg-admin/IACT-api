@@ -9,7 +9,10 @@ FASE 2 PARTE 4: Serializers de apps/users/
 
 from rest_framework import serializers
 
-from apps.users.models import SessionHistory
+try:
+    from apps.users.models import SessionHistory
+except ImportError:
+    SessionHistory = None
 
 
 class SessionHistorySerializer(serializers.ModelSerializer):

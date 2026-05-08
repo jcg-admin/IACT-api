@@ -10,7 +10,10 @@ from django.dispatch import receiver
 from django.contrib.auth.signals import user_logged_in, user_logged_out
 from django.contrib.auth import get_user_model
 
-from apps.users.models import UserProfile, UserSettings, SessionHistory
+try:
+    from apps.users.models import UserProfile, UserSettings, SessionHistory
+except ImportError:
+    UserProfile = UserSettings = SessionHistory = None
 from apps.utils.helpers import get_client_ip  # <- USAR apps/utils/
 
 User = get_user_model()
@@ -20,10 +23,9 @@ User = get_user_model()
 def create_user_profile(sender, instance, created, **kwargs):
     """
     Auto-crear UserProfile al crear User.
-    
-    CNST-037: Profile 1-to-1 con User.
+    UserProfile puede no estar implementado aún (UserProfile = None).
     """
-    if created:
+    if created and UserProfile is not None:
         UserProfile.objects.create(user=instance)
 
 
@@ -37,7 +39,7 @@ def save_user_profile(sender, instance, **kwargs):
 @receiver(post_save, sender=User)
 def create_user_settings(sender, instance, created, **kwargs):
     """Auto-crear UserSettings al crear User."""
-    if created:
+    if created and UserSettings is not None:
         UserSettings.objects.create(user=instance)
 
 
@@ -52,11 +54,12 @@ def log_user_login(sender, request, user, **kwargs):
     ip_address = get_client_ip(request)  # <- USAR helper de apps/utils/
     user_agent = request.META.get('HTTP_USER_AGENT', '')[:255]
     
-    SessionHistory.objects.create(
-        user=user,
-        ip_address=ip_address,
-        user_agent=user_agent
-    )
+    if SessionHistory is not None:
+        SessionHistory.objects.create(
+            user=user,
+            ip_address=ip_address,
+            user_agent=user_agent
+        )
 
 
 @receiver(user_logged_out)
@@ -65,10 +68,11 @@ def log_user_logout(sender, request, user, **kwargs):
     if user and user.is_authenticated:
         from django.utils import timezone
         
-        SessionHistory.objects.filter(
-            user=user,
-            is_active=True
-        ).update(
-            logout_at=timezone.now(),
-            is_active=False
-        )
+        if SessionHistory is not None:
+            SessionHistory.objects.filter(
+                user=user,
+                is_active=True
+            ).update(
+                logout_at=timezone.now(),
+                is_active=False
+            )

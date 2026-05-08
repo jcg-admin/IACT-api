@@ -75,8 +75,7 @@ def user_with_profile(user_factory):
         first_name='Juan',
         last_name='Perez',
         phone='+56912345678',
-        position='Operador',
-        employee_id='EMP-100'
+        # position y employee_id no existen en el modelo User
     )
 
 @pytest.fixture

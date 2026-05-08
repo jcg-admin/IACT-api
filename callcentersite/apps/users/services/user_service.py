@@ -59,9 +59,7 @@ class UserService(BaseService):
         password: str,
         first_name: str = '',
         last_name: str = '',
-        employee_id: Optional[str] = None,
         phone: Optional[str] = None,
-        position: Optional[str] = None,
         created_by: Optional[User] = None,
     ) -> User:
         """
@@ -83,10 +81,8 @@ class UserService(BaseService):
             password: Password sin hashear
             first_name: Nombre
             last_name: Apellido
-            employee_id: ID de empleado (opcional)
-            phone: Teléfono (opcional)
-            position: Cargo (opcional)
-            created_by: Usuario que crea (para audit)
+                phone: Teléfono (opcional)
+                created_by: Usuario que crea (para audit)
         
         Returns:
             User: Usuario creado
@@ -135,12 +131,8 @@ class UserService(BaseService):
             )
             
             # Campos adicionales
-            if employee_id:
-                user.employee_id = employee_id
             if phone:
                 user.phone = phone
-            if position:
-                user.position = position
             
             user.save()
             

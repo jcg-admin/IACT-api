@@ -9,8 +9,11 @@ FASE 2 PARTE 4: Serializers de apps/users/
 
 from rest_framework import serializers
 
-from apps.users.models import UserProfile, UserSettings
-from apps.users.validators import validate_avatar_file
+try:
+    from apps.users.models import UserProfile, UserSettings
+except ImportError:
+    UserProfile = UserSettings = None
+from apps.users.validators import validate_avatar_size as validate_avatar_file
 
 
 class ProfileSerializer(serializers.ModelSerializer):

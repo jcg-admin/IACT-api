@@ -19,7 +19,10 @@ from drf_spectacular.utils import (
 )
 from drf_spectacular.types import OpenApiTypes
 
-from apps.users.models import UserProfile, UserSettings, SessionHistory
+try:
+    from apps.users.models import UserProfile, UserSettings, SessionHistory
+except ImportError:
+    UserProfile = UserSettings = SessionHistory = None
 from apps.users.serializers import (
     UserSerializer,
     UserListSerializer,
