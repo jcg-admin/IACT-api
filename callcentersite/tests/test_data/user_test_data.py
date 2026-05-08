@@ -69,7 +69,6 @@ class AdminUserTestData(UserTestData):
         user.first_name = kwargs.get('first_name', 'Admin')
         user.last_name = kwargs.get('last_name', 'User')
         user.phone = kwargs.get('phone', '+52 55 9999 9999')
-        user.position = kwargs.get('position', 'DIRECTOR')
         user.save()
         
         return user
@@ -102,11 +101,10 @@ class SessionHistoryTestData(UserTestData):
 # UserTestData:
 #   [SUCCESS] User estándar con password hasheado
 #   [SUCCESS] Default: is_active=True, is_staff=False
-#   [SUCCESS] Phone y position incluidos
+#   [SUCCESS] Phone incluido
 # 
 # AdminUserTestData:
 #   [SUCCESS] Superuser (is_staff=True, is_superuser=True)
-#   [SUCCESS] Default position: DIRECTOR
 # 
 # UserProfileTestData:
 #   [SUCCESS] Profile con bio y department
