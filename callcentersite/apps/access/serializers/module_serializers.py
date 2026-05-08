@@ -74,9 +74,25 @@ class ModuleTreeSerializer(serializers.ModelSerializer):
         ]
     
     def get_children(self, obj):
-        """Obtener hijos recursivamente."""
+        """
+        Retorna los hijos del módulo respetando el filtro de acceso.
+
+        Si el servicio adjuntó _accessible_children (lista prefiltrada
+        por UserModuleAccess del usuario), usa esa lista.
+        Si no existe (uso genérico del serializer), consulta todos
+        los hijos activos.
+        """
+        if hasattr(obj, '_accessible_children'):
+            # Lista prefiltrada por ModuleAccessService.get_user_module_tree()
+            # Solo contiene hijos a los que el usuario tiene acceso.
+            return ModuleTreeSerializer(
+                obj._accessible_children, many=True,
+                context=self.context,
+            ).data
+        # Uso genérico (sin filtro de acceso): todos los hijos activos
         children = obj.children.filter(is_active=True).order_by('order', 'code')
-        return ModuleTreeSerializer(children, many=True).data
+        return ModuleTreeSerializer(
+            children, many=True, context=self.context).data
 
 
 class MyModulesSerializer(serializers.Serializer):

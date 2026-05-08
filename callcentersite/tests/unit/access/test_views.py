@@ -91,3 +91,38 @@ class TestMyModulesView:
 
         assert response.status_code == status.HTTP_200_OK
         assert response.data['total_count'] == 0
+    def test_inaccessible_child_not_in_response(self):
+        """
+        Un módulo hijo al que el usuario no tiene acceso no aparece en la
+        respuesta aunque el padre sí sea accesible.
+
+        Escenario:
+            parent_module  ← usuario TIENE acceso
+            child_module   ← usuario NO TIENE acceso
+
+        La respuesta debe incluir parent_module con children vacío.
+        """
+        user   = UserTestData()
+        parent = ModuleTestData(code='MOD_PARENT_X', name='Parent X')
+        child  = ModuleTestData(code='MOD_CHILD_X',  name='Child X',
+                                parent=parent)
+
+        # Solo dar acceso al padre
+        UserModuleAccess.objects.create(
+            user=user, module=parent, is_active=True)
+
+        client = APIClient()
+        client.force_authenticate(user=user)
+
+        url = reverse('access:my-modules')
+        response = client.get(url)
+
+        assert response.status_code == status.HTTP_200_OK
+        assert response.data['total_count'] == 1
+
+        # El hijo no debe aparecer en el árbol
+        modules = response.data['modules']
+        assert len(modules) == 1
+        assert modules[0]['code'] == 'MOD_PARENT_X'
+        assert modules[0]['children'] == []
+
