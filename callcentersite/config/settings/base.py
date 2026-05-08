@@ -182,7 +182,12 @@ DATABASES = {
 }
 
 # Database Router (CNST-003: READ-ONLY enforcement)
-DATABASE_ROUTERS = ['config.db_router.DatabaseRouter']  # CNST-003
+DATABASE_ROUTERS = ['config.db_router.DatabaseRouter']
+
+# IVR MariaDB query timeout (seconds).
+# Applies to all cursor.execute() and cursor.callproc() calls on connections['ivr'].
+# Override in settings_local.py for development.
+IVR_QUERY_TIMEOUT_SEC = int(config('IVR_QUERY_TIMEOUT_SEC', default='30'))  # CNST-003
 
 
 # ==============================================================================

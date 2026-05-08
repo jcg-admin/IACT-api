@@ -6,7 +6,7 @@ B-04: errores, disponibilidad y reintento.
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .viewsets import CenterViewSet, ServiceViewSet, CallRecordViewSet, CallNoteViewSet
-from .views import etl_status, etl_errors, etl_data_availability, etl_retry
+from .views import etl_status, etl_errors, etl_data_availability, etl_retry, ivr_health
 
 router = DefaultRouter()
 router.register(r'centers',    CenterViewSet,     basename='center')
@@ -30,4 +30,7 @@ urlpatterns = [
 
     # UC_PIP_04 — solicitar reintento (B-04)
     path('retry/',             etl_retry,             name='etl-retry'),
+
+    # I-003 — IVR MariaDB health check
+    path('ivr-health/',        ivr_health,            name='ivr-health'),
 ]

@@ -12,15 +12,19 @@ Cada funcion corresponde a un SP desplegado y verificado en Fase 3:
   sp_rpt_menu_redirigidos      -> UC_RPT_16 (vista redirigidos)
   sp_rpt_menu_centro           -> UC_RPT_16 (vista menu_centro)
 """
+from django.conf import settings
 from django.db import connections, OperationalError
 
 
 def _call_sp(sp_name: str, params: list) -> list[dict]:
     """
-    Invoca un SP de MariaDB y retorna lista de dicts.
-    Maneja el caso de SP que retorna 0 filas (cursor.description is None).
+    Invokes a MariaDB stored procedure and returns a list of dicts.
+    Applies IVR_QUERY_TIMEOUT_SEC timeout before each call.
+    Handles SPs that return 0 rows (cursor.description is None).
     """
+    timeout_ms = getattr(settings, 'IVR_QUERY_TIMEOUT_SEC', 30) * 1000
     with connections['ivr'].cursor() as cursor:
+        cursor.execute(f"SET SESSION MAX_EXECUTION_TIME={timeout_ms}")
         cursor.callproc(sp_name, params)
         if cursor.description is None:
             return []
@@ -86,8 +90,20 @@ def get_center_menus(quarter: str, segment: str = 'todas') -> list[dict]:
 
 
 # Segmentos y quarters validos para validacion en views
-SEGMENTOS_VALIDOS  = {'todas', 'nacional_A', 'nacional_B', 'puebla'}
-QUARTERS_VALIDOS   = {
-    'Q01_25', 'Q02_25', 'Q03_25', 'Q04_25',
-    'Q01_26', 'Q02_26',
-}
+VALID_SEGMENTS = {'todas', 'nacional_A', 'nacional_B', 'puebla'}
+
+
+def get_available_quarters() -> set[str]:
+    """
+    Returns the set of quarters available in base_ivr_detalle.
+    No cache (CNST-010). Lightweight: SELECT DISTINCT on indexed column.
+    Returns empty set if MariaDB is unavailable.
+    """
+    try:
+        with connections['ivr'].cursor() as cursor:
+            cursor.execute(
+                "SELECT DISTINCT trimestre FROM base_ivr_detalle ORDER BY trimestre"
+            )
+            return {row[0] for row in cursor.fetchall()}
+    except OperationalError:
+        return set()

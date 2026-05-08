@@ -28,12 +28,25 @@ _IVR_SEGMENTO_PARAM = OpenApiParameter(
 )
 
 
-def _validate(quarter=None, segment=None):
+def _validate(quarter: str | None = None,
+              segment: str | None = None) -> list[str]:
+    """
+    Validates quarter and segment parameters.
+    Quarter validated against base_ivr_detalle (no cache, CNST-010).
+    """
     errors = []
-    if quarter and quarter not in svc.QUARTERS_VALIDOS:
-        errores.append(f'quarter invalido: {quarter}. Validos: {sorted(svc.QUARTERS_VALIDOS)}')
-    if segment and segment not in svc.SEGMENTOS_VALIDOS:
-        errores.append(f'segment invalido: {segment}. Validos: {sorted(svc.SEGMENTOS_VALIDOS)}')
+    if quarter:
+        available = svc.get_available_quarters()
+        if available and quarter not in available:
+            errors.append(
+                f'Invalid quarter: {quarter}. '
+                f'Available: {sorted(available)}'
+            )
+    if segment and segment not in svc.VALID_SEGMENTS:
+        errors.append(
+            f'Invalid segment: {segment}. '
+            f'Valid: {sorted(svc.VALID_SEGMENTS)}'
+        )
     return errors
 
 
@@ -206,7 +219,7 @@ class MenusIVRView(APIView):
 
         errors = _validate(quarter=quarter, segment=segment)
         if vista not in ('redirigidos', 'menu_centro'):
-            errores.append('vista invalida: usar redirigidos o menu_centro')
+            errors.append('vista invalida: usar redirigidos o menu_centro')
         if errors:
             return Response({'errors': errors}, status=400)
 

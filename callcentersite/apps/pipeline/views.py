@@ -28,6 +28,7 @@ del pipeline (job_execution_log).
 """
 from datetime import datetime, timedelta, timezone
 
+from django.conf import settings
 from django.db import connections, OperationalError
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
@@ -66,7 +67,9 @@ def _get_pipeline_runs(limit: int = 20) -> list[dict]:
         ORDER BY start_time DESC
         LIMIT %s
     """
+    timeout_ms = getattr(settings, 'IVR_QUERY_TIMEOUT_SEC', 30) * 1000
     with connections['ivr'].cursor() as cursor:
+        cursor.execute(f"SET SESSION MAX_EXECUTION_TIME={timeout_ms}")
         cursor.execute(sql, [limit])
         cols = [c[0] for c in cursor.description]
         return [dict(zip(cols, row)) for row in cursor.fetchall()]
@@ -515,3 +518,35 @@ def etl_retry(request):
         'resultado': list(result) if result else None,
         'ejecutado_por': str(request.user),
     }, status=status.HTTP_202_ACCEPTED)
+
+
+@extend_schema(
+    summary="IVR MariaDB connection health check",
+    description=(
+        "Verifies connectivity to MariaDB ivr_legacy. "
+        "Returns MariaDB version on success, error detail on failure."
+    ),
+    responses={
+        200: OpenApiResponse(description="MariaDB available — returns version"),
+        503: OpenApiResponse(description="MariaDB unavailable"),
+    },
+    tags=["Estado del Pipeline"]
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ivr_health(request):
+    """
+    GET /api/pipeline/ivr-health/
+
+    Lightweight connectivity check: SELECT VERSION() on connections['ivr'].
+    """
+    try:
+        with connections['ivr'].cursor() as cursor:
+            cursor.execute("SELECT VERSION()")
+            version = cursor.fetchone()[0]
+        return Response({'status': 'ok', 'mariadb_version': version})
+    except OperationalError as e:
+        return Response(
+            {'status': 'error', 'detail': str(e)},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE
+        )
