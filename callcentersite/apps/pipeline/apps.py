@@ -9,34 +9,24 @@ class PipelineConfig(AppConfig):
     name = 'apps.pipeline'
     verbose_name = 'ETL Pipeline'
     
-    def ready(self):
+    def ready(self) -> None:
+        """
+        Start background scheduler on Django startup.
+        CNST-004: ETL scheduled every 12 hours — no Celery.
+        """
         import apps.pipeline.schema  # noqa: F401
-        """
-        Iniciar scheduler ETL cuando Django inicia.
-        
-        CNST-004: ETL programado cada 12 horas.
-        """
-        # Solo iniciar en procesos principales
-        # (evitar en migraciones, makemigrations, etc)
+
         import sys
-        
-        # Lista de comandos donde NO iniciar scheduler
-        skip_commands = [
-            'makemigrations',
-            'migrate',
-            'test',
-            'shell',
-            'createsuperuser',
-        ]
-        
-        # Detectar si es un comando a evitar
-        if len(sys.argv) > 1 and sys.argv[1] in skip_commands:
-            logger.info(f"Comando {sys.argv[1]} detectado, "
-                       f"NO iniciando scheduler")
+        skip_commands = (
+            'makemigrations', 'migrate', 'sqlmigrate',
+            'showmigrations', 'check', 'spectacular', 'shell',
+            'collectstatic', 'test', 'createsuperuser',
+        )
+        if any(cmd in ' '.join(sys.argv) for cmd in skip_commands):
+            logger.info("ETLScheduler: NOT started (management command).")
             return
-        
-        # Iniciar scheduler
-        logger.info("Iniciando ETLScheduler desde apps.py ready()...")
+
+        logger.info("ETLScheduler: starting from PipelineConfig.ready()...")
         from apps.pipeline.scheduler import ETLScheduler
         ETLScheduler.start()
 
