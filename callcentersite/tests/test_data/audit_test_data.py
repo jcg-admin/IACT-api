@@ -105,66 +105,36 @@ class AccessDeniedAuditLogTestData(AuditLogTestData):
 
 class SessionLogTestData(DjangoModelFactory):
     """
-    Factory para SessionLog (registro de sesiones).
-    
-    CNST-010: Sessions en DB (NO Redis).
-    
-    Uso básico:
-        log = SessionLogTestData(
-            user=user,
-            action='LOGIN'
-        )
-    
-    Login/Logout:
-        login_log = SessionLogTestData(action='LOGIN')
-        logout_log = SessionLogTestData(action='LOGOUT', user=login_log.user)
+    Factory para SessionLog (authentication.models.SessionLog).
+
+    Campos reales del modelo: session_key, ip_address, user_agent,
+    is_active, logout_at.
+
+    El modelo SessionLog no tiene action, timestamp ni details.
     """
-    
+
     class Meta:
         model = SessionLog
-    
-    user = factory.SubFactory(UserTestData)
-    session_key = factory.Faker('sha256')
-    ip_address = factory.Faker('ipv4')
-    user_agent = factory.Faker('user_agent')
-    action = factory.Iterator(['LOGIN', 'LOGOUT', 'SESSION_EXPIRED'])
-    timestamp = factory.Faker('date_time_this_month')
-    details = factory.LazyFunction(lambda: {
-        'browser': 'Chrome',
-        'os': 'Windows 10'
-    })
+
+    user       = factory.SubFactory(UserTestData)
+    session_key = factory.Sequence(lambda n: f'session_key_{n}')
+    ip_address  = factory.Faker('ipv4')
+    user_agent  = factory.Faker('user_agent')
+    is_active   = True
+    created_by  = factory.SelfAttribute('user')
 
 
 class LoginSessionLogTestData(SessionLogTestData):
-    """Factory para logs de LOGIN."""
-    action = 'LOGIN'
-    details = factory.LazyFunction(lambda: {
-        'method': 'username_password',
-        'success': True
-    })
-
+    """Factory para logs de LOGIN (sesión activa)."""
+    is_active = True
 
 class LogoutSessionLogTestData(SessionLogTestData):
-    """Factory para logs de LOGOUT."""
-    action = 'LOGOUT'
-    details = factory.LazyFunction(lambda: {
-        'method': 'manual',
-        'session_duration_seconds': 3600
-    })
-
+    """Factory para logs de LOGOUT (sesión cerrada)."""
+    is_active = False
 
 class ExpiredSessionLogTestData(SessionLogTestData):
     """Factory para logs de sesión expirada."""
-    action = 'SESSION_EXPIRED'
-    details = factory.LazyFunction(lambda: {
-        'reason': 'inactivity',
-        'idle_time_seconds': 1800
-    })
-
-
-# ============================================================================
-# HELPER FACTORIES (Complex scenarios)
-# ============================================================================
+    is_active = False
 
 class UserSessionTestData(UserTestData):
     """

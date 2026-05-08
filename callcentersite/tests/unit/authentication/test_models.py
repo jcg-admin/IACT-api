@@ -68,8 +68,9 @@ class TestLoginAttempt:
     def test_login_attempt_str_uses_created_at(self):
         """Test __str__ usa created_at."""
         user = UserTestData()
-        attempt = LoginAttemptTestData(user=user, success=True)
-        
+        attempt = LoginAttemptTestData(
+            user=user, username=user.username, success=True)
+
         str_repr = str(attempt)
         assert user.username in str_repr
         assert 'SUCCESS' in str_repr
@@ -114,7 +115,7 @@ class TestSecurityQuestion:
         q2.delete()  # [SUCCESS] delete() hace soft delete
         
         # [SUCCESS] active() solo retorna no eliminadas
-        active = SecurityQuestion.objects.active()
+        active = SecurityQuestion.objects.all()
         assert active.count() == 1
         assert q1 in active
         assert q2 not in active
@@ -127,7 +128,7 @@ class TestSecurityQuestion:
         q2.delete()
         
         # [SUCCESS] deleted() solo retorna eliminadas
-        deleted = SecurityQuestion.objects.deleted()
+        deleted = SecurityQuestion.objects.deleted_only()
         assert deleted.count() == 1
         assert q2 in deleted
         assert q1 not in deleted
@@ -140,7 +141,7 @@ class TestSecurityQuestion:
         q2.delete()
         
         # [SUCCESS] with_deleted() retorna todas
-        all_questions = SecurityQuestion.objects.with_deleted()
+        all_questions = SecurityQuestion.objects.all_with_deleted()
         assert all_questions.count() == 2
         assert q1 in all_questions
         assert q2 in all_questions
@@ -203,9 +204,10 @@ class TestUserSecurityAnswer:
             created_by=user
         )
         
-        # Verificar que se hasheó
+        # Verificar que se hasheó (prefijo varía según PASSWORD_HASHERS del settings)
         assert answer.answer_hash != 'Mi Respuesta'
-        assert answer.answer_hash.startswith('pbkdf2_sha256$')
+        assert answer.answer_hash != 'mi respuesta'  # normalizado pero no texto plano
+        assert '$' in answer.answer_hash  # formato hash: algoritmo$salt$hash
     
     def test_check_answer_correct(self):
         """Test check_answer() con respuesta correcta."""
