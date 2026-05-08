@@ -79,6 +79,7 @@ class Function(SoftDeleteModel):
         max_length=100,
         unique=True,
         blank=True,
+        null=True,
         verbose_name=_('Namespace Django'),
         help_text='Formato: app.accion. Ej: reports.view, dashboard.export',
     )

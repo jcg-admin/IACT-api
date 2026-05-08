@@ -1,23 +1,10 @@
 """
-Settings locales para desarrollo con SQLite.
+config/settings_local.py
+
+Settings para ejecucion local en desarrollo.
+Usa PostgreSQL real y MariaDB real — no SQLite.
+
+Las credenciales leen del .env (python-decouple).
+Override solo cuando sea necesario para experimentacion local.
 """
-from pathlib import Path
-from .settings.base import *
-
-# Usar SQLite para desarrollo
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': Path(__file__).resolve().parent.parent / 'db.sqlite3',
-    }
-}
-
-# Password hasher simple para tests (sin argon2)
-PASSWORD_HASHERS = [
-    'django.contrib.auth.hashers.MD5PasswordHasher',
-]
-
-# Desactivar scheduler para tests
-SCHEDULER_ENABLED = False
-
-print("[SUCCESS] Usando SQLite para desarrollo")
+from .settings.development import *
