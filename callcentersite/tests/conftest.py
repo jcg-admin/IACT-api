@@ -25,6 +25,7 @@ pytest_plugins = [
     'tests.fixtures.users',
     'tests.fixtures.rbac',
     'tests.fixtures.authentication',
+    'tests.fixtures.ivr',   # L-002: IVR MariaDB integration fixtures
 
     # Mocks
     'tests.mocks.database_mocks',
