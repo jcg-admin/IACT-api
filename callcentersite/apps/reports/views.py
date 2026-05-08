@@ -9,6 +9,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.access.permissions.function_permissions import HasFunction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
 
@@ -223,7 +224,8 @@ class ExportJobViewSet(viewsets.ReadOnlyModelViewSet):
     
     queryset = ExportJob.objects.all()
     serializer_class = ExportJobSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.export'
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['status', 'format']
     ordering_fields = ['created_at']
@@ -249,6 +251,7 @@ class ExportJobViewSet(viewsets.ReadOnlyModelViewSet):
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
 from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
+from apps.access.permissions.function_permissions import HasFunction
 from apps.access.permissions.function_permissions import HasFunction
 from .models import ScheduledReport, SavedView
 from .serializers import ScheduledReportSerializer, SavedViewSerializer
