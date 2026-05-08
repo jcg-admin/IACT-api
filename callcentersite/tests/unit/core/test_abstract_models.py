@@ -308,7 +308,7 @@ class TestSoftDeleteQuerySet:
         deleted.delete()
         
         # Combinar active() con filter()
-        result = test_model_class.objects.alive().filter(name__contains='A')
+        result = test_model_class.objects.all().filter(name__contains='A')
         
         assert result.count() == 1
         assert result.first().name == 'Active A'
@@ -329,7 +329,7 @@ class TestSoftDeleteQuerySet:
             from django.db import reset_queries
             reset_queries()
             
-            list(test_model_class.objects.alive())
+            list(test_model_class.objects.all())
             
             # Debería ser 1 query (SELECT con WHERE is_deleted=False)
             assert len(connection.queries) == 1
