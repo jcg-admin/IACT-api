@@ -174,7 +174,7 @@ class TestSoftDeleteMixin:
         instance.hard_delete()
         
         # Verificar que no existe en DB (ni siquiera con with_deleted)
-        assert not test_model_class.objects.with_deleted().filter(id=instance_id).exists()
+        assert not test_model_class.objects.all_with_deleted().filter(id=instance_id).exists()
     
     def test_restore_recovers_deleted(self, test_model_class):
         """Test: restore() recupera eliminado."""
@@ -224,7 +224,7 @@ class TestSoftDeleteMixin:
         deleted1.delete()
         deleted2.delete()
         
-        deleted_objects = list(test_model_class.objects.deleted())
+        deleted_objects = list(test_model_class.objects.deleted_only())
         
         assert len(deleted_objects) == 2
         assert deleted1 in deleted_objects
@@ -261,13 +261,16 @@ class TestSoftDeleteQuerySet:
         return TestModel
     
     def test_active_returns_only_not_deleted(self, test_model_class):
-        """Test: active() solo retorna no eliminados."""
+        """
+        Test: objects.all() solo retorna no eliminados (is_deleted=False).
+        ActiveRecordQuery.get_queryset() filtra is_deleted=False por defecto.
+        """
         active1 = test_model_class.objects.create(name='Active1')
         active2 = test_model_class.objects.create(name='Active2')
         deleted = test_model_class.objects.create(name='Deleted')
         deleted.delete()
         
-        active_objects = list(test_model_class.objects.active())
+        active_objects = list(test_model_class.objects.all())
         
         assert len(active_objects) == 2
         assert active1 in active_objects
@@ -281,7 +284,7 @@ class TestSoftDeleteQuerySet:
         deleted1.delete()
         deleted2.delete()
         
-        deleted_objects = list(test_model_class.objects.deleted())
+        deleted_objects = list(test_model_class.objects.deleted_only())
         
         assert len(deleted_objects) == 2
     
@@ -291,7 +294,7 @@ class TestSoftDeleteQuerySet:
         deleted = test_model_class.objects.create(name='Deleted')
         deleted.delete()
         
-        all_objects = list(test_model_class.objects.with_deleted())
+        all_objects = list(test_model_class.objects.all_with_deleted())
         
         assert len(all_objects) == 2
         assert active in all_objects
@@ -305,7 +308,7 @@ class TestSoftDeleteQuerySet:
         deleted.delete()
         
         # Combinar active() con filter()
-        result = test_model_class.objects.active().filter(name__contains='A')
+        result = test_model_class.objects.alive().filter(name__contains='A')
         
         assert result.count() == 1
         assert result.first().name == 'Active A'
@@ -326,7 +329,7 @@ class TestSoftDeleteQuerySet:
             from django.db import reset_queries
             reset_queries()
             
-            list(test_model_class.objects.active())
+            list(test_model_class.objects.alive())
             
             # Debería ser 1 query (SELECT con WHERE is_deleted=False)
             assert len(connection.queries) == 1
