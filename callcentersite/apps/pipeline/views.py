@@ -211,7 +211,7 @@ def etl_status(request):
         runs = _get_pipeline_runs(limit=20)
     except OperationalError as e:
         return Response(
-            {'error': 'No se pudo conectar a la base de datos IVR.',
+            {'error': 'Could not connect to the IVR database.',
              'detail': str(e)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
@@ -252,8 +252,8 @@ def etl_status(request):
 @extend_schema(
     summary="UC_PIP_02 — Errores del pipeline ETL",
     parameters=[
-        OpenApiParameter('trimestre', str,
-            description="Filtrar por quarter. Ej: Q01_25"),
+        OpenApiParameter('quarter', str,
+            description="Filter by quarter. E.g.: Q01_25"),
         OpenApiParameter('page', int, default=1),
         OpenApiParameter('page_size', int, default=20,
             description="Max 100 registros por pagina"),
@@ -272,7 +272,7 @@ def etl_errors(request):
 
     GET /api/pipeline/errors/
     Query params:
-      trimestre (opcional): filtrar por quarter (ej: Q01_25)
+      quarter (optional): filter by quarter (e.g.: Q01_25)
       page      (opcional): pagina (default 1)
       page_size (opcional): tamano de pagina (default 20, max 100)
 
@@ -321,7 +321,7 @@ def etl_errors(request):
             cols = [c[0] for c in cursor.description]
             errors = [dict(zip(cols, row)) for row in cursor.fetchall()]
     except OperationalError as e:
-        return Response({'error': 'No se pudo conectar a MariaDB.', 'detail': str(e)},
+        return Response({'error': 'Could not connect to MariaDB.', 'detail': str(e)},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     return Response({
@@ -339,13 +339,13 @@ def etl_errors(request):
 @extend_schema(
     summary="UC_PIP_03 — Disponibilidad de datos por quarter",
     parameters=[
-        OpenApiParameter('trimestre', str, required=True,
-            description="Quarter a consultar. Ej: Q01_25"),
+        OpenApiParameter('quarter', str, required=True,
+            description="Quarter to query. E.g.: Q01_25"),
     ],
     responses={
         200: OpenApiResponse(
             description="Estado frescura: fresco | aceptable | vencido | sin_datos"),
-        400: OpenApiResponse(description="Parametro trimestre faltante"),
+        400: OpenApiResponse(description="Parameter quarter is required."),
         503: OpenApiResponse(description="MariaDB no disponible"),
     },
     tags=["Estado del Pipeline"]
@@ -358,7 +358,7 @@ def etl_data_availability(request):
 
     GET /api/pipeline/data-availability/
     Query params:
-      trimestre (requerido): ej Q01_25
+      quarter (required): e.g. Q01_25
 
     Retorna el ultimo ETL exitoso para ese quarter y el status de frescura.
     Fuente: job_execution_log WHERE status='SUCCESS' en MariaDB.
@@ -387,7 +387,7 @@ def etl_data_availability(request):
             cursor.execute(sql, [quarter])
             row = cursor.fetchone()
     except OperationalError as e:
-        return Response({'error': 'No se pudo conectar a MariaDB.', 'detail': str(e)},
+        return Response({'error': 'Could not connect to MariaDB.', 'detail': str(e)},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     if not row:
@@ -439,10 +439,10 @@ def etl_data_availability(request):
         "application/json": {
             "type": "object",
             "properties": {
-                "trimestre": {"type": "string", "example": "Q01_25"},
+                "quarter": {"type": "string", "example": "Q01_25"},
                 "motivo":    {"type": "string", "minLength": 20},
             },
-            "required": ["trimestre", "motivo"],
+            "required": ["quarter", "motivo"],
         }
     },
     responses={
@@ -460,7 +460,7 @@ def etl_retry(request):
     UC_PIP_04 — Solicitar reintento del pipeline para un quarter.
 
     POST /api/pipeline/retry/
-    Body: { "trimestre": "Q01_25", "motivo": "Fallo transitorio de red..." }
+    Body: { "quarter": "Q01_25", "motivo": "Failure reason at least 20 chars..." }
 
     Verifica que no haya ejecucion activa, luego llama sp_etl_historico
     directamente en MariaDB.
@@ -496,7 +496,7 @@ def etl_retry(request):
             activos = cursor.fetchone()[0]
             if activos > 0:
                 return Response(
-                    {'error': 'Hay una ejecucion activa. Esperar a que termine antes de reintentar.'},
+                    {'error': 'An execution is already running. Wait for it to finish before retrying.'},
                     status=409
                 )
 
@@ -505,7 +505,7 @@ def etl_retry(request):
             result = cursor.fetchone()
 
     except OperationalError as e:
-        return Response({'error': 'No se pudo conectar a MariaDB.', 'detail': str(e)},
+        return Response({'error': 'Could not connect to MariaDB.', 'detail': str(e)},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     return Response({

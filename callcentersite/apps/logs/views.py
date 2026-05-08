@@ -157,7 +157,7 @@ class LogSearchView(APIView):
             max_lines = 200
 
         if not date_from:
-            return Response({'error': 'date_from es requerido.'}, status=400)
+            return Response({'error': 'date_from is required.'}, status=400)
 
         all_lines = _read_log_tail(LOG_FILE, lines=10000)
         results = []
@@ -208,7 +208,7 @@ class LogExportView(APIView):
         formato   = request.data.get('formato', 'txt')
 
         if not date_from:
-            return Response({'error': 'date_from es requerido.'}, status=400)
+            return Response({'error': 'date_from is required.'}, status=400)
 
         return Response({
             'job_id':    f'log_export_{datetime.utcnow().strftime("%Y%m%d%H%M%S")}',

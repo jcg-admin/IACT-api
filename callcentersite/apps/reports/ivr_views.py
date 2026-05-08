@@ -43,7 +43,7 @@ def _ivr_response(fn, *args, extra=None):
         data = fn(*args)
     except OperationalError as e:
         return Response(
-            {'error': 'No se pudo conectar a la base de datos IVR.', 'detail': str(e)},
+            {'error': 'Could not connect to the IVR database.', 'detail': str(e)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
     payload = {'total_rows': len(data), 'data': data}

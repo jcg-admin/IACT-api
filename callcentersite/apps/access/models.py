@@ -404,7 +404,7 @@ class UserModuleAccess(models.Model):
         db_table = 'access_user_module_access'
 
     def __str__(self):
-        status = 'activo' if self.is_active else 'revocado'
+        status = 'active' if self.is_active else 'revoked'
         return f'{self.user} -> {self.module.code} [{status}]'
 
 
@@ -461,5 +461,5 @@ class UserFunctionAssignment(models.Model):
         db_table = 'access_user_function_assignment'
 
     def __str__(self):
-        status = 'activa' if self.is_active else 'revocada'
+        status = 'active' if self.is_active else 'revoked'
         return f'{self.user} -> {self.function.code} [{status}]'

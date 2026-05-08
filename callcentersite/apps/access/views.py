@@ -217,9 +217,9 @@ class AccessGroupViewSet(viewsets.ModelViewSet):
             from .models import Function
             fn = Function.objects.get(id=function_id)
             group.functions.add(fn)
-            return Response({'detail': f'Funcion {fn.code} agregada al grupo {group.code}.'})
+            return Response({'detail': f'Function {fn.code} added to group {group.code}.'})
         except Function.DoesNotExist:
-            return Response({'error': 'Funcion no encontrada.'}, status=404)
+            return Response({'error': 'Function not found.'}, status=404)
 
     @action(detail=True, methods=['delete'], url_path='remove-function')
     def remove_function(self, request, pk=None):
@@ -230,9 +230,9 @@ class AccessGroupViewSet(viewsets.ModelViewSet):
             from .models import Function
             fn = Function.objects.get(id=function_id)
             group.functions.remove(fn)
-            return Response({'detail': f'Funcion {fn.code} removida del grupo {group.code}.'})
+            return Response({'detail': f'Function {fn.code} removed from group {group.code}.'})
         except Function.DoesNotExist:
-            return Response({'error': 'Funcion no encontrada.'}, status=404)
+            return Response({'error': 'Function not found.'}, status=404)
 
 
 class UserAccessGroupViewSet(viewsets.ModelViewSet):
@@ -384,21 +384,21 @@ class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
         """UC_ACC_08 / UC_PERM_03 — Aprobar permiso excepcional."""
         perm = self.get_object()
         if perm.status != 'pending':
-            return Response({'error': 'Solo se pueden aprobar permisos pendientes.'}, status=400)
+            return Response({'error': 'Only pending permissions can be approved.'}, status=400)
         perm.status = 'approved'
         perm.granted_by = request.user
         perm.save()
-        return Response({'detail': 'Permiso aprobado.', 'status': perm.status})
+        return Response({'detail': 'Permission approved.', 'status': perm.status})
 
     @action(detail=True, methods=['patch'], url_path='revoke')
     def revoke(self, request, pk=None):
         """UC_PERM_04 — Revocar permiso excepcional."""
         perm = self.get_object()
-        if perm.status in ('revocado', 'expirado'):
-            return Response({'error': f'Permiso ya esta en status {perm.status}.'}, status=400)
+        if perm.status in ('revoked', 'expired'):
+            return Response({'error': f'Permission already in status {perm.status}.'}, status=400)
         perm.status = 'revoked'
         perm.save()
-        return Response({'detail': 'Permiso revocado.', 'status': perm.status})
+        return Response({'detail': 'Permission revoked.', 'status': perm.status})
 
 
 # ---------------------------------------------------------------------------
@@ -439,7 +439,7 @@ class EffectivePermissionsView(APIView):
         try:
             user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
-            return Response({'error': 'Usuario no encontrado.'}, status=404)
+            return Response({'error': 'User not found.'}, status=404)
 
         # Funciones directas
         direct = set(UserPermission.objects.filter(
@@ -532,7 +532,7 @@ class UserEffectivePermissionsAliasView(APIView):
         try:
             user = User.objects.get(pk=user_id)
         except User.DoesNotExist:
-            return Response({'error': 'Usuario no encontrado.'}, status=404)
+            return Response({'error': 'User not found.'}, status=404)
 
         direct = set(UserPermission.objects.filter(
             user=user
@@ -602,15 +602,15 @@ class FunctionAssignView(APIView):
 
         if not user_id or not function_id:
             return Response(
-                {'error': 'userId y functionId son requeridos.'}, status=400)
+                {'error': 'userId and functionId are required.'}, status=400)
 
         try:
             user     = User.objects.get(pk=user_id)
             function = Function.objects.get(pk=function_id, is_active=True)
         except User.DoesNotExist:
-            return Response({'error': 'Usuario no encontrado.'}, status=404)
+            return Response({'error': 'User not found.'}, status=404)
         except Function.DoesNotExist:
-            return Response({'error': 'Funcion no encontrada o inactiva.'}, status=404)
+            return Response({'error': 'Function not found or inactive.'}, status=404)
 
         # Verificar conflicto de SeparationRule
         existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
@@ -633,7 +633,7 @@ class FunctionAssignView(APIView):
 
         if not created:
             return Response(
-                {'error': 'La funcion ya esta asignada al usuario.'}, status=409)
+                {'error': 'Function already assigned to this user.'}, status=409)
 
         return Response({
             'newFunction': {
@@ -679,7 +679,7 @@ class FunctionRevokeView(APIView):
 
         if not user_id or not function_id:
             return Response(
-                {'error': 'userId y functionId son requeridos.'}, status=400)
+                {'error': 'userId and functionId are required.'}, status=400)
 
         deleted, _ = UserPermission.objects.filter(
             user_id=user_id, function_id=function_id
@@ -687,9 +687,9 @@ class FunctionRevokeView(APIView):
 
         if not deleted:
             return Response(
-                {'error': 'Asignacion no encontrada.'}, status=404)
+                {'error': 'Assignment not found.'}, status=404)
 
-        return Response({'detail': 'Funcion revocada correctamente.'})
+        return Response({'detail': 'Function revoked successfully.'})
 
 
 @extend_schema(
@@ -735,7 +735,7 @@ class SeparationRuleValidateView(APIView):
 
         if not user_id or not function_id:
             return Response(
-                {'error': 'userId y functionId son requeridos.'}, status=400)
+                {'error': 'userId and functionId are required.'}, status=400)
 
         try:
             user     = User.objects.get(pk=user_id)
@@ -820,15 +820,15 @@ class GrouperAssignView(APIView):
 
         if not user_id or not grouper_id:
             return Response(
-                {'error': 'userId y grouperId son requeridos.'}, status=400)
+                {'error': 'userId and grouperId are required.'}, status=400)
 
         try:
             user   = User.objects.get(pk=user_id)
             group  = AccessGroup.objects.get(pk=grouper_id, is_active=True)
         except User.DoesNotExist:
-            return Response({'error': 'Usuario no encontrado.'}, status=404)
+            return Response({'error': 'User not found.'}, status=404)
         except AccessGroup.DoesNotExist:
-            return Response({'error': 'Agrupador no encontrado.'}, status=404)
+            return Response({'error': 'Group not found.'}, status=404)
 
         membership, created = UserAccessGroup.objects.get_or_create(
             user=user, access_group=group,
@@ -837,7 +837,7 @@ class GrouperAssignView(APIView):
 
         if not created:
             return Response(
-                {'error': 'El usuario ya pertenece a este agrupador.'}, status=409)
+                {'error': 'User already belongs to this group.'}, status=409)
 
         serializer = UserAccessGroupSerializer(membership)
         return Response(serializer.data, status=201)
