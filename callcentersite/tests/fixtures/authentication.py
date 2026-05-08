@@ -5,11 +5,11 @@ Proporciona fixtures reutilizables para tests de authentication.
 """
 
 import pytest
-from tests.factories import (
-    SecurityQuestionFactory,
-    UserSecurityAnswerFactory,
-    SessionLogFactory,
-    UserFactory
+from tests.testdata import (
+    SecurityQuestionTestData,
+    UserSecurityAnswerTestData,
+    SessionLogTestData,
+    UserTestData
 )
 
 
@@ -22,7 +22,7 @@ def security_questions(db):
         def test_something(security_questions):
             assert len(security_questions) == 10
     """
-    return SecurityQuestionFactory.create_batch(10)
+    return SecurityQuestionTestData.create_batch(10)
 
 
 @pytest.fixture
@@ -35,12 +35,12 @@ def user_with_security_answers(db):
             user, answers = user_with_security_answers
             assert user.security_answers.count() == 5
     """
-    user = UserFactory()
-    questions = SecurityQuestionFactory.create_batch(5)
+    user = UserTestData()
+    questions = SecurityQuestionTestData.create_batch(5)
     
     answers = []
     for i, question in enumerate(questions):
-        answer = UserSecurityAnswerFactory(
+        answer = UserSecurityAnswerTestData(
             user=user,
             question=question,
             answer_text=f'Respuesta {i+1}',
@@ -60,8 +60,8 @@ def active_session(db):
         def test_session(active_session):
             assert active_session.is_active is True
     """
-    user = UserFactory()
-    return SessionLogFactory(
+    user = UserTestData()
+    return SessionLogTestData(
         user=user,
         is_active=True,
         created_by=user
@@ -81,8 +81,8 @@ def inactive_session(db):
     from django.utils import timezone
     from datetime import timedelta
     
-    user = UserFactory()
-    session = SessionLogFactory(
+    user = UserTestData()
+    session = SessionLogTestData(
         user=user,
         is_active=False,
         created_by=user

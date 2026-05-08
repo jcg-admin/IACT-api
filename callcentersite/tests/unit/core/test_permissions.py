@@ -32,7 +32,7 @@ from apps.core.permissions import (
 # DEUDA TÉCNICA 2026-03-21: HasServiceAccess eliminado en DT-002.
 # La clase TestHasServiceAccess abajo está marcada como skip.
 HasServiceAccess = None  # Sentinel para evitar NameError en el cuerpo del test
-from tests.factories.user_factory import UserFactory, AdminUserFactory
+from tests.testdata.user_test_data import UserTestData, AdminUserTestData
 
 User = get_user_model()
 
@@ -73,7 +73,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         request.user = admin
         
         view = Mock()
@@ -90,7 +90,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -109,7 +109,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -128,7 +128,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -145,7 +145,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -162,7 +162,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -193,7 +193,7 @@ class TestRequiresFunctionPermission:
         # Crear request
         factory = APIRequestFactory()
         request = factory.get('/')
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         # Crear view
@@ -221,7 +221,7 @@ class TestIsOwnerOrReadOnly:
         factory = APIRequestFactory()
         request = factory.put('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         # Objeto con created_by = user
@@ -240,8 +240,8 @@ class TestIsOwnerOrReadOnly:
         factory = APIRequestFactory()
         request = factory.get('/')  # GET = SAFE_METHOD
         
-        user = UserFactory()
-        other_user = UserFactory()
+        user = UserTestData()
+        other_user = UserTestData()
         request.user = user
         
         # Objeto con created_by = other_user
@@ -260,8 +260,8 @@ class TestIsOwnerOrReadOnly:
         factory = APIRequestFactory()
         request = factory.put('/')  # PUT = escritura
         
-        user = UserFactory()
-        other_user = UserFactory()
+        user = UserTestData()
+        other_user = UserTestData()
         request.user = user
         
         # Objeto con created_by = other_user
@@ -280,7 +280,7 @@ class TestIsOwnerOrReadOnly:
         factory = APIRequestFactory()
         request = factory.put('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         # Objeto sin created_by
@@ -307,7 +307,7 @@ class TestIsSuperUserOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         request.user = admin
         
         view = Mock()
@@ -322,7 +322,7 @@ class TestIsSuperUserOrReadOnly:
         factory = APIRequestFactory()
         request = factory.get('/')  # SAFE_METHOD
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -337,7 +337,7 @@ class TestIsSuperUserOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -361,7 +361,7 @@ class TestIsStaffOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        staff_user = UserFactory(is_staff=True)
+        staff_user = UserTestData(is_staff=True)
         request.user = staff_user
         
         view = Mock()
@@ -376,7 +376,7 @@ class TestIsStaffOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         request.user = admin
         
         view = Mock()
@@ -391,7 +391,7 @@ class TestIsStaffOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        user = UserFactory(is_staff=False)
+        user = UserTestData(is_staff=False)
         request.user = user
         
         view = Mock()
@@ -416,7 +416,7 @@ class TestHasServiceAccess:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         request.user = admin
         
         view = Mock()
@@ -431,7 +431,7 @@ class TestHasServiceAccess:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()

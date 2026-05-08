@@ -24,7 +24,7 @@ from decimal import Decimal
 #     SavedFilter,
 #     UserDashboardPreference,
 # )
-from tests.factories.user_factory import UserTestData
+from tests.testdata.user_test_data import UserTestData
 
 
 # ============================================================================

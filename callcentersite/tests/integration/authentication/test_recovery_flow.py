@@ -13,10 +13,10 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
 
-from tests.factories import (
-    UserFactory,
-    SecurityQuestionFactory,
-    UserSecurityAnswerFactory
+from tests.testdata import (
+    UserTestData,
+    SecurityQuestionTestData,
+    UserSecurityAnswerTestData
 )
 from apps.authentication.models import UserSecurityAnswer
 
@@ -51,10 +51,10 @@ class TestPasswordRecoveryFlow:
         6. Login con nueva contraseña
         """
         # 1. Crear 10 preguntas de seguridad
-        questions = SecurityQuestionFactory.create_batch(10)
+        questions = SecurityQuestionTestData.create_batch(10)
         
         # 2. Crear usuario y autenticar
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('oldpass123')
         user.save()
         
@@ -152,8 +152,8 @@ class TestPasswordRecoveryFlow:
         - Solo preguntas activas (excluye soft deleted)
         """
         # Crear 12 preguntas (10 activas + 2 inactivas)
-        active_questions = SecurityQuestionFactory.create_batch(10, is_active=True)
-        inactive_questions = SecurityQuestionFactory.create_batch(2, is_active=False)
+        active_questions = SecurityQuestionTestData.create_batch(10, is_active=True)
+        inactive_questions = SecurityQuestionTestData.create_batch(2, is_active=False)
         
         # Obtener preguntas (endpoint público)
         questions_url = reverse('auth-security-questions')
@@ -178,7 +178,7 @@ class TestPasswordRecoveryFlow:
         Verifica:
         - Error 401 sin token
         """
-        questions = SecurityQuestionFactory.create_batch(5)
+        questions = SecurityQuestionTestData.create_batch(5)
         
         set_answers_url = reverse('auth-set-security-answers')
         answers_data = {
@@ -200,12 +200,12 @@ class TestPasswordRecoveryFlow:
         - Error 400 con respuestas incorrectas
         """
         # Crear usuario con respuestas configuradas
-        user = UserFactory(username='testuser')
-        questions = SecurityQuestionFactory.create_batch(5)
+        user = UserTestData(username='testuser')
+        questions = SecurityQuestionTestData.create_batch(5)
         
         # Configurar respuestas correctas
         for i, q in enumerate(questions):
-            UserSecurityAnswerFactory(
+            UserSecurityAnswerTestData(
                 user=user,
                 question=q,
                 answer_text=f'Respuesta{i}',
@@ -236,14 +236,14 @@ class TestPasswordRecoveryFlow:
         - Contraseña no cambia
         """
         # Crear usuario con respuestas
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('oldpass123')
         user.save()
         
-        questions = SecurityQuestionFactory.create_batch(5)
+        questions = SecurityQuestionTestData.create_batch(5)
         
         for i, q in enumerate(questions):
-            UserSecurityAnswerFactory(
+            UserSecurityAnswerTestData(
                 user=user,
                 question=q,
                 answer_text=f'Correcta{i}',
@@ -295,12 +295,12 @@ class TestSecurityAnswersNormalization:
         - 'AZUL' == 'azul' == 'Azul'
         """
         # Crear usuario con respuestas
-        user = UserFactory(username='testuser')
-        questions = SecurityQuestionFactory.create_batch(5)
+        user = UserTestData(username='testuser')
+        questions = SecurityQuestionTestData.create_batch(5)
         
         # Configurar respuestas en mayúsculas
         for i, q in enumerate(questions):
-            UserSecurityAnswerFactory(
+            UserSecurityAnswerTestData(
                 user=user,
                 question=q,
                 answer_text=f'RESPUESTA{i}',
@@ -329,12 +329,12 @@ class TestSecurityAnswersNormalization:
         Verifica:
         - '  Azul  ' == 'Azul'
         """
-        user = UserFactory(username='testuser')
-        questions = SecurityQuestionFactory.create_batch(5)
+        user = UserTestData(username='testuser')
+        questions = SecurityQuestionTestData.create_batch(5)
         
         # Configurar respuestas con espacios
         for i, q in enumerate(questions):
-            UserSecurityAnswerFactory(
+            UserSecurityAnswerTestData(
                 user=user,
                 question=q,
                 answer_text=f'  Respuesta{i}  ',

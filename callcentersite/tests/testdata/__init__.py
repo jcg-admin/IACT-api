@@ -1,5 +1,8 @@
 """
-FactoryBoy factories - FASE 1 Testing Infrastructure.
+TestData classes - FASE 1 Testing Infrastructure.
+
+All classes follow TestData naming (CLEAN_CODE_NAMING_PRINCIPLES).
+No *Factory suffix — TestData describes the purpose, not the pattern.
 
 Importar todos los factories aquí para fácil acceso.
 
@@ -11,7 +14,7 @@ Total Factories: 137+
 # USER FACTORIES
 # ============================================================================
 
-from .user_factory import (
+from .user_test_data import (
     UserTestData,
     AdminUserTestData,
 )
@@ -21,7 +24,7 @@ from .user_factory import (
 # CORE FACTORIES (apps/core/)
 # ============================================================================
 
-from .core import (
+from .core_test_data import (
     CenterTestData,
     ServiceTestData,
     CallRecordTestData,
@@ -32,7 +35,7 @@ from .core import (
 # AUTHENTICATION FACTORIES (apps/authentication/)
 # ============================================================================
 
-from .authentication_factories import (
+from .authentication_test_data import (
     LoginAttemptTestData,
     SecurityQuestionTestData,
     UserSecurityAnswerTestData,
@@ -44,10 +47,10 @@ from .authentication_factories import (
 # ACCESS FACTORIES (apps/access/) - RBAC
 # ============================================================================
 
-from .access_factories import (
+from .access_test_data import (
     # Module Factories
     ModuleTestData,
-    ModuleWithParentFactory,
+    ModuleWithParentTestData,
 
     # Function Factories
     FunctionTestData,
@@ -64,16 +67,16 @@ from .access_factories import (
     UserWithFunctionTestData,
     CompleteUserTestData,
 )
-# DEUDA TÉCNICA 2026-03-21: RoleFactory, AdminRoleFactory, ManagerRoleFactory,
-# AnalystRoleFactory, ViewerRoleFactory, UserRoleAssignmentFactory,
-# RoleFunctionAssignmentFactory, UserWithRoleFactory eliminados — DT-002.
+# DEUDA TÉCNICA 2026-03-21: RoleTestData, AdminRoleTestData, ManagerRoleTestData,
+# AnalystRoleTestData, ViewerRoleTestData, UserRoleAssignmentTestData,
+# RoleFunctionAssignmentTestData, UserWithRoleTestData eliminados — DT-002.
 
 
 # ============================================================================
 # AUDIT FACTORIES (apps/audit/)
 # ============================================================================
 
-from .audit_factories import (
+from .audit_test_data import (
     # AuditLog Factories
     AuditLogTestData,
     CreateAuditLogTestData,
@@ -109,7 +112,7 @@ from .audit_factories import (
 # ============================================================================
 
 try:
-    from .pipeline_factories import (
+    from .pipeline_test_data import (
         ETLJobTestData, PendingETLJobTestData, RunningETLJobTestData,
         SuccessETLJobTestData, FailedETLJobTestData, ETLErrorTestData,
         ValidationErrorTestData, ConnectionErrorTestData, DataQualityErrorTestData,
@@ -127,12 +130,12 @@ except ImportError:
 # ============================================================================
 
 try:
-    from .report_factories import (
+    from .report_test_data import (
         ReportTestData,
-        QuarterlyReportTestData as QuarterlyReportReportFactory,
-        TransferReportTestData as TransferReportReportFactory,
-        AbandonedReportTestData as AbandonedReportReportFactory,
-        ClientReportTestData as ClientReportReportFactory,
+        QuarterlyReportTestData as QuarterlyReportReportTestData,
+        TransferReportTestData as TransferReportReportTestData,
+        AbandonedReportTestData as AbandonedReportReportTestData,
+        ClientReportTestData as ClientReportReportTestData,
         CustomReportTestData, ReportExecutionTestData, PendingExecutionTestData,
         RunningExecutionTestData, SuccessExecutionTestData, FailedExecutionTestData,
         ReportTemplateTestData, QuarterlyTemplateTestData, TransferTemplateTestData,
@@ -149,7 +152,7 @@ except ImportError:
 # ============================================================================
 
 try:
-    from .dashboard_factories import (
+    from .dashboard_test_data import (
         DashboardConfigTestData, DefaultDashboardTestData, PublicDashboardTestData,
         WidgetConfigTestData, CallsChartWidgetTestData, TransfersChartWidgetTestData,
         AbandonmentsChartWidgetTestData, TopClientsWidgetTestData,
@@ -167,7 +170,7 @@ except ImportError:
 # ============================================================================
 
 try:
-    from .alert_factories import (
+    from .alert_test_data import (
         AlertRuleTestData, ThresholdAlertRuleTestData, HighAbandonmentRuleTestData,
         LowCallVolumeRuleTestData, LongQueueTimeRuleTestData, TrendAlertRuleTestData,
         AnomalyAlertRuleTestData, AlertTestData, TriggeredAlertTestData,
@@ -205,7 +208,7 @@ __all__ = [
     
     # Access (18)
     'ModuleTestData',
-    'ModuleWithParentFactory',
+    'ModuleWithParentTestData',
     'FunctionTestData',
     'FunctionCreateTestData',
     'FunctionViewTestData',
@@ -232,22 +235,22 @@ __all__ = [
     
     # IVR (17)
     'QuarterlyReportTestData',
-    'Q1ReportFactory',
-    'Q2ReportFactory',
-    'Q3ReportFactory',
-    'Q4ReportFactory',
+    'Q1ReportTestData',
+    'Q2ReportTestData',
+    'Q3ReportTestData',
+    'Q4ReportTestData',
     'TransferReportTestData',
     'AbandonedReportTestData',
     'ClientReportTestData',
-    'CallRecordQ1Factory',
-    'CallRecordQ2Factory',
-    'CallRecordQ3Factory',
-    'CallRecordQ4Factory',
-    'MonthlyStatsFactory',
-    'HourlyStatsFactory',
-    'DIDReportFactory',
-    'CompleteQuarterDataFactory',
-    'YearDataFactory',
+    'CallRecordQ1TestData',
+    'CallRecordQ2TestData',
+    'CallRecordQ3TestData',
+    'CallRecordQ4TestData',
+    'MonthlyStatsTestData',
+    'HourlyStatsTestData',
+    'DIDReportTestData',
+    'CompleteQuarterDataTestData',
+    'YearDataTestData',
     
     # Pipeline (16)
     'ETLJobTestData',
@@ -271,10 +274,10 @@ __all__ = [
     
     # Reports (17)
     'ReportTestData',
-    'QuarterlyReportReportFactory',
-    'TransferReportReportFactory',
-    'AbandonedReportReportFactory',
-    'ClientReportReportFactory',
+    'QuarterlyReportReportTestData',
+    'TransferReportReportTestData',
+    'AbandonedReportReportTestData',
+    'ClientReportReportTestData',
     'CustomReportTestData',
     'ReportExecutionTestData',
     'PendingExecutionTestData',
@@ -361,7 +364,7 @@ __all__ = [
 # ============================================================================
 
 # M-001..M-004: New access factories (Fase M)
-from .access_factories import (
+from .access_test_data import (
     AccessGroupTestData,
     UserAccessGroupTestData,
     SeparationRuleTestData,

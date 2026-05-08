@@ -21,7 +21,7 @@ from apps.access.models import (
     UserFunctionAssignment,
     UserModuleAccess,
 )
-from .user_factory import UserTestData
+from .user_test_data import UserTestData
 
 
 # ---------------------------------------------------------------------------
@@ -246,7 +246,7 @@ class UserModuleAccessTestData(DjangoModelFactory):
 # Compatibility aliases (referenced by tests/factories/__init__.py)
 # ---------------------------------------------------------------------------
 
-ModuleWithParentFactory = ChildModuleTestData
+ModuleWithParentTestData = ChildModuleTestData
 
 
 class FunctionCreateTestData(FunctionTestData):

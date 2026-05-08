@@ -32,7 +32,7 @@ from apps.core.mixins import (
 # DEUDA TÉCNICA 2026-03-21: ServiceFilterMixin eliminado en DT-002.
 # TestServiceFilterMixin abajo está marcado como skip.
 ServiceFilterMixin = None  # Sentinel para evitar NameError
-from tests.factories.user_factory import UserFactory
+from tests.testdata.user_test_data import UserTestData
 
 User = get_user_model()
 
@@ -141,7 +141,7 @@ class TestAuditMixin:
         viewset = TestViewSet()
         factory = APIRequestFactory()
         request = factory.post('/api/test/')
-        request.user = UserFactory()
+        request.user = UserTestData()
         
         with patch('apps.core.mixins.logger') as mock_logger:
             viewset.perform_create(Mock())

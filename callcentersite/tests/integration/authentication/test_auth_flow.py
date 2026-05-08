@@ -14,7 +14,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
 
-from tests.factories import UserFactory
+from tests.testdata import UserTestData
 from apps.authentication.models import LoginAttempt, SessionLog, LoginLockout
 
 
@@ -48,7 +48,7 @@ class TestAuthenticationFlow:
         6. Verificar sesión invalidada
         """
         # 1. Crear usuario
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('oldpass123')
         user.save()
         
@@ -124,7 +124,7 @@ class TestAuthenticationFlow:
         - Error 400 con credenciales incorrectas
         - LoginAttempt registrado como fallido
         """
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('correctpass')
         user.save()
         
@@ -236,7 +236,7 @@ class TestAccountLockout:
         3. Verificar que cuenta se bloquea
         4. Verificar error específico
         """
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('correctpass')
         user.save()
         

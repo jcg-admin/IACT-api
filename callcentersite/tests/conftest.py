@@ -71,16 +71,16 @@ def authenticated_client(db):
     """
     API client autenticado con usuario regular.
     
-    Usa UserFactory para crear usuario.
+    Usa UserTestData para crear usuario.
     
     Uso:
         def test_protected_endpoint(authenticated_client):
             response = authenticated_client.get('/api/v1/reports/')
             assert response.status_code == 200
     """
-    from tests.factories import UserFactory
+    from tests.testdata import UserTestData
 
-    user = UserFactory()
+    user = UserTestData()
     client = APIClient()
     token, _ = Token.objects.get_or_create(user=user)
     client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
@@ -93,16 +93,16 @@ def admin_client(db):
     """
     API client autenticado como superusuario.
     
-    Usa AdminUserFactory para crear admin.
+    Usa AdminUserTestData para crear admin.
     
     Uso:
         def test_admin_endpoint(admin_client):
             response = admin_client.post('/api/v1/admin/users/')
             assert response.status_code == 201
     """
-    from tests.factories import AdminUserFactory
+    from tests.testdata import AdminUserTestData
 
-    admin = AdminUserFactory()
+    admin = AdminUserTestData()
     client = APIClient()
     token, _ = Token.objects.get_or_create(user=admin)
     client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
@@ -120,10 +120,10 @@ def sample_user(db):
     Usuario estándar para pruebas.
     
     LEGACY: Mantenido para compatibilidad.
-    NUEVO: Usar UserFactory directamente.
+    NUEVO: Usar UserTestData directamente.
     """
-    from tests.factories import UserFactory
-    return UserFactory(
+    from tests.testdata import UserTestData
+    return UserTestData(
         email='test@example.com',
         username='testuser',
     )
@@ -135,10 +135,10 @@ def sample_admin(db):
     Superusuario para pruebas.
     
     LEGACY: Mantenido para compatibilidad.
-    NUEVO: Usar AdminUserFactory directamente.
+    NUEVO: Usar AdminUserTestData directamente.
     """
-    from tests.factories import AdminUserFactory
-    return AdminUserFactory(
+    from tests.testdata import AdminUserTestData
+    return AdminUserTestData(
         email='admin@example.com',
         username='admin',
     )
@@ -154,10 +154,10 @@ def sample_center(db):
     Centro de ejemplo.
     
     LEGACY: Mantenido para compatibilidad.
-    NUEVO: Usar CenterFactory directamente.
+    NUEVO: Usar CenterTestData directamente.
     """
-    from tests.factories import CenterFactory
-    return CenterFactory(codigo='CT01', nombre='Centro Test')
+    from tests.testdata import CenterTestData
+    return CenterTestData(codigo='CT01', nombre='Centro Test')
 
 
 @pytest.fixture
@@ -166,10 +166,10 @@ def sample_service(db):
     Servicio de ejemplo.
     
     LEGACY: Mantenido para compatibilidad.
-    NUEVO: Usar ServiceFactory directamente.
+    NUEVO: Usar ServiceTestData directamente.
     """
-    from tests.factories import ServiceFactory
-    return ServiceFactory(
+    from tests.testdata import ServiceTestData
+    return ServiceTestData(
         numero_800='800-123-4567',
         nombre='Servicio Test'
     )
@@ -185,7 +185,7 @@ def user_with_complete_access(db, mock_access_service):
     Usuario con acceso completo RBAC (factory + mock).
     
     Combina:
-        - CompleteUserFactory (módulo + función + rol)
+        - CompleteUserTestData (módulo + función + rol)
         - mock_access_service (permisos mockeados)
     
     Uso:
@@ -193,9 +193,9 @@ def user_with_complete_access(db, mock_access_service):
             user = user_with_complete_access
             assert user.usermoduleaccess_set.count() > 0
     """
-    from tests.factories import CompleteUserFactory
+    from tests.testdata import CompleteUserTestData
     
-    user = CompleteUserFactory()
+    user = CompleteUserTestData()
     
     # Mock retorna True para todos los permisos
     mock_access_service.user_has_function.return_value = True
@@ -210,7 +210,7 @@ def authenticated_client_with_rbac(db, mock_access_service):
     Cliente autenticado con RBAC completo.
     
     Combina:
-        - UserFactory + CompleteUserFactory
+        - UserTestData + CompleteUserTestData
         - mock_access_service
         - JWT token
     
@@ -220,9 +220,9 @@ def authenticated_client_with_rbac(db, mock_access_service):
             response = client.get('/api/v1/reports/')
             assert response.status_code == 200
     """
-    from tests.factories import CompleteUserFactory
+    from tests.testdata import CompleteUserTestData
 
-    user = CompleteUserFactory()
+    user = CompleteUserTestData()
     client = APIClient()
     token, _ = Token.objects.get_or_create(user=user)
     client.credentials(HTTP_AUTHORIZATION=f'Token {token.key}')
@@ -240,7 +240,7 @@ def etl_job_with_mocks(db, mock_ivr_connection, mock_etl_service):
     ETL Job con BD IVR y service mockeados.
     
     Combina:
-        - SuccessETLJobFactory
+        - SuccessETLJobTestData
         - mock_ivr_connection (BD IVR)
         - mock_etl_service (ETL service)
     
@@ -249,7 +249,7 @@ def etl_job_with_mocks(db, mock_ivr_connection, mock_etl_service):
             job = etl_job_with_mocks
             assert job.status == 'SUCCESS'
     """
-    from tests.factories import SuccessETLJobFactory
+    from tests.testdata import SuccessETLJobTestData
     
     # BD IVR retorna datos fake
     mock_ivr_connection.cursor.return_value.fetchall.return_value = [
@@ -261,7 +261,7 @@ def etl_job_with_mocks(db, mock_ivr_connection, mock_etl_service):
         {'year': 2025, 'quarter': 1, 'total_calls': 10000}
     ]
     
-    job = SuccessETLJobFactory()
+    job = SuccessETLJobTestData()
     return job
 
 
@@ -271,7 +271,7 @@ def report_with_export_mocks(db, mock_report_generator_service, mock_excel_expor
     Reporte con generación y export mockeados.
     
     Combina:
-        - QuarterlyReportReportFactory
+        - QuarterlyReportReportTestData
         - mock_report_generator_service
         - mock_excel_exporter
     
@@ -280,7 +280,7 @@ def report_with_export_mocks(db, mock_report_generator_service, mock_excel_expor
             report = report_with_export_mocks
             assert report.file_url is not None
     """
-    from tests.factories import QuarterlyReportReportFactory
+    from tests.testdata import QuarterlyReportReportTestData
     
     # Mock generación
     mock_report_generator_service.generate_quarterly_report.return_value = {
@@ -292,7 +292,7 @@ def report_with_export_mocks(db, mock_report_generator_service, mock_excel_expor
     # Mock export
     mock_excel_exporter.export.return_value = '/fake/report.xlsx'
     
-    report = QuarterlyReportReportFactory()
+    report = QuarterlyReportReportTestData()
     return report
 
 
@@ -302,7 +302,7 @@ def scheduled_job_with_mocks(db, mock_apscheduler, mock_cleanup_sessions_job):
     Scheduled job con APScheduler mockeado.
     
     Combina:
-        - DailyJobConfigFactory
+        - DailyJobConfigTestData
         - mock_apscheduler
         - mock_cleanup_sessions_job
     
@@ -311,12 +311,12 @@ def scheduled_job_with_mocks(db, mock_apscheduler, mock_cleanup_sessions_job):
             config = scheduled_job_with_mocks
             assert config.is_active is True
     """
-    from tests.factories import DailyJobConfigFactory
+    from tests.testdata import DailyJobConfigTestData
     
     # Mock job en scheduler
     mock_apscheduler.get_job.return_value = mock_cleanup_sessions_job
     
-    config = DailyJobConfigFactory(job_name='cleanup_sessions')
+    config = DailyJobConfigTestData(job_name='cleanup_sessions')
     return config
 
 
@@ -326,8 +326,8 @@ def alert_with_notification_mocks(db, mock_send_mail):
     Alerta con notificación email mockeada.
     
     Combina:
-        - TriggeredAlertFactory
-        - EmailNotificationFactory
+        - TriggeredAlertTestData
+        - EmailNotificationTestData
         - mock_send_mail
     
     Uso:
@@ -335,19 +335,19 @@ def alert_with_notification_mocks(db, mock_send_mail):
             alert = alert_with_notification_mocks
             assert alert.is_resolved is False
     """
-    from tests.factories import (
-        TriggeredAlertFactory,
-        EmailNotificationFactory,
-        UserFactory
+    from tests.testdata import (
+        TriggeredAlertTestData,
+        EmailNotificationTestData,
+        UserTestData
     )
     
-    alert = TriggeredAlertFactory()
-    user = UserFactory()
+    alert = TriggeredAlertTestData()
+    user = UserTestData()
     
     # Notificación mockeada
     mock_send_mail.return_value = 1  # Email "enviado" (fake)
     
-    notification = EmailNotificationFactory(alert=alert, user=user)
+    notification = EmailNotificationTestData(alert=alert, user=user)
     alert.notification = notification
     
     return alert
@@ -359,7 +359,7 @@ def quarterly_data_with_mocks(db, mock_ivr_cursor_quarterly):
     Datos trimestrales completos con BD IVR mockeada.
     
     Combina:
-        - CompleteQuarterDataFactory
+        - CompleteQuarterDataTestData
         - mock_ivr_cursor_quarterly
     
     Uso:
@@ -367,14 +367,14 @@ def quarterly_data_with_mocks(db, mock_ivr_cursor_quarterly):
             data = quarterly_data_with_mocks
             assert data['quarterly'].year == 2025
     """
-    from tests.factories.ivr_factories import CompleteQuarterDataFactory
+    from tests.testdata.ivr_test_data import CompleteQuarterDataTestData
     
     # BD IVR retorna datos fake
     mock_ivr_cursor_quarterly.fetchall.return_value = [
         {'year': 2025, 'quarter': 1, 'total_calls': 10000}
     ]
     
-    data = CompleteQuarterDataFactory.create_quarter(year=2025, quarter=1)
+    data = CompleteQuarterDataTestData.create_quarter(year=2025, quarter=1)
     return data
 
 
@@ -383,17 +383,17 @@ def dashboard_with_widgets(db):
     """
     Dashboard completo con widgets.
     
-    Usa CompleteDashboardFactory.
+    Usa CompleteDashboardTestData.
     
     Uso:
         def test_dashboard(dashboard_with_widgets):
             data = dashboard_with_widgets
             assert len(data['widgets']) > 0
     """
-    from tests.factories import CompleteDashboardFactory, UserFactory
+    from tests.testdata import CompleteDashboardTestData, UserTestData
     
-    user = UserFactory()
-    data = CompleteDashboardFactory.create_dashboard(
+    user = UserTestData()
+    data = CompleteDashboardTestData.create_dashboard(
         user=user,
         widget_types=['CALLS_CHART', 'TRANSFERS_CHART', 'ABANDONMENTS_CHART']
     )
@@ -405,17 +405,17 @@ def audit_trail(db):
     """
     Audit trail completo (CREATE -> UPDATE -> DELETE).
     
-    Usa AuditTrailFactory.
+    Usa AuditTrailTestData.
     
     Uso:
         def test_audit_trail(audit_trail):
             logs = audit_trail
             assert len(logs) == 3
     """
-    from tests.factories import AuditTrailFactory, UserFactory
+    from tests.testdata import AuditTrailTestData, UserTestData
     
-    user = UserFactory()
-    trail = AuditTrailFactory.create_trail(
+    user = UserTestData()
+    trail = AuditTrailTestData.create_trail(
         user=user,
         model_name='Report',
         object_id='123'
@@ -512,7 +512,7 @@ def cleanup_files():
 #   - Hybrid Fixtures: 8 (factory + mock combinados)
 #   - Helpers: 5
 # 
-# + 137 Factories (importados vía tests.factories)
+# + 137 Factories (importados vía tests.testdata)
 # + 81 Mocks (importados vía pytest_plugins)
 # 
 # TOTAL: 218+ fixtures disponibles

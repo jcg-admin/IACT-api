@@ -68,7 +68,7 @@ class UserSecurityAnswerTestData(DjangoModelFactory):
     class Meta:
         model = UserSecurityAnswer
     
-    user = factory.SubFactory('tests.factories.user_factory.UserTestData')
+    user = factory.SubFactory('tests.testdata.user_test_data.UserTestData')
     question = factory.SubFactory(SecurityQuestionTestData)
     answer_hash = 'dummy_hash'  # Se sobreescribe si se usa _create con answer_text
     created_by = factory.SelfAttribute('user')
@@ -105,7 +105,7 @@ class SessionLogTestData(DjangoModelFactory):
     class Meta:
         model = SessionLog
     
-    user = factory.SubFactory('tests.factories.user_factory.UserTestData')
+    user = factory.SubFactory('tests.testdata.user_test_data.UserTestData')
     session_key = factory.Sequence(lambda n: f'session_key_{n}')
     ip_address = '192.168.1.1'
     user_agent = 'Mozilla/5.0 (Test Browser)'

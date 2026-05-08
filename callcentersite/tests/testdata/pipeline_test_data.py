@@ -18,7 +18,7 @@ from apps.pipeline.models import (
     SchedulerConfig,
     DataQualityCheck,
 )
-from .user_factory import UserTestData
+from .user_test_data import UserTestData
 
 
 # ============================================================================

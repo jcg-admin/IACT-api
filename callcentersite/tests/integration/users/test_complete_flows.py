@@ -12,7 +12,7 @@ from io import BytesIO
 from PIL import Image
 
 from apps.users.models import UserProfile, UserSettings, SessionHistory
-from tests.factories.user_factory import UserFactory, AdminUserFactory
+from tests.testdata.user_test_data import UserTestData, AdminUserTestData
 
 User = get_user_model()
 
@@ -28,7 +28,7 @@ class TestUserCompleteLifecycle:
     def test_complete_user_lifecycle(self, api_client):
         """Test: Flujo completo de gestión de usuario."""
         # FASE 1: Admin se autentica
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         # Mock permissions para admin
@@ -142,7 +142,7 @@ class TestUserProfileIntegration:
     
     def test_profile_and_settings_autocreation(self, api_client):
         """Test: Profile y Settings se crean automáticamente."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         with patch.object(User, 'has_function', return_value=True):
@@ -165,7 +165,7 @@ class TestUserProfileIntegration:
     
     def test_profile_settings_full_workflow(self, api_client):
         """Test: Workflow completo de profile y settings."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # 1. Ver profile (auto-creado)
@@ -212,7 +212,7 @@ class TestAvatarUploadIntegration:
     
     def test_avatar_upload_workflow(self, api_client):
         """Test: Workflow completo de avatar."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # 1. Usuario no tiene avatar inicial
@@ -257,15 +257,15 @@ class TestSessionHistoryIntegration:
     def test_session_history_queryset_by_role(self, api_client):
         """Test: Usuarios ven solo sus sesiones, staff ve todas."""
         # Crear usuarios
-        user1 = UserFactory(username='user1')
-        user2 = UserFactory(username='user2')
-        admin = AdminUserFactory()
+        user1 = UserTestData(username='user1')
+        user2 = UserTestData(username='user2')
+        admin = AdminUserTestData()
         
         # Crear sesiones para cada uno
-        from tests.factories.user_factory import SessionHistoryFactory
-        SessionHistoryFactory.create_batch(2, user=user1)
-        SessionHistoryFactory.create_batch(1, user=user2)
-        SessionHistoryFactory.create_batch(1, user=admin)
+        from tests.testdata.user_test_data import SessionHistoryTestData
+        SessionHistoryTestData.create_batch(2, user=user1)
+        SessionHistoryTestData.create_batch(1, user=user2)
+        SessionHistoryTestData.create_batch(1, user=admin)
         
         # Usuario 1 ve solo sus sesiones
         api_client.force_authenticate(user=user1)
@@ -297,7 +297,7 @@ class TestRBACPermissionsIntegration:
     def test_permissions_flow(self, api_client):
         """Test: Flujo de permissions RBAC."""
         # Usuario sin permissions
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # Sin permission 'users.view' -> 403
@@ -312,7 +312,7 @@ class TestRBACPermissionsIntegration:
     
     def test_superuser_bypass_permissions(self, api_client):
         """Test: Superuser tiene todos los permissions."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         # Superuser siempre tiene acceso (sin mock)
@@ -328,7 +328,7 @@ class TestPasswordSecurityIntegration:
     
     def test_password_never_exposed_in_responses(self, api_client):
         """Test: Password nunca se expone en responses."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         with patch.object(User, 'has_function', return_value=True):
@@ -358,7 +358,7 @@ class TestPasswordSecurityIntegration:
     
     def test_password_hashed_in_database(self, api_client):
         """Test: Password se hashea en DB."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         with patch.object(User, 'has_function', return_value=True):

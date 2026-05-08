@@ -13,7 +13,7 @@ from factory.django import DjangoModelFactory
 from factory import fuzzy
 from apps.audit.models import AuditLog
 from apps.authentication.models import SessionLog
-from .user_factory import UserTestData
+from .user_test_data import UserTestData
 
 
 # ============================================================================

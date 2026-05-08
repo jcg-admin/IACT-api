@@ -18,7 +18,7 @@ except ImportError as _err:
         f'Codigo no implementado: {_err}',
         allow_module_level=True,
     )
-from tests.factories.user_factory import UserFactory
+from tests.testdata.user_test_data import UserTestData
 
 
 @pytest.mark.django_db
@@ -27,7 +27,7 @@ class TestProfileMe:
     
     def test_get_profile_authenticated(self, api_client):
         """Test: Ver perfil propio."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         response = api_client.get('/api/profile/me/')
@@ -45,7 +45,7 @@ class TestProfileMe:
     
     def test_update_profile_put(self, api_client):
         """Test: Actualizar perfil completo (PUT)."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         data = {
@@ -61,7 +61,7 @@ class TestProfileMe:
     
     def test_update_profile_patch(self, api_client):
         """Test: Actualizar perfil parcial (PATCH)."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         data = {'bio': 'Nueva bio'}
@@ -73,7 +73,7 @@ class TestProfileMe:
     
     def test_profile_autocreated(self, api_client):
         """Test: Profile se crea automáticamente si no existe."""
-        user = UserFactory()
+        user = UserTestData()
         
         # Asegurar que no existe profile
         if hasattr(user, 'profile'):
@@ -93,7 +93,7 @@ class TestSettings:
     
     def test_get_settings(self, api_client):
         """Test: Ver settings propios."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         response = api_client.get('/api/profile/me/settings/')
@@ -104,7 +104,7 @@ class TestSettings:
     
     def test_update_settings_language(self, api_client):
         """Test: Cambiar idioma."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         data = {'language': 'en'}
@@ -116,7 +116,7 @@ class TestSettings:
     
     def test_update_settings_notifications(self, api_client):
         """Test: Cambiar notificaciones."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         data = {'notifications_enabled': False}
@@ -128,7 +128,7 @@ class TestSettings:
     
     def test_settings_autocreated(self, api_client):
         """Test: Settings se crean automáticamente."""
-        user = UserFactory()
+        user = UserTestData()
         
         # Asegurar que no existen settings
         if hasattr(user, 'settings'):
@@ -148,7 +148,7 @@ class TestAvatar:
     
     def test_upload_avatar(self, api_client):
         """Test: Subir avatar."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # Crear imagen fake
@@ -171,7 +171,7 @@ class TestAvatar:
     
     def test_upload_avatar_invalid_format(self, api_client):
         """Test: Formato inválido retorna error."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # Crear archivo txt (no imagen)
@@ -190,7 +190,7 @@ class TestAvatar:
     
     def test_upload_avatar_too_large(self, api_client):
         """Test: Archivo muy grande retorna error."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # Crear imagen muy grande (simular >2MB)
@@ -217,7 +217,7 @@ class TestAvatar:
     
     def test_remove_avatar(self, api_client):
         """Test: Eliminar avatar."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # Mock ProfileService.remove_avatar

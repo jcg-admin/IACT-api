@@ -113,11 +113,11 @@ class SessionHistoryTestData(UserTestData):
 # 
 # UserProfileTestData:
 #   [SUCCESS] Profile con bio y department
-#   [SUCCESS] SubFactory(UserTestData)
+#   [SUCCESS] SubTestData(UserTestData)
 # 
 # UserSettingsTestData:
 #   [SUCCESS] Settings (language, notifications_enabled)
-#   [SUCCESS] SubFactory(UserTestData)
+#   [SUCCESS] SubTestData(UserTestData)
 # 
 # SessionHistoryTestData:
 #   [SUCCESS] Sesión con login_at, IP, user_agent

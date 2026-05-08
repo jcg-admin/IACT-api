@@ -44,8 +44,17 @@ de API. No son nombres de clase y no se renombran por esta regla.
 | StrategyExport    | Expone el patron         | ExportHandler             |
 | FacadeService     | Expone el patron         | Usar nombre del dominio   |
 
-Excepcion: Factory en tests/factories/ es aceptado porque es convencion
-de factory_boy y todos los archivos viven en tests/.
+Tests: las clases que generan datos de prueba usan el sufijo TestData.
+El sufijo Factory pertenece a la libreria — no describe el proposito de la clase.
+
+| Prohibido | Correcto |
+|---|---|
+| UserFactory | UserTestData |
+| AccessGroupFactory | AccessGroupTestData |
+
+Directorio: tests/testdata/
+Archivos: user_test_data.py, access_test_data.py
+Sin excepciones.
 
 ### 3. Abreviaciones que oscurecen el significado
 

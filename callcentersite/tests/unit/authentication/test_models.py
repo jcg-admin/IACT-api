@@ -13,12 +13,12 @@ from apps.authentication.models import (
     UserSecurityAnswer,
     SessionLog
 )
-from tests.factories import (
-    UserFactory,
-    LoginAttemptFactory,
-    SecurityQuestionFactory,
-    UserSecurityAnswerFactory,
-    SessionLogFactory
+from tests.testdata import (
+    UserTestData,
+    LoginAttemptTestData,
+    SecurityQuestionTestData,
+    UserSecurityAnswerTestData,
+    SessionLogTestData
 )
 
 
@@ -39,8 +39,8 @@ class TestLoginAttempt:
     
     def test_create_login_attempt_with_user(self):
         """Test creación de intento de login con usuario."""
-        user = UserFactory()
-        attempt = LoginAttemptFactory(
+        user = UserTestData()
+        attempt = LoginAttemptTestData(
             user=user,
             username=user.username,
             success=True
@@ -55,7 +55,7 @@ class TestLoginAttempt:
     
     def test_create_login_attempt_without_user(self):
         """Test intento con username inexistente (user=None)."""
-        attempt = LoginAttemptFactory(
+        attempt = LoginAttemptTestData(
             user=None,
             username='nonexistent',
             success=False
@@ -67,8 +67,8 @@ class TestLoginAttempt:
     
     def test_login_attempt_str_uses_created_at(self):
         """Test __str__ usa created_at."""
-        user = UserFactory()
-        attempt = LoginAttemptFactory(user=user, success=True)
+        user = UserTestData()
+        attempt = LoginAttemptTestData(user=user, success=True)
         
         str_repr = str(attempt)
         assert user.username in str_repr
@@ -94,7 +94,7 @@ class TestSecurityQuestion:
     
     def test_create_security_question(self):
         """Test creación de pregunta con abstract models."""
-        question = SecurityQuestionFactory()
+        question = SecurityQuestionTestData()
         
         assert question.question is not None
         assert question.is_active is True
@@ -107,8 +107,8 @@ class TestSecurityQuestion:
     
     def test_soft_delete_manager_active(self):
         """Test active() excluye soft deleted."""
-        q1 = SecurityQuestionFactory()
-        q2 = SecurityQuestionFactory()
+        q1 = SecurityQuestionTestData()
+        q2 = SecurityQuestionTestData()
         
         # Soft delete q2
         q2.delete()  # [SUCCESS] delete() hace soft delete
@@ -121,8 +121,8 @@ class TestSecurityQuestion:
     
     def test_soft_delete_manager_deleted(self):
         """Test deleted() solo retorna eliminadas."""
-        q1 = SecurityQuestionFactory()
-        q2 = SecurityQuestionFactory()
+        q1 = SecurityQuestionTestData()
+        q2 = SecurityQuestionTestData()
         
         q2.delete()
         
@@ -134,8 +134,8 @@ class TestSecurityQuestion:
     
     def test_soft_delete_manager_with_deleted(self):
         """Test with_deleted() retorna todas."""
-        q1 = SecurityQuestionFactory()
-        q2 = SecurityQuestionFactory()
+        q1 = SecurityQuestionTestData()
+        q2 = SecurityQuestionTestData()
         
         q2.delete()
         
@@ -147,7 +147,7 @@ class TestSecurityQuestion:
     
     def test_restore_functionality(self):
         """Test restore() restaura soft deleted."""
-        question = SecurityQuestionFactory()
+        question = SecurityQuestionTestData()
         
         question.delete()
         assert question.is_deleted is True
@@ -175,9 +175,9 @@ class TestUserSecurityAnswer:
     
     def test_create_with_complete_base_model(self):
         """Test herencia de CompleteBaseModel."""
-        user = UserFactory()
-        question = SecurityQuestionFactory()
-        answer = UserSecurityAnswerFactory(
+        user = UserTestData()
+        question = SecurityQuestionTestData()
+        answer = UserSecurityAnswerTestData(
             user=user,
             question=question,
             created_by=user
@@ -192,11 +192,11 @@ class TestUserSecurityAnswer:
     
     def test_set_answer_pbkdf2_hash(self):
         """Test set_answer() hashea con PBKDF2."""
-        user = UserFactory()
-        question = SecurityQuestionFactory()
+        user = UserTestData()
+        question = SecurityQuestionTestData()
         
         # [SUCCESS] Usar factory con answer_text (hashea automáticamente)
-        answer = UserSecurityAnswerFactory(
+        answer = UserSecurityAnswerTestData(
             user=user,
             question=question,
             answer_text='Mi Respuesta',
@@ -209,9 +209,9 @@ class TestUserSecurityAnswer:
     
     def test_check_answer_correct(self):
         """Test check_answer() con respuesta correcta."""
-        user = UserFactory()
-        question = SecurityQuestionFactory()
-        answer = UserSecurityAnswerFactory(
+        user = UserTestData()
+        question = SecurityQuestionTestData()
+        answer = UserSecurityAnswerTestData(
             user=user,
             question=question,
             answer_text='Mi Respuesta',
@@ -223,9 +223,9 @@ class TestUserSecurityAnswer:
     
     def test_check_answer_normalization(self):
         """Test normalización lowercase + strip."""
-        user = UserFactory()
-        question = SecurityQuestionFactory()
-        answer = UserSecurityAnswerFactory(
+        user = UserTestData()
+        question = SecurityQuestionTestData()
+        answer = UserSecurityAnswerTestData(
             user=user,
             question=question,
             answer_text='MI RESPUESTA',
@@ -238,8 +238,8 @@ class TestUserSecurityAnswer:
     
     def test_set_answer_empty_raises_error(self):
         """Test set_answer() con respuesta vacía lanza error."""
-        user = UserFactory()
-        question = SecurityQuestionFactory()
+        user = UserTestData()
+        question = SecurityQuestionTestData()
         answer = UserSecurityAnswer(
             user=user,
             question=question,
@@ -268,8 +268,8 @@ class TestSessionLog:
     
     def test_create_session_log(self):
         """Test creación de session log."""
-        user = UserFactory()
-        session = SessionLogFactory(user=user, created_by=user)
+        user = UserTestData()
+        session = SessionLogTestData(user=user, created_by=user)
         
         assert session.user == user
         assert session.is_active is True
@@ -279,8 +279,8 @@ class TestSessionLog:
     
     def test_login_at_uses_created_at(self):
         """Test que login_at es created_at."""
-        user = UserFactory()
-        session = SessionLogFactory(user=user, created_by=user)
+        user = UserTestData()
+        session = SessionLogTestData(user=user, created_by=user)
         
         # [SUCCESS] NO hay campo login_at, se usa created_at
         str_repr = str(session)
@@ -289,8 +289,8 @@ class TestSessionLog:
     
     def test_duration_property_active_session(self):
         """Test duration property para sesión activa."""
-        user = UserFactory()
-        session = SessionLogFactory(
+        user = UserTestData()
+        session = SessionLogTestData(
             user=user,
             is_active=True,
             created_by=user
@@ -306,8 +306,8 @@ class TestSessionLog:
         from django.utils import timezone
         from datetime import timedelta
         
-        user = UserFactory()
-        session = SessionLogFactory(
+        user = UserTestData()
+        session = SessionLogTestData(
             user=user,
             is_active=False,
             created_by=user

@@ -20,7 +20,7 @@ from apps.reports.models import (
     ReportSchedule,
     ReportCache,
 )
-from .user_factory import UserTestData
+from .user_test_data import UserTestData
 
 
 # ============================================================================

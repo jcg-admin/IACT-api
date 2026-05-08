@@ -28,11 +28,11 @@ except ImportError as _err:
         f'Codigo no implementado: {_err}',
         allow_module_level=True,
     )
-from tests.factories import (
-    UserFactory,
-    SecurityQuestionFactory,
-    UserSecurityAnswerFactory,
-    SessionLogFactory
+from tests.testdata import (
+    UserTestData,
+    SecurityQuestionTestData,
+    UserSecurityAnswerTestData,
+    SessionLogTestData
 )
 
 
@@ -148,7 +148,7 @@ class TestAuthenticationService:
     
     def test_login_user_success(self):
         """Test login exitoso."""
-        user = UserFactory(password='testpass123')
+        user = UserTestData(password='testpass123')
         user.set_password('testpass123')
         user.save()
         
@@ -170,7 +170,7 @@ class TestAuthenticationService:
     
     def test_login_user_invalid_credentials(self):
         """Test login con credenciales inválidas lanza InvalidCredentialsError."""
-        user = UserFactory(password='testpass123')
+        user = UserTestData(password='testpass123')
 
         request = self.factory.post('/login/')
         request.META['REMOTE_ADDR'] = '192.168.1.1'
@@ -186,7 +186,7 @@ class TestAuthenticationService:
 
     def test_login_user_account_locked_lanza_account_locked_error(self):
         """Test login con cuenta bloqueada lanza AccountLockedError."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -212,7 +212,7 @@ class TestAuthenticationService:
         """Test login con usuario inactivo lanza UserInactiveError."""
         from apps.authentication.exceptions import UserInactiveError
 
-        user = UserFactory(is_active=False)
+        user = UserTestData(is_active=False)
         user.set_password('pass1234')
         user.save()
 
@@ -230,7 +230,7 @@ class TestAuthenticationService:
 
     def test_login_user_first_login_true_en_primer_acceso(self):
         """Test que first_login es True cuando no hay LoginAttempts exitosos previos."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -249,14 +249,14 @@ class TestAuthenticationService:
 
     def test_login_user_first_login_false_en_segundo_acceso(self):
         """Test que first_login es False cuando ya existe un LoginAttempt exitoso previo."""
-        from tests.factories import LoginAttemptFactory
+        from tests.testdata import LoginAttemptTestData
 
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
         # Simular que ya hubo un login exitoso anterior
-        LoginAttemptFactory(user=user, username=user.username, success=True)
+        LoginAttemptTestData(user=user, username=user.username, success=True)
 
         request = self.factory.post('/login/')
         request.META['REMOTE_ADDR'] = '192.168.1.1'
@@ -297,7 +297,7 @@ class TestRecoveryService:
     def test_get_available_questions_uses_active(self):
         """Test get_available_questions() usa active()."""
         # Crear 10 preguntas
-        questions = SecurityQuestionFactory.create_batch(10)
+        questions = SecurityQuestionTestData.create_batch(10)
         
         # Soft delete una
         questions[0].delete()
@@ -310,20 +310,20 @@ class TestRecoveryService:
     
     def test_get_available_questions_insufficient(self):
         """Test con menos de 10 preguntas lanza error."""
-        SecurityQuestionFactory.create_batch(5)
+        SecurityQuestionTestData.create_batch(5)
         
         with pytest.raises(InsufficientSecurityQuestionsError):
             self.service.get_available_questions()
     
     def test_verify_security_answers_correct(self):
         """Test verificar respuestas correctas."""
-        user = UserFactory()
-        questions = SecurityQuestionFactory.create_batch(5)
+        user = UserTestData()
+        questions = SecurityQuestionTestData.create_batch(5)
         
         # Configurar respuestas
         answers_data = []
         for i, q in enumerate(questions):
-            UserSecurityAnswerFactory(
+            UserSecurityAnswerTestData(
                 user=user,
                 question=q,
                 answer_text=f'Respuesta {i}',
@@ -367,11 +367,11 @@ class TestSessionService:
     
     def test_get_active_sessions_uses_active(self):
         """Test get_active_sessions() usa active()."""
-        user = UserFactory()
+        user = UserTestData()
         
         # Crear 2 sesiones
-        s1 = SessionLogFactory(user=user, created_by=user)
-        s2 = SessionLogFactory(user=user, created_by=user)
+        s1 = SessionLogTestData(user=user, created_by=user)
+        s2 = SessionLogTestData(user=user, created_by=user)
         
         # Soft delete s1
         s1.delete()
@@ -385,8 +385,8 @@ class TestSessionService:
     
     def test_invalidate_session(self):
         """Test invalidar sesión."""
-        user = UserFactory()
-        session = SessionLogFactory(user=user, is_active=True, created_by=user)
+        user = UserTestData()
+        session = SessionLogTestData(user=user, is_active=True, created_by=user)
         
         self.service.invalidate_session(session.session_key, user)
         

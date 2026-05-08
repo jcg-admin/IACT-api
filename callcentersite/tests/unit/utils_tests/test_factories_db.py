@@ -12,7 +12,7 @@ User = get_user_model()
 
 
 # Factory simple inline
-class SimpleUserFactory(factory.django.DjangoModelFactory):
+class SimpleUserTestData(factory.django.DjangoModelFactory):
     """Factory simple para User."""
     
     class Meta:
@@ -31,7 +31,7 @@ class TestFactoriesAndDatabase:
     
     def test_create_user_with_factory(self):
         """Factory crea usuario en DB."""
-        user = SimpleUserFactory(username='alice')
+        user = SimpleUserTestData(username='alice')
         
         assert user.id is not None
         assert user.username == 'alice'
@@ -42,15 +42,15 @@ class TestFactoriesAndDatabase:
     
     def test_create_multiple_users(self):
         """Batch creation funciona."""
-        users = SimpleUserFactory.create_batch(3)
+        users = SimpleUserTestData.create_batch(3)
         
         assert len(users) == 3
         assert User.objects.count() >= 3
     
     def test_query_users(self):
         """Queries a DB funcionan."""
-        SimpleUserFactory(username='bob', email='bob@test.com')
-        SimpleUserFactory(username='charlie', email='charlie@test.com')
+        SimpleUserTestData(username='bob', email='bob@test.com')
+        SimpleUserTestData(username='charlie', email='charlie@test.com')
         
         # Count
         assert User.objects.count() >= 2
@@ -65,7 +65,7 @@ class TestFactoriesAndDatabase:
     
     def test_update_user(self):
         """Update funciona."""
-        user = SimpleUserFactory(username='john', email='old@test.com')
+        user = SimpleUserTestData(username='john', email='old@test.com')
         
         user.email = 'new@test.com'
         user.save()
@@ -75,7 +75,7 @@ class TestFactoriesAndDatabase:
     
     def test_delete_user(self):
         """Delete funciona (soft delete)."""
-        user = SimpleUserFactory(username='temp')
+        user = SimpleUserTestData(username='temp')
         user_id = user.id
         
         assert User.objects.filter(id=user_id).exists()
@@ -99,7 +99,7 @@ class TestDatabaseTransactions:
     
     def test_transaction_isolation(self):
         """Cada test está aislado."""
-        SimpleUserFactory(username='isolated_test')
+        SimpleUserTestData(username='isolated_test')
         
         # Este usuario existe en este test
         assert User.objects.filter(username='isolated_test').exists()

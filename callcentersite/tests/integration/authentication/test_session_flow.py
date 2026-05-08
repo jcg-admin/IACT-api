@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
 
-from tests.factories import UserFactory, SessionLogFactory
+from tests.testdata import UserTestData, SessionLogTestData
 from apps.authentication.models import SessionLog
 
 
@@ -43,7 +43,7 @@ class TestSessionManagementFlow:
         - Solo muestra sesiones activas
         """
         # Crear usuario y hacer login
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('testpass123')
         user.save()
         
@@ -57,7 +57,7 @@ class TestSessionManagementFlow:
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token}')
         
         # Crear sesiones adicionales para el usuario
-        SessionLogFactory.create_batch(
+        SessionLogTestData.create_batch(
             2,
             user=user,
             is_active=True,
@@ -65,15 +65,15 @@ class TestSessionManagementFlow:
         )
         
         # Crear sesión inactiva (no debe aparecer)
-        SessionLogFactory(
+        SessionLogTestData(
             user=user,
             is_active=False,
             created_by=user
         )
         
         # Crear sesión de otro usuario (no debe aparecer)
-        other_user = UserFactory(username='otheruser')
-        SessionLogFactory(
+        other_user = UserTestData(username='otheruser')
+        SessionLogTestData(
             user=other_user,
             is_active=True,
             created_by=other_user
@@ -103,7 +103,7 @@ class TestSessionManagementFlow:
         - Solo puede ver sus propias sesiones
         """
         # Crear usuario y autenticar
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('testpass123')
         user.save()
         
@@ -117,7 +117,7 @@ class TestSessionManagementFlow:
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token}')
         
         # Crear sesión
-        session = SessionLogFactory(
+        session = SessionLogTestData(
             user=user,
             is_active=True,
             created_by=user
@@ -146,7 +146,7 @@ class TestSessionManagementFlow:
         - Usuario puede invalidar sus propias sesiones
         """
         # Crear usuario y autenticar
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('testpass123')
         user.save()
         
@@ -160,7 +160,7 @@ class TestSessionManagementFlow:
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token}')
         
         # Crear sesión adicional
-        session = SessionLogFactory(
+        session = SessionLogTestData(
             user=user,
             is_active=True,
             created_by=user
@@ -187,7 +187,7 @@ class TestSessionManagementFlow:
         - Retorna cantidad de sesiones invalidadas
         """
         # Crear usuario y autenticar
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('testpass123')
         user.save()
         
@@ -202,7 +202,7 @@ class TestSessionManagementFlow:
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token}')
         
         # Crear 3 sesiones adicionales
-        additional_sessions = SessionLogFactory.create_batch(
+        additional_sessions = SessionLogTestData.create_batch(
             3,
             user=user,
             is_active=True,
@@ -245,16 +245,16 @@ class TestSessionManagementFlow:
         - Solo ve sus propias sesiones en el listado
         """
         # Crear dos usuarios
-        user1 = UserFactory(username='user1')
+        user1 = UserTestData(username='user1')
         user1.set_password('pass123')
         user1.save()
         
-        user2 = UserFactory(username='user2')
+        user2 = UserTestData(username='user2')
         user2.set_password('pass123')
         user2.save()
         
         # Crear sesiones para user2
-        SessionLogFactory.create_batch(
+        SessionLogTestData.create_batch(
             3,
             user=user2,
             is_active=True,
@@ -305,7 +305,7 @@ class TestSessionDuration:
         - duration_seconds >= 0 para sesión activa
         """
         # Crear usuario y autenticar
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('testpass123')
         user.save()
         
@@ -342,7 +342,7 @@ class TestSessionDuration:
         from datetime import timedelta
         
         # Crear usuario y autenticar
-        user = UserFactory(username='testuser')
+        user = UserTestData(username='testuser')
         user.set_password('testpass123')
         user.save()
         
@@ -356,7 +356,7 @@ class TestSessionDuration:
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {token}')
         
         # Crear sesión cerrada manualmente
-        session = SessionLogFactory(
+        session = SessionLogTestData(
             user=user,
             is_active=False,
             created_by=user

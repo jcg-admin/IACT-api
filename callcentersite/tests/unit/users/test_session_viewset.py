@@ -8,7 +8,7 @@ import pytest
 from rest_framework import status
 from unittest.mock import patch
 from datetime import datetime, timedelta
-from tests.factories.user_factory import UserFactory, AdminUserFactory, SessionHistoryFactory
+from tests.testdata.user_test_data import UserTestData, AdminUserTestData, SessionHistoryTestData
 
 try:
     from apps.users.models import User, SessionHistory
@@ -31,11 +31,11 @@ class TestSessionHistoryList:
     
     def test_list_sessions_with_permission(self, api_client):
         """Test: Listar sesiones requiere permission 'sessions.view'."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         # Crear sesiones
-        SessionHistoryFactory.create_batch(3, user=admin)
+        SessionHistoryTestData.create_batch(3, user=admin)
         
         with patch.object(User, 'has_function', return_value=True):
             response = api_client.get('/api/sessions/')
@@ -45,7 +45,7 @@ class TestSessionHistoryList:
     
     def test_list_sessions_without_permission(self, api_client):
         """Test: Sin permission 'sessions.view' retorna 403."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         with patch.object(User, 'has_function', return_value=False):
@@ -61,13 +61,13 @@ class TestSessionHistoryList:
     
     def test_list_sessions_user_sees_only_own(self, api_client):
         """Test: Usuario normal ve solo sus sesiones."""
-        user = UserFactory()
-        other_user = UserFactory()
+        user = UserTestData()
+        other_user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # Crear sesiones propias y de otro usuario
-        SessionHistoryFactory.create_batch(2, user=user)
-        SessionHistoryFactory.create_batch(1, user=other_user)
+        SessionHistoryTestData.create_batch(2, user=user)
+        SessionHistoryTestData.create_batch(1, user=other_user)
         
         with patch.object(User, 'has_function', return_value=True):
             response = api_client.get('/api/sessions/')
@@ -80,15 +80,15 @@ class TestSessionHistoryList:
     
     def test_list_sessions_staff_sees_all(self, api_client):
         """Test: Staff ve todas las sesiones."""
-        admin = AdminUserFactory()
-        user1 = UserFactory()
-        user2 = UserFactory()
+        admin = AdminUserTestData()
+        user1 = UserTestData()
+        user2 = UserTestData()
         api_client.force_authenticate(user=admin)
         
         # Crear sesiones de varios usuarios
-        SessionHistoryFactory.create_batch(1, user=admin)
-        SessionHistoryFactory.create_batch(1, user=user1)
-        SessionHistoryFactory.create_batch(1, user=user2)
+        SessionHistoryTestData.create_batch(1, user=admin)
+        SessionHistoryTestData.create_batch(1, user=user1)
+        SessionHistoryTestData.create_batch(1, user=user2)
         
         with patch.object(User, 'has_function', return_value=True):
             response = api_client.get('/api/sessions/')
@@ -99,12 +99,12 @@ class TestSessionHistoryList:
     
     def test_list_sessions_filter_by_is_active(self, api_client):
         """Test: Filtrar sesiones por is_active."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # Crear sesiones activas e inactivas
-        SessionHistoryFactory.create_batch(2, user=user, is_active=True)
-        SessionHistoryFactory.create_batch(1, user=user, is_active=False, logout_at=datetime.now())
+        SessionHistoryTestData.create_batch(2, user=user, is_active=True)
+        SessionHistoryTestData.create_batch(1, user=user, is_active=False, logout_at=datetime.now())
         
         with patch.object(User, 'has_function', return_value=True):
             response = api_client.get('/api/sessions/?is_active=true')
@@ -116,12 +116,12 @@ class TestSessionHistoryList:
     
     def test_list_sessions_filter_by_user_staff_only(self, api_client):
         """Test: Filtrar por user_id (solo staff)."""
-        admin = AdminUserFactory()
-        user = UserFactory()
+        admin = AdminUserTestData()
+        user = UserTestData()
         api_client.force_authenticate(user=admin)
         
-        SessionHistoryFactory.create_batch(2, user=user)
-        SessionHistoryFactory.create_batch(1, user=admin)
+        SessionHistoryTestData.create_batch(2, user=user)
+        SessionHistoryTestData.create_batch(1, user=admin)
         
         with patch.object(User, 'has_function', return_value=True):
             response = api_client.get(f'/api/sessions/?user={user.id}')
@@ -139,8 +139,8 @@ class TestSessionHistoryRetrieve:
     
     def test_retrieve_session_with_permission(self, api_client):
         """Test: Ver detalle de sesión."""
-        user = UserFactory()
-        session = SessionHistoryFactory(user=user)
+        user = UserTestData()
+        session = SessionHistoryTestData(user=user)
         api_client.force_authenticate(user=user)
         
         with patch.object(User, 'has_function', return_value=True):
@@ -153,13 +153,13 @@ class TestSessionHistoryRetrieve:
     
     def test_retrieve_session_shows_duration(self, api_client):
         """Test: Duration calculado para sesiones cerradas."""
-        user = UserFactory()
+        user = UserTestData()
         
         # Sesión cerrada con duración conocida
         login_at = datetime(2026, 1, 21, 10, 0, 0)
         logout_at = datetime(2026, 1, 21, 11, 30, 0)  # 90 minutos después
         
-        session = SessionHistoryFactory(
+        session = SessionHistoryTestData(
             user=user,
             login_at=login_at,
             logout_at=logout_at,
@@ -176,8 +176,8 @@ class TestSessionHistoryRetrieve:
     
     def test_retrieve_session_active_no_duration(self, api_client):
         """Test: Sesión activa no tiene duration."""
-        user = UserFactory()
-        session = SessionHistoryFactory(user=user, is_active=True, logout_at=None)
+        user = UserTestData()
+        session = SessionHistoryTestData(user=user, is_active=True, logout_at=None)
         api_client.force_authenticate(user=user)
         
         with patch.object(User, 'has_function', return_value=True):
@@ -193,7 +193,7 @@ class TestSessionHistoryReadOnly:
     
     def test_create_session_not_allowed(self, api_client):
         """Test: POST no permitido (read-only)."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         data = {
@@ -209,8 +209,8 @@ class TestSessionHistoryReadOnly:
     
     def test_update_session_not_allowed(self, api_client):
         """Test: PUT/PATCH no permitido (read-only)."""
-        user = UserFactory()
-        session = SessionHistoryFactory(user=user)
+        user = UserTestData()
+        session = SessionHistoryTestData(user=user)
         api_client.force_authenticate(user=user)
         
         data = {'ip_address': '192.168.1.1'}
@@ -222,8 +222,8 @@ class TestSessionHistoryReadOnly:
     
     def test_delete_session_not_allowed(self, api_client):
         """Test: DELETE no permitido (read-only)."""
-        user = UserFactory()
-        session = SessionHistoryFactory(user=user)
+        user = UserTestData()
+        session = SessionHistoryTestData(user=user)
         api_client.force_authenticate(user=user)
         
         with patch.object(User, 'has_function', return_value=True):
