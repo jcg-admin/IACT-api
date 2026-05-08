@@ -155,13 +155,13 @@ class MyModulesView(APIView):
         
         # Obtener árbol de módulos del usuario
         modules_tree = ModuleAccessService.get_user_module_tree(user)
-        
+
         # Obtener todos los módulos accesibles (plano)
         all_modules = ModuleAccessService.get_user_modules(user)
         root_modules = all_modules.filter(parent__isnull=True)
-        
+
         return Response({
-            'modules': modules_tree,
+            'modules': ModuleTreeSerializer(modules_tree, many=True).data,
             'total_count': all_modules.count(),
             'root_count': root_modules.count(),
         })
