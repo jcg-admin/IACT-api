@@ -11,24 +11,25 @@ User = get_user_model()
 
 
 class UserTestData(DjangoModelFactory):
-    """Factory User básico."""
-    
+    """
+    Test data for User.
+    User extends AbstractUser with: avatar, phone, is_active.
+    """
     class Meta:
         model = User
-    
-    username = factory.Sequence(lambda n: f'user{n}')
-    email = factory.LazyAttribute(lambda obj: f'{obj.username}@example.com')
-    first_name = factory.Faker('first_name')
-    last_name = factory.Faker('last_name')
-    phone = '+52 55 1234 5678'
-    position = 'ANALYST'
-    is_active = True
-    is_staff = False
+
+    username    = factory.Sequence(lambda n: f'user{n}')
+    email       = factory.LazyAttribute(lambda obj: f'{obj.username}@example.com')
+    first_name  = factory.Faker('first_name')
+    last_name   = factory.Faker('last_name')
+    phone       = '+52 55 1234 5678'
+    is_active   = True
+    is_staff    = False
     is_superuser = False
-    
+
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
-        """Override para usar create_user (hashea password)."""
+        """Use create_user to hash the password."""
         password = kwargs.pop('password', 'TestPass123!')
         user = model_class.objects.create_user(
             username=kwargs.get('username'),
@@ -36,15 +37,13 @@ class UserTestData(DjangoModelFactory):
             password=password,
             first_name=kwargs.get('first_name', ''),
             last_name=kwargs.get('last_name', ''),
-            phone=kwargs.get('phone'),
-            position=kwargs.get('position', 'ANALYST'),
+            phone=kwargs.get('phone', ''),
         )
-        
-        # Aplicar otros campos si existen
         for key, value in kwargs.items():
-            if key not in ['username', 'email', 'first_name', 'last_name', 'phone', 'position']:
-                setattr(user, key, value)
-        
+            if key not in ('username', 'email', 'first_name',
+                           'last_name', 'phone'):
+                if hasattr(user, key):
+                    setattr(user, key, value)
         user.save()
         return user
 
@@ -55,8 +54,6 @@ class AdminUserTestData(UserTestData):
     username = factory.Sequence(lambda n: f'admin{n}')
     is_staff = True
     is_superuser = True
-    position = 'DIRECTOR'
-    
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
         """Crear superuser."""

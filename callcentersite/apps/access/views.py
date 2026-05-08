@@ -360,13 +360,14 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
         UC_ACC_05 — Verificar si dos funciones tienen conflicto SoD.
         GET /api/access/separation-rules/check/?function_a=X&function_b=Y
         """
+        from django.db.models import Q
         fa = request.query_params.get('function_a')
         fb = request.query_params.get('function_b')
         conflicto = SeparationRule.objects.filter(
             status='active'
         ).filter(
-            models.Q(function_a_id=fa, function_b_id=fb) |
-            models.Q(function_a_id=fb, function_b_id=fa)
+            Q(function_a_id=fa, function_b_id=fb) |
+            Q(function_a_id=fb, function_b_id=fa)
         ).first()
         return Response({
             'tiene_conflicto': conflicto is not None,
