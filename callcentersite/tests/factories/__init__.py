@@ -359,3 +359,15 @@ __all__ = [
 # CLEAN_CODE v3.0.1: Imports organizados y documentados [SUCCESS]
 # FASE 1 - PARTE 6: Authentication Factories COMPLETADAS [SUCCESS]
 # ============================================================================
+
+# M-001..M-004: New access factories (Fase M)
+from .access_factories import (
+    AccessGroupFactory,
+    UserAccessGroupFactory,
+    SeparationRuleFactory,
+    ExceptionalPermissionFactory,
+    ApprovedExceptionalPermissionFactory,
+    ExpiredExceptionalPermissionFactory,
+    UserFunctionAssignmentFactory,
+    UserModuleAccessFactory,
+)

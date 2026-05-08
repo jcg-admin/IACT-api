@@ -1,244 +1,298 @@
 """
-Factories para apps/access/ (RBAC).
+tests/factories/access_factories.py
 
-Factory boy para generación de datos test del sistema de permisos.
-Basado en análisis ANALISIS_APP_ACCESS_v3_0_0.md (6 partes).
-
-CLEAN_CODE v3.0.1: Nombres auto-documentados.
+Factory Boy factories for apps/access/ models.
+All field names follow RA-011 (English identifiers).
 """
+from datetime import timedelta
 
 import factory
+from django.utils import timezone
 from factory.django import DjangoModelFactory
-from factory import fuzzy
+
 from apps.access.models import (
     Module,
     Function,
     UserPermission,
+    AccessGroup,
+    UserAccessGroup,
+    SeparationRule,
+    ExceptionalPermission,
+    UserFunctionAssignment,
+    UserModuleAccess,
 )
-# DT: UserPermission y UserPermission eliminados en RBAC v6.0.0
-# Se usa UserPermission como modelo de asignacion actual.
-# DEUDA TÉCNICA 2026-03-21: Role, UserRoleAssignment, RoleFunctionAssignment
-# eliminados en DT-002 junto con UserServiceAccess (RBAC simplificado).
-# TODO: Reescribir factories si se reimplementa sistema de Roles.
 from .user_factory import UserFactory
 
 
-# ============================================================================
-# MODULE FACTORIES
-# ============================================================================
+# ---------------------------------------------------------------------------
+# Module
+# ---------------------------------------------------------------------------
 
 class ModuleFactory(DjangoModelFactory):
-    """
-    Factory para Module (jerarquía MPTT).
-    
-    Uso básico:
-        module = ModuleFactory(module_id='MODULE_001', name='Dashboard')
-    
-    Jerarquía:
-        parent = ModuleFactory(name='Parent')
-        child = ModuleFactory(name='Child', parent=parent)
-    """
-    
+    """Factory for Module."""
+
+    name  = factory.Sequence(lambda n: f'Module {n}')
+    code  = factory.Sequence(lambda n: f'MOD_{n:04d}')
+    icon  = factory.Iterator(['dashboard', 'users', 'reports', 'settings'])
+    order = factory.Sequence(lambda n: n)
+
     class Meta:
         model = Module
-        django_get_or_create = ('module_id',)
-    
-    module_id = factory.Sequence(lambda n: f'MODULE_{n:03d}')
-    name = factory.Faker('word')
-    description = factory.Faker('sentence', nb_words=10)
-    parent = None  # Override para jerarquía
-    icon = factory.Iterator(['dashboard', 'users', 'reports', 'settings'])
-    path = factory.LazyAttribute(lambda obj: f'/modules/{obj.module_id.lower()}')
-    order = factory.Sequence(lambda n: n)
-    is_active = True
+        django_get_or_create = ('code',)
 
 
-class ModuleWithParentFactory(ModuleFactory):
-    """
-    Factory para Module con parent (child module).
-    
-    Uso:
-        parent = ModuleFactory()
-        child = ModuleWithParentFactory(parent=parent)
-    """
+class ChildModuleFactory(ModuleFactory):
+    """Factory for a sub-module with a parent."""
     parent = factory.SubFactory(ModuleFactory)
+    code   = factory.Sequence(lambda n: f'SUB_{n:04d}')
 
 
-# ============================================================================
-# FUNCTION FACTORIES
-# ============================================================================
+# ---------------------------------------------------------------------------
+# Function
+# ---------------------------------------------------------------------------
 
 class FunctionFactory(DjangoModelFactory):
     """
-    Factory para Function (permisos granulares).
-    
-    Uso básico:
-        function = FunctionFactory(
-            function_id='dashboard.view',
-            name='Ver Dashboard'
-        )
-    
-    Con módulo:
-        module = ModuleFactory()
-        function = FunctionFactory(module=module)
+    Factory for Function (granular RBAC unit).
+
+    Usage:
+        fn = FunctionFactory()
+        fn = FunctionFactory(code='reports.view', permission_django='reports.view')
     """
-    
+
+    module            = factory.SubFactory(ModuleFactory)
+    name              = factory.Sequence(lambda n: f'Function {n}')
+    code              = factory.Sequence(lambda n: f'fn_{n:04d}')
+    permission_django = factory.Sequence(lambda n: f'module.action_{n}')
+    description       = factory.Faker('sentence', nb_words=8)
+    is_active         = True
+    status            = 'activo'
+
     class Meta:
         model = Function
-        django_get_or_create = ('function_id',)
-    
-    function_id = factory.Sequence(lambda n: f'function.{n}')
-    name = factory.Faker('job')
-    description = factory.Faker('sentence', nb_words=12)
-    module = factory.SubFactory(ModuleFactory)
-    is_active = True
+        django_get_or_create = ('code',)
+
+
+# ---------------------------------------------------------------------------
+# UserPermission
+# ---------------------------------------------------------------------------
+
+class UserPermissionFactory(DjangoModelFactory):
+    """Factory for direct user-to-function assignment."""
+
+    user     = factory.SubFactory(UserFactory)
+    function = factory.SubFactory(FunctionFactory)
+
+    class Meta:
+        model = UserPermission
+
+
+# ---------------------------------------------------------------------------
+# M-001 — AccessGroup
+# ---------------------------------------------------------------------------
+
+class AccessGroupFactory(DjangoModelFactory):
+    """
+    Factory for AccessGroup (function bundle assignable to a user).
+
+    Usage:
+        group = AccessGroupFactory()
+        group = AccessGroupFactory(code='SUPERVISOR_IVR')
+        group_with_fns = AccessGroupFactory.create()
+        group_with_fns.functions.set([fn1, fn2])
+    """
+
+    name        = factory.Sequence(lambda n: f'Access Group {n}')
+    code        = factory.Sequence(lambda n: f'GRP_{n:04d}')
+    description = factory.Faker('sentence', nb_words=6)
+    is_active   = True
+
+    class Meta:
+        model = AccessGroup
+        django_get_or_create = ('code',)
+
+
+# ---------------------------------------------------------------------------
+# M-004 — UserAccessGroup
+# ---------------------------------------------------------------------------
+
+class UserAccessGroupFactory(DjangoModelFactory):
+    """
+    Factory for UserAccessGroup (user membership in an AccessGroup).
+
+    Usage:
+        membership = UserAccessGroupFactory()
+        membership = UserAccessGroupFactory(user=user, access_group=group)
+    """
+
+    user         = factory.SubFactory(UserFactory)
+    access_group = factory.SubFactory(AccessGroupFactory)
+    granted_by   = factory.SubFactory(UserFactory)
+
+    class Meta:
+        model = UserAccessGroup
+        django_get_or_create = ('user', 'access_group')
+
+
+# ---------------------------------------------------------------------------
+# M-002 — SeparationRule
+# ---------------------------------------------------------------------------
+
+class SeparationRuleFactory(DjangoModelFactory):
+    """
+    Factory for SeparationRule (incompatible function pair).
+
+    Usage:
+        rule = SeparationRuleFactory()
+        rule = SeparationRuleFactory(
+            function_a=fn_a, function_b=fn_b, status='active')
+    """
+
+    name          = factory.Sequence(lambda n: f'Separation Rule {n}')
+    function_a    = factory.SubFactory(FunctionFactory)
+    function_b    = factory.SubFactory(FunctionFactory)
+    justification = factory.Faker('paragraph', nb_sentences=2)
+    status        = 'active'
+    created_by    = factory.SubFactory(UserFactory)
+
+    class Meta:
+        model = SeparationRule
+
+
+# ---------------------------------------------------------------------------
+# M-003 — ExceptionalPermission
+# ---------------------------------------------------------------------------
+
+class ExceptionalPermissionFactory(DjangoModelFactory):
+    """
+    Factory for ExceptionalPermission (temporary out-of-band permission).
+
+    Usage:
+        pending = ExceptionalPermissionFactory()
+        approved = ExceptionalPermissionFactory(
+            status='approved',
+            granted_by=admin_user)
+        expired = ExceptionalPermissionFactory(
+            status='approved',
+            valid_from=timezone.now() - timedelta(days=10),
+            valid_until=timezone.now() - timedelta(days=3))
+    """
+
+    user          = factory.SubFactory(UserFactory)
+    function      = factory.SubFactory(FunctionFactory)
+    justification = factory.Faker('paragraph', nb_sentences=5)
+    status        = 'pending'
+    valid_from    = factory.LazyFunction(timezone.now)
+    valid_until   = factory.LazyFunction(
+        lambda: timezone.now() + timedelta(days=7))
+    granted_by    = None
+
+    class Meta:
+        model = ExceptionalPermission
+
+
+class ApprovedExceptionalPermissionFactory(ExceptionalPermissionFactory):
+    """Pre-approved ExceptionalPermission, currently active."""
+    status     = 'approved'
+    granted_by = factory.SubFactory(UserFactory)
+
+
+class ExpiredExceptionalPermissionFactory(ExceptionalPermissionFactory):
+    """Expired ExceptionalPermission — valid_until in the past."""
+    status      = 'approved'
+    granted_by  = factory.SubFactory(UserFactory)
+    valid_from  = factory.LazyFunction(
+        lambda: timezone.now() - timedelta(days=10))
+    valid_until = factory.LazyFunction(
+        lambda: timezone.now() - timedelta(days=3))
+
+
+# ---------------------------------------------------------------------------
+# UserFunctionAssignment (supplementary)
+# ---------------------------------------------------------------------------
+
+class UserFunctionAssignmentFactory(DjangoModelFactory):
+    """Factory for UserFunctionAssignment (full assignment with history)."""
+
+    user        = factory.SubFactory(UserFactory)
+    function    = factory.SubFactory(FunctionFactory)
+    reason      = factory.Faker('sentence', nb_words=6)
+    is_active   = True
+    assigned_by = factory.SubFactory(UserFactory)
+
+    class Meta:
+        model = UserFunctionAssignment
+        django_get_or_create = ('user', 'function')
+
+
+# ---------------------------------------------------------------------------
+# UserModuleAccess (supplementary)
+# ---------------------------------------------------------------------------
+
+class UserModuleAccessFactory(DjangoModelFactory):
+    """Factory for UserModuleAccess (coarse-grained module access)."""
+
+    user       = factory.SubFactory(UserFactory)
+    module     = factory.SubFactory(ModuleFactory)
+    is_active  = True
+    granted_by = factory.SubFactory(UserFactory)
+
+    class Meta:
+        model = UserModuleAccess
+        django_get_or_create = ('user', 'module')
+
+
+# ---------------------------------------------------------------------------
+# Compatibility aliases (referenced by tests/factories/__init__.py)
+# ---------------------------------------------------------------------------
+
+ModuleWithParentFactory = ChildModuleFactory
 
 
 class FunctionCreateFactory(FunctionFactory):
-    """Factory para funciones de tipo CREATE."""
-    function_id = factory.Sequence(lambda n: f'create.{n}')
-    name = factory.LazyAttribute(lambda obj: f'Crear {obj.module.name}')
+    code              = factory.Sequence(lambda n: f'create_{n:04d}')
+    permission_django = factory.Sequence(lambda n: f'module.create_{n}')
 
 
 class FunctionViewFactory(FunctionFactory):
-    """Factory para funciones de tipo VIEW."""
-    function_id = factory.Sequence(lambda n: f'view.{n}')
-    name = factory.LazyAttribute(lambda obj: f'Ver {obj.module.name}')
+    code              = factory.Sequence(lambda n: f'view_{n:04d}')
+    permission_django = factory.Sequence(lambda n: f'module.view_{n}')
 
 
 class FunctionEditFactory(FunctionFactory):
-    """Factory para funciones de tipo EDIT."""
-    function_id = factory.Sequence(lambda n: f'edit.{n}')
-    name = factory.LazyAttribute(lambda obj: f'Editar {obj.module.name}')
+    code              = factory.Sequence(lambda n: f'edit_{n:04d}')
+    permission_django = factory.Sequence(lambda n: f'module.edit_{n}')
 
 
 class FunctionDeleteFactory(FunctionFactory):
-    """Factory para funciones de tipo DELETE."""
-    function_id = factory.Sequence(lambda n: f'delete.{n}')
-    name = factory.LazyAttribute(lambda obj: f'Eliminar {obj.module.name}')
+    code              = factory.Sequence(lambda n: f'delete_{n:04d}')
+    permission_django = factory.Sequence(lambda n: f'module.delete_{n}')
 
-
-# ============================================================================
-# ASSIGNMENT FACTORIES
-# ============================================================================
-
-# Primera definicion eliminada (UserModuleAccess no existe en RBAC v6.0.0)
-class UserPermissionFactory(DjangoModelFactory):
-    """
-    Factory para UserPermission (asignación usuario-función).
-    
-    Uso:
-        user = UserFactory()
-        function = FunctionFactory()
-        assignment = UserPermissionFactory(
-            user=user,
-            function=function
-        )
-    """
-    
-    class Meta:
-        model = UserPermission
-    
-    user = factory.SubFactory(UserFactory)
-    function = factory.SubFactory(FunctionFactory)
-    assigned_at = factory.Faker('date_time_this_year')
-    assigned_by = factory.SubFactory(UserFactory)
-    reason = factory.Faker('sentence', nb_words=8)
-    is_active = True
-
-
-# ============================================================================
-# HELPER FACTORIES (Complex scenarios)
-# ============================================================================
 
 class UserWithModuleAccessFactory(UserFactory):
-    """
-    Factory que crea Usuario con acceso a módulo.
-    
-    Uso:
-        user = UserWithModuleAccessFactory()
-        # Usuario con 1 módulo asignado automáticamente
-    """
-    
     @factory.post_generation
-    def modules(self, create, extracted, **kwargs):
+    def permissions(self, create, extracted, **kwargs):
         if not create:
             return
-        
-        if extracted:
-            # Lista de módulos pasada
-            for module in extracted:
-                UserPermissionFactory(user=self, module=module)
-        else:
-            # Crear 1 módulo por defecto
-            UserPermissionFactory(user=self)
+        UserPermissionFactory(user=self)
 
 
 class UserWithFunctionFactory(UserFactory):
-    """
-    Factory que crea Usuario con función asignada.
-    
-    Uso:
-        user = UserWithFunctionFactory()
-        # Usuario con 1 función asignada automáticamente
-    """
-    
     @factory.post_generation
     def functions(self, create, extracted, **kwargs):
         if not create:
             return
-        
-        if extracted:
-            # Lista de funciones pasada
-            for function in extracted:
-                UserPermissionFactory(user=self, function=function)
-        else:
-            # Crear 1 función por defecto
+        for fn in (extracted or []):
+            UserPermissionFactory(user=self, function=fn)
+        if not extracted:
             UserPermissionFactory(user=self)
 
 
 class CompleteUserFactory(UserFactory):
-    """
-    Factory que crea Usuario con módulo + función.
-
-    DEUDA TÉCNICA 2026-03-21: Roles eliminados en DT-002.
-    El factory ya no asigna rol; solo módulo y función.
-    """
-
     @factory.post_generation
     def complete_access(self, create, extracted, **kwargs):
         if not create:
             return
-
-        # Crear módulo
-        module = ModuleFactory()
-        UserPermissionFactory(user=self, module=module)
-
-        # Crear función
-        function = FunctionFactory(module=module)
-        UserPermissionFactory(user=self, function=function)
-
-
-# ============================================================================
-# TOTAL FACTORIES: 18
-# 
-# Base Factories (7):
-#   - ModuleFactory
-#   - ModuleWithParentFactory
-#   - FunctionFactory (+ 4 variantes: Create, View, Edit, Delete)
-#   - RoleFactory (+ 4 variantes: Admin, Manager, Analyst, Viewer)
-# 
-# Assignment Factories (4):
-#   - UserPermissionFactory
-#   - UserPermissionFactory
-#   - UserRoleAssignmentFactory
-#   - RoleFunctionAssignmentFactory
-# 
-# Helper Factories (4):
-#   - UserWithModuleAccessFactory
-#   - UserWithFunctionFactory
-#   - UserWithRoleFactory
-#   - CompleteUserFactory
-# 
-# CLEAN_CODE v3.0.1: Nombres auto-documentados [SUCCESS]
-# ============================================================================
+        group = AccessGroupFactory()
+        UserAccessGroupFactory(user=self, access_group=group)
+        UserPermissionFactory(user=self, function=FunctionFactory())
