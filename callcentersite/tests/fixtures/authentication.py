@@ -5,7 +5,7 @@ Proporciona fixtures reutilizables para tests de authentication.
 """
 
 import pytest
-from tests.testdata import (
+from tests.test_data import (
     SecurityQuestionTestData,
     UserSecurityAnswerTestData,
     SessionLogTestData,

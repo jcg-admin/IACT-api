@@ -32,7 +32,7 @@ from apps.core.permissions import (
 # DEUDA TÉCNICA 2026-03-21: HasServiceAccess eliminado en DT-002.
 # La clase TestHasServiceAccess abajo está marcada como skip.
 HasServiceAccess = None  # Sentinel para evitar NameError en el cuerpo del test
-from tests.testdata.user_test_data import UserTestData, AdminUserTestData
+from tests.test_data.user_test_data import UserTestData, AdminUserTestData
 
 User = get_user_model()
 

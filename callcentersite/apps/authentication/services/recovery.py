@@ -60,7 +60,7 @@ class RecoveryService(BaseService):  # [SUCCESS] Hereda de BaseService
         Raises:
             InsufficientSecurityQuestionsError: Si hay menos de 10 preguntas
         """
-        # [SUCCESS] Usar SoftDeleteManager.active()
+        # [SUCCESS] Usar ActiveRecordQuery.active()
         questions = SecurityQuestion.objects.active().filter(
             is_active=True
         ).order_by('order', 'question')

@@ -13,7 +13,7 @@ from apps.authentication.models import (
     UserSecurityAnswer,
     SessionLog
 )
-from tests.testdata import (
+from tests.test_data import (
     UserTestData,
     LoginAttemptTestData,
     SecurityQuestionTestData,
@@ -88,7 +88,7 @@ class TestSecurityQuestion:
     Tests unitarios para SecurityQuestion.
     
     Verifica:
-    - SoftDeleteManager (active(), deleted(), with_deleted())
+    - ActiveRecordQuery (active(), deleted(), with_deleted())
     - Soft delete functionality
     """
     

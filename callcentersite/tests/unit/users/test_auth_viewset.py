@@ -9,7 +9,7 @@ from rest_framework import status
 from unittest.mock import patch
 
 from apps.users.models import User
-from tests.testdata.user_test_data import UserTestData
+from tests.test_data.user_test_data import UserTestData
 
 
 @pytest.mark.django_db

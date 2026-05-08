@@ -78,7 +78,7 @@ def authenticated_client(db):
             response = authenticated_client.get('/api/v1/reports/')
             assert response.status_code == 200
     """
-    from tests.testdata import UserTestData
+    from tests.test_data import UserTestData
 
     user = UserTestData()
     client = APIClient()
@@ -100,7 +100,7 @@ def admin_client(db):
             response = admin_client.post('/api/v1/admin/users/')
             assert response.status_code == 201
     """
-    from tests.testdata import AdminUserTestData
+    from tests.test_data import AdminUserTestData
 
     admin = AdminUserTestData()
     client = APIClient()
@@ -122,7 +122,7 @@ def sample_user(db):
     LEGACY: Mantenido para compatibilidad.
     NUEVO: Usar UserTestData directamente.
     """
-    from tests.testdata import UserTestData
+    from tests.test_data import UserTestData
     return UserTestData(
         email='test@example.com',
         username='testuser',
@@ -137,7 +137,7 @@ def sample_admin(db):
     LEGACY: Mantenido para compatibilidad.
     NUEVO: Usar AdminUserTestData directamente.
     """
-    from tests.testdata import AdminUserTestData
+    from tests.test_data import AdminUserTestData
     return AdminUserTestData(
         email='admin@example.com',
         username='admin',
@@ -156,7 +156,7 @@ def sample_center(db):
     LEGACY: Mantenido para compatibilidad.
     NUEVO: Usar CenterTestData directamente.
     """
-    from tests.testdata import CenterTestData
+    from tests.test_data import CenterTestData
     return CenterTestData(codigo='CT01', nombre='Centro Test')
 
 
@@ -168,7 +168,7 @@ def sample_service(db):
     LEGACY: Mantenido para compatibilidad.
     NUEVO: Usar ServiceTestData directamente.
     """
-    from tests.testdata import ServiceTestData
+    from tests.test_data import ServiceTestData
     return ServiceTestData(
         numero_800='800-123-4567',
         nombre='Servicio Test'
@@ -193,7 +193,7 @@ def user_with_complete_access(db, mock_access_service):
             user = user_with_complete_access
             assert user.usermoduleaccess_set.count() > 0
     """
-    from tests.testdata import CompleteUserTestData
+    from tests.test_data import CompleteUserTestData
     
     user = CompleteUserTestData()
     
@@ -220,7 +220,7 @@ def authenticated_client_with_rbac(db, mock_access_service):
             response = client.get('/api/v1/reports/')
             assert response.status_code == 200
     """
-    from tests.testdata import CompleteUserTestData
+    from tests.test_data import CompleteUserTestData
 
     user = CompleteUserTestData()
     client = APIClient()
@@ -249,7 +249,7 @@ def etl_job_with_mocks(db, mock_ivr_connection, mock_etl_service):
             job = etl_job_with_mocks
             assert job.status == 'SUCCESS'
     """
-    from tests.testdata import SuccessETLJobTestData
+    from tests.test_data import SuccessETLJobTestData
     
     # BD IVR retorna datos fake
     mock_ivr_connection.cursor.return_value.fetchall.return_value = [
@@ -280,7 +280,7 @@ def report_with_export_mocks(db, mock_report_generator_service, mock_excel_expor
             report = report_with_export_mocks
             assert report.file_url is not None
     """
-    from tests.testdata import QuarterlyReportReportTestData
+    from tests.test_data import QuarterlyReportReportTestData
     
     # Mock generación
     mock_report_generator_service.generate_quarterly_report.return_value = {
@@ -311,7 +311,7 @@ def scheduled_job_with_mocks(db, mock_apscheduler, mock_cleanup_sessions_job):
             config = scheduled_job_with_mocks
             assert config.is_active is True
     """
-    from tests.testdata import DailyJobConfigTestData
+    from tests.test_data import DailyJobConfigTestData
     
     # Mock job en scheduler
     mock_apscheduler.get_job.return_value = mock_cleanup_sessions_job
@@ -335,7 +335,7 @@ def alert_with_notification_mocks(db, mock_send_mail):
             alert = alert_with_notification_mocks
             assert alert.is_resolved is False
     """
-    from tests.testdata import (
+    from tests.test_data import (
         TriggeredAlertTestData,
         EmailNotificationTestData,
         UserTestData
@@ -367,7 +367,7 @@ def quarterly_data_with_mocks(db, mock_ivr_cursor_quarterly):
             data = quarterly_data_with_mocks
             assert data['quarterly'].year == 2025
     """
-    from tests.testdata.ivr_test_data import CompleteQuarterDataTestData
+    from tests.test_data.ivr_test_data import CompleteQuarterDataTestData
     
     # BD IVR retorna datos fake
     mock_ivr_cursor_quarterly.fetchall.return_value = [
@@ -390,7 +390,7 @@ def dashboard_with_widgets(db):
             data = dashboard_with_widgets
             assert len(data['widgets']) > 0
     """
-    from tests.testdata import CompleteDashboardTestData, UserTestData
+    from tests.test_data import CompleteDashboardTestData, UserTestData
     
     user = UserTestData()
     data = CompleteDashboardTestData.create_dashboard(
@@ -412,7 +412,7 @@ def audit_trail(db):
             logs = audit_trail
             assert len(logs) == 3
     """
-    from tests.testdata import AuditTrailTestData, UserTestData
+    from tests.test_data import AuditTrailTestData, UserTestData
     
     user = UserTestData()
     trail = AuditTrailTestData.create_trail(
@@ -512,7 +512,7 @@ def cleanup_files():
 #   - Hybrid Fixtures: 8 (factory + mock combinados)
 #   - Helpers: 5
 # 
-# + 137 Factories (importados vía tests.testdata)
+# + 137 Factories (importados vía tests.test_data)
 # + 81 Mocks (importados vía pytest_plugins)
 # 
 # TOTAL: 218+ fixtures disponibles

@@ -10,7 +10,7 @@ from django.core.exceptions import ValidationError
 from apps.users.validators import validate_username
 
 
-class CustomUserManager(BaseUserManager):
+class UserAccountQuery(BaseUserManager):
     """
     Manager personalizado para modelo User.
     

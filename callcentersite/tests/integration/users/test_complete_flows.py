@@ -12,7 +12,7 @@ from io import BytesIO
 from PIL import Image
 
 from apps.users.models import UserProfile, UserSettings, SessionHistory
-from tests.testdata.user_test_data import UserTestData, AdminUserTestData
+from tests.test_data.user_test_data import UserTestData, AdminUserTestData
 
 User = get_user_model()
 
@@ -262,7 +262,7 @@ class TestSessionHistoryIntegration:
         admin = AdminUserTestData()
         
         # Crear sesiones para cada uno
-        from tests.testdata.user_test_data import SessionHistoryTestData
+        from tests.test_data.user_test_data import SessionHistoryTestData
         SessionHistoryTestData.create_batch(2, user=user1)
         SessionHistoryTestData.create_batch(1, user=user2)
         SessionHistoryTestData.create_batch(1, user=admin)

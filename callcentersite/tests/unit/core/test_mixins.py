@@ -32,7 +32,7 @@ from apps.core.mixins import (
 # DEUDA TÉCNICA 2026-03-21: ServiceFilterMixin eliminado en DT-002.
 # TestServiceFilterMixin abajo está marcado como skip.
 ServiceFilterMixin = None  # Sentinel para evitar NameError
-from tests.testdata.user_test_data import UserTestData
+from tests.test_data.user_test_data import UserTestData
 
 User = get_user_model()
 

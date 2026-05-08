@@ -1,6 +1,6 @@
 """Test factories funcionan."""
 import pytest
-from tests.testdata.user_test_data import UserTestData, AdminUserTestData
+from tests.test_data.user_test_data import UserTestData, AdminUserTestData
 
 
 @pytest.mark.unit

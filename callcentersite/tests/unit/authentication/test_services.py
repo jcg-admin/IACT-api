@@ -28,7 +28,7 @@ except ImportError as _err:
         f'Codigo no implementado: {_err}',
         allow_module_level=True,
     )
-from tests.testdata import (
+from tests.test_data import (
     UserTestData,
     SecurityQuestionTestData,
     UserSecurityAnswerTestData,
@@ -249,7 +249,7 @@ class TestAuthenticationService:
 
     def test_login_user_first_login_false_en_segundo_acceso(self):
         """Test que first_login es False cuando ya existe un LoginAttempt exitoso previo."""
-        from tests.testdata import LoginAttemptTestData
+        from tests.test_data import LoginAttemptTestData
 
         user = UserTestData()
         user.set_password('pass1234')

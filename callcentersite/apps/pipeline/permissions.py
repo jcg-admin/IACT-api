@@ -10,7 +10,7 @@ CLEAN_CODE v3.0.1: Nombres auto-documentados.
 from rest_framework import permissions
 
 
-class IsCenterManager(permissions.BasePermission):
+class CenterOwnershipPolicy(permissions.BasePermission):
     """
     Permiso: Solo administradores de centros pueden modificar.
     
@@ -32,7 +32,7 @@ class IsCenterManager(permissions.BasePermission):
         return request.user.is_superuser or request.user.is_staff
 
 
-class IsServiceManager(permissions.BasePermission):
+class ServiceOwnershipPolicy(permissions.BasePermission):
     """Permiso: Solo administradores de servicios pueden modificar."""
     
     message = 'Solo administradores pueden gestionar servicios.'

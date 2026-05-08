@@ -22,7 +22,7 @@ from apps.core.models import (
     TimeStampedModel,
     SoftDeleteMixin,
     SoftDeleteQuerySet,
-    SoftDeleteManager,
+    ActiveRecordQuery,
 )
 
 
@@ -127,7 +127,7 @@ class TestSoftDeleteMixin:
         """Crear modelo de prueba que hereda SoftDeleteMixin."""
         class TestModel(SoftDeleteMixin, models.Model):
             name = models.CharField(max_length=100)
-            objects = SoftDeleteManager()
+            objects = ActiveRecordQuery()
             
             class Meta:
                 app_label = 'core'
@@ -245,7 +245,7 @@ class TestSoftDeleteQuerySet:
         """Crear modelo de prueba."""
         class TestModel(SoftDeleteMixin, models.Model):
             name = models.CharField(max_length=100)
-            objects = SoftDeleteManager()
+            objects = ActiveRecordQuery()
             
             class Meta:
                 app_label = 'core'

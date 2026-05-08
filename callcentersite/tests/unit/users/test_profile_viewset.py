@@ -18,7 +18,7 @@ except ImportError as _err:
         f'Codigo no implementado: {_err}',
         allow_module_level=True,
     )
-from tests.testdata.user_test_data import UserTestData
+from tests.test_data.user_test_data import UserTestData
 
 
 @pytest.mark.django_db

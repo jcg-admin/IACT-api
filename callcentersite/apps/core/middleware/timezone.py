@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.conf import settings
 
 
-class UserTimezoneMiddleware(MiddlewareMixin):
+class UserTimezoneHandler(MiddlewareMixin):
     """
     Middleware para timezone del sistema.
     
@@ -33,7 +33,7 @@ class UserTimezoneMiddleware(MiddlewareMixin):
         # settings.py
         MIDDLEWARE = [
             ...
-            'apps.core.middleware.timezone.UserTimezoneMiddleware',
+            'apps.core.middleware.timezone.UserTimezoneHandler',
         ]
         
         TIME_ZONE = 'America/Mexico_City'  # <- Configuración global
@@ -100,7 +100,7 @@ class UserTimezoneMiddleware(MiddlewareMixin):
 # ============================================================================
 # RESUMEN MIDDLEWARE TIMEZONE
 # 
-# Middleware: UserTimezoneMiddleware
+# Middleware: UserTimezoneHandler
 # Versión: v5.1.1 (Simplificado)
 # Propósito: Activar timezone global del sistema automáticamente
 # 

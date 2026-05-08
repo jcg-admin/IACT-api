@@ -8,7 +8,7 @@ import pytest
 from rest_framework import status
 from unittest.mock import patch
 from datetime import datetime, timedelta
-from tests.testdata.user_test_data import UserTestData, AdminUserTestData, SessionHistoryTestData
+from tests.test_data.user_test_data import UserTestData, AdminUserTestData, SessionHistoryTestData
 
 try:
     from apps.users.models import User, SessionHistory

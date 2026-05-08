@@ -12,7 +12,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
 
-from tests.testdata import UserTestData, SessionLogTestData
+from tests.test_data import UserTestData, SessionLogTestData
 from apps.authentication.models import SessionLog
 
 

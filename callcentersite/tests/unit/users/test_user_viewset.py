@@ -10,7 +10,7 @@ from rest_framework import status
 from unittest.mock import patch, MagicMock
 
 from apps.users.models import User
-from tests.testdata.user_test_data import UserTestData, AdminUserTestData
+from tests.test_data.user_test_data import UserTestData, AdminUserTestData
 
 
 @pytest.mark.django_db

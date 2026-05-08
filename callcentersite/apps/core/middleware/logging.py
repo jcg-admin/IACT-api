@@ -12,7 +12,7 @@ from django.utils.deprecation import MiddlewareMixin
 logger = logging.getLogger(__name__)
 
 
-class RequestLoggingMiddleware(MiddlewareMixin):
+class RequestLoggingHandler(MiddlewareMixin):
     """
     Middleware para loggear requests HTTP.
     
@@ -30,7 +30,7 @@ class RequestLoggingMiddleware(MiddlewareMixin):
         # settings.py
         MIDDLEWARE = [
             ...
-            'apps.core.middleware.logging.RequestLoggingMiddleware',
+            'apps.core.middleware.logging.RequestLoggingHandler',
         ]
     
     Examples:
@@ -100,7 +100,7 @@ class RequestLoggingMiddleware(MiddlewareMixin):
 # ============================================================================
 # RESUMEN MIDDLEWARE LOGGING
 # 
-# Middleware: RequestLoggingMiddleware
+# Middleware: RequestLoggingHandler
 # Propósito: Auditar todos los requests HTTP
 # CNST: CNST-031 (Auditoría completa)
 # 

@@ -7,7 +7,7 @@ CLEAN_CODE v3.0.1: Nombre auto-documentado.
 from django.utils.deprecation import MiddlewareMixin
 
 
-class SecurityHeadersMiddleware(MiddlewareMixin):
+class SecurityHeadersPolicy(MiddlewareMixin):
     """
     Middleware para headers de seguridad.
     
@@ -25,7 +25,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
         # settings.py
         MIDDLEWARE = [
             ...
-            'apps.core.middleware.security.SecurityHeadersMiddleware',
+            'apps.core.middleware.security.SecurityHeadersPolicy',
         ]
     
     Examples:
@@ -65,7 +65,7 @@ class SecurityHeadersMiddleware(MiddlewareMixin):
 # ============================================================================
 # RESUMEN MIDDLEWARE SECURITY
 # 
-# Middleware: SecurityHeadersMiddleware
+# Middleware: SecurityHeadersPolicy
 # Propósito: Agregar headers de seguridad HTTP
 # 
 # Headers:

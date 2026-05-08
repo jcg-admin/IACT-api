@@ -13,7 +13,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
 
-from tests.testdata import (
+from tests.test_data import (
     UserTestData,
     SecurityQuestionTestData,
     UserSecurityAnswerTestData

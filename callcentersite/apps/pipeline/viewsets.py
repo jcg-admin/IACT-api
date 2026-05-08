@@ -41,8 +41,8 @@ from apps.pipeline.filters import (
     CallRecordFilter,
 )
 from apps.pipeline.permissions import (
-    IsCenterManager,
-    IsServiceManager,
+    CenterOwnershipPolicy,
+    ServiceOwnershipPolicy,
     IsActiveUser,
 )
 from apps.core.permissions import RequiresFunctionPermission
@@ -78,7 +78,7 @@ class CenterViewSet(viewsets.ModelViewSet):
     Permissions:
         - IsAuthenticated
         - IsActiveUser
-        - IsCenterManager (POST/PUT/PATCH/DELETE)
+        - CenterOwnershipPolicy (POST/PUT/PATCH/DELETE)
     
     Filters:
         - codigo (exact, icontains)
@@ -97,7 +97,7 @@ class CenterViewSet(viewsets.ModelViewSet):
     permission_classes = [
         drf_permissions.IsAuthenticated,
         IsActiveUser,
-        IsCenterManager,
+        CenterOwnershipPolicy,
     ]
     
     def get_serializer_class(self):
@@ -226,7 +226,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     Permissions:
         - IsAuthenticated
         - IsActiveUser
-        - IsServiceManager (POST/PUT/PATCH/DELETE)
+        - ServiceOwnershipPolicy (POST/PUT/PATCH/DELETE)
     
     Filters:
         - numero_800 (exact, icontains)
@@ -247,7 +247,7 @@ class ServiceViewSet(viewsets.ModelViewSet):
     permission_classes = [
         drf_permissions.IsAuthenticated,
         IsActiveUser,
-        IsServiceManager,
+        ServiceOwnershipPolicy,
     ]
     
     def get_serializer_class(self):

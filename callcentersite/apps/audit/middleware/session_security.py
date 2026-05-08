@@ -3,7 +3,7 @@ from apps.audit.models import AuditLog
 from apps.utils import get_client_ip, get_user_agent, should_exclude_path
 
 
-class SessionSecurityMiddleware(MiddlewareMixin):
+class SessionSecurityPolicy(MiddlewareMixin):
     """
     Middleware de seguridad de sesion.
     
