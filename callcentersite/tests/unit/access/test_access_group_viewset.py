@@ -18,7 +18,6 @@ from tests.test_data.user_test_data import AdminUserTestData
 @pytest.fixture
 def admin_client(db, api_client):
     user = AdminUserTestData()
-    from rest_framework.authtoken.models import Token
     api_client.force_authenticate(user=user)
     # Dar función de gestión de grupos
     from apps.access.models import UserPermission
