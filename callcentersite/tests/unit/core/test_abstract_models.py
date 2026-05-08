@@ -301,17 +301,19 @@ class TestSoftDeleteQuerySet:
         assert deleted in all_objects
     
     def test_filters_are_combinable(self, test_model_class):
-        """Test: Filtros son combinables."""
-        test_model_class.objects.create(name='Active A')
-        test_model_class.objects.create(name='Active B')
-        deleted = test_model_class.objects.create(name='Deleted A')
+        """
+        Test: Filtros son combinables — objects.all() filtra eliminados
+        y .filter() filtra por campo.
+        """
+        unique = 'COMPAT_TEST_XQ9'
+        test_model_class.objects.create(name=f'{unique}_Active')
+        deleted = test_model_class.objects.create(name=f'{unique}_Deleted')
         deleted.delete()
-        
-        # Combinar active() con filter()
-        result = test_model_class.objects.all().filter(name__contains='A')
-        
+
+        result = test_model_class.objects.all().filter(name__startswith=unique)
+
         assert result.count() == 1
-        assert result.first().name == 'Active A'
+        assert result.first().name == f'{unique}_Active'
     
     def test_performance_optimized(self, test_model_class):
         """Test: Performance optimizado (single query)."""
