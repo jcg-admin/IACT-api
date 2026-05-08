@@ -31,96 +31,14 @@ def _mariadb_alive() -> bool:
 
 def _create_schema():
     """
-    Crea test_ivr_legacy con el schema mínimo necesario para los tests IVR.
-    Idempotente: usa CREATE TABLE IF NOT EXISTS y CREATE PROCEDURE IF NOT EXISTS.
-    Con MIGRATE=False y CREATE_DB=False, pytest-django no toca esta DB.
-    La DB persiste entre sesiones de pytest — se recrea solo si MariaDB reinicia.
-    """
-    sql = """
-        CREATE DATABASE IF NOT EXISTS test_ivr_legacy CHARACTER SET utf8mb4;
-        USE test_ivr_legacy;
-
-        CREATE TABLE IF NOT EXISTS job_execution_log (
-            id               INT AUTO_INCREMENT PRIMARY KEY,
-            job_name         VARCHAR(100) NOT NULL,
-            quarter_name     VARCHAR(20),
-            step_name        VARCHAR(50),
-            tabla_origen     VARCHAR(100),
-            start_time       DATETIME NOT NULL,
-            end_time         DATETIME,
-            status           ENUM('RUNNING','SUCCESS','PARTIAL',
-                                 'FAILED','SKIP','TIMEOUT')
-                             NOT NULL DEFAULT 'RUNNING',
-            records_procesados INT DEFAULT 0,
-            duracion_seg     INT AS (TIMESTAMPDIFF(SECOND, start_time, end_time)) STORED,
-            error_message    TEXT,
-            ejecutado_por    VARCHAR(50)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-        CREATE TABLE IF NOT EXISTS base_ivr_detalle (
-            id                   INT AUTO_INCREMENT PRIMARY KEY,
-            trimestre            VARCHAR(10) NOT NULL,
-            fecha                VARCHAR(6)  NOT NULL,
-            segmento             VARCHAR(20) NOT NULL,
-            centro_transferencia VARCHAR(100) NOT NULL,
-            menu                 VARCHAR(100) NOT NULL,
-            opcion               VARCHAR(100) NOT NULL,
-            total_llamadas       INT NOT NULL DEFAULT 0,
-            misma_linea          INT NOT NULL DEFAULT 0,
-            linea_diferente      INT NOT NULL DEFAULT 0,
-            no_digito_telefono   INT NOT NULL DEFAULT 0,
-            llamadas_entre_semana INT NOT NULL DEFAULT 0,
-            llamadas_fines_semana INT NOT NULL DEFAULT 0,
-            cargado_en           DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            INDEX idx_trimestre (trimestre)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-
-        CREATE TABLE IF NOT EXISTS base_ivr_clientes (
-            id              INT AUTO_INCREMENT PRIMARY KEY,
-            trimestre       VARCHAR(10) NOT NULL,
-            segmento        VARCHAR(20) NOT NULL,
-            clientes_unicos INT NOT NULL DEFAULT 0,
-            cargado_en      DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE KEY uk_grain (trimestre, segmento)
-        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    Crea test_ivr_legacy si no existe.
+    Responsabilidad: existencia de la BD.
+    El schema (tablas, SPs) es responsabilidad de ivr_schema.
     """
     subprocess.run(
-        ['mysql', '--socket=/run/mysqld/mysqld.sock'],
-        input=sql, text=True, capture_output=True,
-    )
-
-    # SP: DROP primero, luego CREATE con DELIMITER $$ para que el parser
-    # no confunda los ; internos del BEGIN...END con fin de sentencia.
-    subprocess.run(
-        ['mysql', '--socket=/run/mysqld/mysqld.sock', 'test_ivr_legacy',
-         '-e', 'DROP PROCEDURE IF EXISTS sp_rpt_clientes;'],
-        capture_output=True,
-    )
-    sp_body = (
-        'CREATE PROCEDURE sp_rpt_clientes(IN p_quarter VARCHAR(10))\n'
-        'BEGIN\n'
-        '    SELECT\n'
-        '        c.trimestre,\n'
-        '        c.segmento,\n'
-        '        c.clientes_unicos,\n'
-        '        ROUND(\n'
-        '            c.clientes_unicos\n'
-        '            / (SELECT SUM(c2.clientes_unicos)\n'
-        '               FROM base_ivr_clientes c2\n'
-        '               WHERE c2.trimestre = p_quarter)\n'
-        '            * 100, 2\n'
-        '        ) AS pct_del_total,\n'
-        '        c.cargado_en AS ultima_actualizacion\n'
-        '    FROM base_ivr_clientes c\n'
-        '    WHERE c.trimestre = p_quarter\n'
-        '    ORDER BY c.clientes_unicos DESC;\n'
-        'END'
-    )
-    subprocess.run(
-        ['mysql', '--socket=/run/mysqld/mysqld.sock',
-         'test_ivr_legacy',
-         '--delimiter=$$',
-         '-e', f'{sp_body}$$'],
+        ['mysql', '--socket=/run/mysqld/mysqld.sock', '-e',
+         'CREATE DATABASE IF NOT EXISTS test_ivr_legacy '
+         'CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'],
         capture_output=True,
     )
 
