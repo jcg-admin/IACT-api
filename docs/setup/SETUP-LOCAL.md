@@ -1,8 +1,15 @@
 # Setup local — IACT-api
 
-Procedimiento para configurar y verificar IACT-api en un entorno
-local donde PostgreSQL y MariaDB corren en `127.0.0.1`
-(sin VMs Vagrant).
+> **Las bases de datos NO son responsabilidad de este repositorio.**
+> PostgreSQL (`iact_analytics`) y MariaDB (`ivr_legacy`) son
+> instaladas, configuradas y gestionadas por **IACT-db**.
+>
+> Antes de continuar con este documento, el entorno de IACT-db
+> debe estar en funcionamiento.
+> Ver: `IACT-db/docs/getting-started/QUICKSTART.md`
+
+Procedimiento para configurar IACT-api una vez que IACT-db
+tiene los servicios corriendo en `127.0.0.1`.
 
 ## Arquitectura de bases de datos
 

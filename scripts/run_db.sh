@@ -90,11 +90,9 @@ case $option in
             write_success "Migrations deleted"
 
             write_info "Step 2/4: Deleting database..."
-            if [ -f "$DJANGO_DIR/db.sqlite3" ]; then
-                size=$(ls -lh "$DJANGO_DIR/db.sqlite3" | awk '{print $5}')
-                echo -e "  ${BLUE}Deleting:${NC} $DJANGO_DIR/db.sqlite3"
-                echo -e "  ${BLUE}Size:${NC} $size"
-                rm -f "$DJANGO_DIR/db.sqlite3"
+            echo -e "  ${YELLOW}NOTE:${NC} IACT-api databases are managed by IACT-db."
+            echo -e "  ${YELLOW}      ${NC} See IACT-db/docs/architecture/SEPARACION-IACT-API.md"
+            echo -e "  ${YELLOW}      ${NC} To recreate PostgreSQL: see HALLAZGOS-IACT-API-2026-05-07.md"
             fi
             write_success "Database deleted"
 
@@ -211,16 +209,10 @@ case $option in
         if [ "$confirm" = "yes" ]; then
             write_info "Deleting database..."
 
-            if [ -f "$DJANGO_DIR/db.sqlite3" ]; then
-                size=$(ls -lh "$DJANGO_DIR/db.sqlite3" | awk '{print $5}')
-                path="$DJANGO_DIR/db.sqlite3"
-                echo -e "  ${BLUE}Deleting:${NC} $path"
-                echo -e "  ${BLUE}Size:${NC} $size"
-                rm -f "$DJANGO_DIR/db.sqlite3"
-                write_success "Database deleted"
-            else
-                write_info "Database file not found (already deleted or doesn't exist)"
-            fi
+            echo -e "  ${YELLOW}NOTE:${NC} IACT-api does not use SQLite."
+            echo -e "         PostgreSQL + MariaDB are managed by IACT-db."
+            echo -e "         See: IACT-db/docs/architecture/SEPARACION-IACT-API.md"
+            write_info "To reset the database, use IACT-db provisioning scripts."
         else
             write_warning "Cancelled"
         fi
