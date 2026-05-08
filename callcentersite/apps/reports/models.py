@@ -193,3 +193,75 @@ class ExportJob(SoftDeleteMixin, models.Model):
         if self.total_records == 0:
             return 0
         return (self.exported_records / self.total_records) * 100
+
+
+class ScheduledReport(models.Model):
+    """
+    Scheduled report that runs periodically. UC_RPT_07/08.
+    Uses cron_expression to define the schedule.
+    APScheduler (CNST-004: no Celery) picks this up at runtime.
+    """
+    report = models.ForeignKey(
+        Report,
+        on_delete=models.CASCADE,
+        related_name='scheduled_runs',
+    )
+    cron_expression = models.CharField(
+        max_length=50,
+        help_text="Cron expression, e.g. '0 6 * * 1' for every Monday at 06:00",
+    )
+    is_active = models.BooleanField(default=True)
+    last_run_at = models.DateTimeField(null=True, blank=True)
+    next_run_at = models.DateTimeField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='scheduled_reports',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Scheduled Report'
+        verbose_name_plural = 'Scheduled Reports'
+
+    def __str__(self) -> str:
+        return f"ScheduledReport({self.report.name}, cron={self.cron_expression})"
+
+
+class SavedView(models.Model):
+    """
+    Saved view of a report — filters + column configuration. UC_RPT_10.
+    """
+    name = models.CharField(max_length=100)
+    report = models.ForeignKey(
+        Report,
+        on_delete=models.CASCADE,
+        related_name='saved_views',
+    )
+    filters = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Filter configuration as JSON",
+    )
+    columns = models.JSONField(
+        default=list,
+        blank=True,
+        help_text="Ordered list of visible column names",
+    )
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name='saved_views',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        verbose_name = 'Saved View'
+        verbose_name_plural = 'Saved Views'
+        unique_together = [('name', 'created_by')]
+
+    def __str__(self) -> str:
+        return f"SavedView({self.name} — {self.report.name})"
