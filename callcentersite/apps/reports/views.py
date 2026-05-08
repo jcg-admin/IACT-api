@@ -247,20 +247,12 @@ class ExportJobViewSet(viewsets.ReadOnlyModelViewSet):
 # K-002 / K-003: ScheduledReport (UC_RPT_07/08)
 # ---------------------------------------------------------------------------
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
-from rest_framework import viewsets, serializers
+from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 from apps.access.permissions.function_permissions import HasFunction
 from .models import ScheduledReport, SavedView
+from .serializers import ScheduledReportSerializer, SavedViewSerializer
 
-
-class ScheduledReportSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = ScheduledReport
-        fields = [
-            'id', 'report', 'cron_expression', 'is_active',
-            'last_run_at', 'next_run_at', 'created_by', 'created_at',
-        ]
-        read_only_fields = ['created_by', 'created_at', 'last_run_at']
 
 
 @extend_schema_view(
@@ -306,15 +298,6 @@ class ScheduledReportViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # K-004: SavedView (UC_RPT_10)
 # ---------------------------------------------------------------------------
-
-class SavedViewSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = SavedView
-        fields = [
-            'id', 'name', 'report', 'filters',
-            'columns', 'created_by', 'created_at',
-        ]
-        read_only_fields = ['created_by', 'created_at']
 
 
 @extend_schema_view(

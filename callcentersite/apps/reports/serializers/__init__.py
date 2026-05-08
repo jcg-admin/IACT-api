@@ -76,3 +76,7 @@ __all__ = [
 #   [SUCCESS] Compatibilidad mantenida
 #
 # ====================================================================================
+from .scheduled_report_serializers import (
+    ScheduledReportSerializer,
+    SavedViewSerializer,
+)

@@ -3,6 +3,7 @@ Views para sistema de acceso y módulos.
 """
 from rest_framework import viewsets, status
 from apps.access.permissions.function_permissions import HasFunction
+from apps.core.permissions import RequiresFunctionPermission
 from drf_spectacular.utils import (
     extend_schema, extend_schema_view, OpenApiParameter,
     OpenApiResponse, inline_serializer)
@@ -199,7 +200,17 @@ class AccessGroupViewSet(viewsets.ModelViewSet):
     DELETE /api/access/groups/{id}/remove-function/ — UC_PERM_06
     """
     queryset = AccessGroup.objects.all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresFunctionPermission]
+    function_map = {
+        'list':           'access.view_groups',
+        'retrieve':       'access.view_groups',
+        'create':         'access.manage_groups',
+        'update':         'access.manage_groups',
+        'partial_update': 'access.manage_groups',
+        'destroy':        'access.manage_groups',
+        'add_function':   'access.manage_groups',
+        'remove_function':'access.manage_groups',
+    }
 
     serializer_class = AccessGroupSerializer
 
@@ -245,7 +256,12 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
     GET    /api/access/user-groups/?user={id} — listar grupos de un usuario
     """
     queryset = UserAccessGroup.objects.select_related('user', 'access_group').all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresFunctionPermission]
+    function_map = {
+        'list': 'access.view_groups',
+        'create': 'access.assign_functions',
+        'destroy': 'access.assign_functions',
+    }
 
     serializer_class = UserAccessGroupSerializer
 
@@ -322,7 +338,16 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
     DELETE /api/access/separation-rules/{id}/ — baja logica
     """
     queryset = SeparationRule.objects.select_related('function_a', 'function_b').all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresFunctionPermission]
+    function_map = {
+        'list': 'access.view_separation_rules',
+        'retrieve': 'access.view_separation_rules',
+        'create': 'access.manage_separation_rules',
+        'update': 'access.manage_separation_rules',
+        'partial_update': 'access.manage_separation_rules',
+        'destroy': 'access.manage_separation_rules',
+        'check_conflict': 'access.view_separation_rules',
+    }
 
     serializer_class = SeparationRuleSerializer
 
@@ -375,7 +400,15 @@ class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
     queryset = ExceptionalPermission.objects.select_related(
         'user', 'function', 'granted_by'
     ).all()
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, RequiresFunctionPermission]
+    function_map = {
+        'list': 'access.view_exceptional_permissions',
+        'retrieve': 'access.view_exceptional_permissions',
+        'create': 'access.request_exceptional_permission',
+        'partial_update': 'access.manage_exceptional_permissions',
+        'approve': 'access.manage_exceptional_permissions',
+        'revoke': 'access.manage_exceptional_permissions',
+    }
 
     serializer_class = ExceptionalPermissionSerializer
 
@@ -430,7 +463,8 @@ class EffectivePermissionsView(APIView):
     - ExceptionalPermission activos
     Menos cualquier funcion que viole una SeparationRule activa.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_permissions'
 
     def get(self, request, user_id):
         from apps.access.services import get_user_function_codes
@@ -493,7 +527,8 @@ class FunctionListView(APIView):
     FunctionSelector.jsx espera:
       [{ id, code, name, description, category, permission_django, is_active }]
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_permissions'
 
     def get(self, request):
         qs = Function.objects.filter(
@@ -522,7 +557,8 @@ class UserEffectivePermissionsAliasView(APIView):
     Retorna estructura que Redux espera en state.access.userPermissions:
       { user_id, functions: [...codes], sources: {...} }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_permissions'
 
     def get(self, request, user_id):
         from django.contrib.auth import get_user_model
@@ -590,7 +626,8 @@ class FunctionAssignView(APIView):
       state.userPermissions.functions.push(action.payload.newFunction)
     Retorna: { newFunction: { id, code, name }, user_id }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.assign_functions'
 
     def post(self, request):
         from django.contrib.auth import get_user_model
@@ -668,7 +705,8 @@ class FunctionRevokeView(APIView):
     POST /api/access/functions/revoke
     Body: { userId, functionId }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.assign_functions'
 
     def post(self, request):
         from django.contrib.auth import get_user_model
@@ -723,7 +761,8 @@ class SeparationRuleValidateView(APIView):
     Retorna estructura que consume accessSlice:
       { conflicts: [{ rule, ruleDesc, setA, setB, message }] }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_separation_rules'
 
     def post(self, request):
         from django.contrib.auth import get_user_model
@@ -780,7 +819,8 @@ class GrouperListView(APIView):
 
     Alias de /api/access/groups/ para compatibilidad con frontend.
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_groups'
 
     def get(self, request):
         qs = AccessGroup.objects.filter(is_active=True).order_by('name')
@@ -809,7 +849,8 @@ class GrouperAssignView(APIView):
     POST /api/access/groupers/assign
     Body: { userId, grouperId }
     """
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.assign_functions'
 
     def post(self, request):
         from django.contrib.auth import get_user_model

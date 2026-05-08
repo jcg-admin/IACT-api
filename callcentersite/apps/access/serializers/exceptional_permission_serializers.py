@@ -12,19 +12,19 @@ class ExceptionalPermissionSerializer(serializers.ModelSerializer):
         source='function.code', read_only=True)
     function_name = serializers.CharField(
         source='function.name', read_only=True)
-    es_activo = serializers.SerializerMethodField()
+    is_currently_active = serializers.SerializerMethodField()
 
     class Meta:
         model = ExceptionalPermission
         fields = [
             'id', 'user', 'function', 'function_code', 'function_name',
             'justification', 'status', 'valid_from', 'valid_until',
-            'granted_by', 'created_at', 'es_activo',
+            'granted_by', 'created_at', 'is_currently_active',
         ]
         read_only_fields = ['status', 'granted_by', 'created_at']
 
     @extend_schema_field({'type': 'boolean'})
-    def get_es_activo(self, obj):
+    def get_is_currently_active(self, obj):
         from django.utils import timezone
         now = timezone.now()
         return (
