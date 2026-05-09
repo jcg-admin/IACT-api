@@ -204,6 +204,35 @@ sudo service mariadb status
 sudo service mariadb start
 ```
 
+**`ImportError: libmysqlclient.so.21: cannot open shared object file`**
+
+`mysqlclient==2.2.1` requiere `libmysqlclient.so.21` en el sistema.
+Esta librería la instala el bootstrap de IACT-db junto con MariaDB.
+Si falta después de la instalación:
+
+```bash
+# Ubuntu 24.04 — instalar el paquete del sistema
+sudo apt-get install -y libmysqlclient21
+# alternativa con MariaDB:
+sudo apt-get install -y libmariadb3
+
+# Verificar que el linker la encuentra
+ldconfig -p | grep mysqlclient
+
+# Verificar que Python puede cargar MySQLdb
+python -c "import MySQLdb; print('OK')"
+```
+
+En entornos sandbox sin acceso a apt (red bloqueada — típico en CI/Claude):
+
+```bash
+# Genera un stub con gcc que satisface el linker sin conexión real a MySQL
+# Solo para entornos de desarrollo sin MariaDB instalado
+sudo python3 scripts/setup/make_libmysqlclient_stub.py
+```
+
+Ver: `docs/architecture/HALLAZGOS-ENTORNO-SANDBOX-2026-05-10.md H-ENV-001`
+
 **`django.db.utils.OperationalError: FATAL: role "django_user" does not exist`**
 
 ```bash
