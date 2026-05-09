@@ -156,8 +156,11 @@ DATABASES = {
         'NAME': config('DB_NAME', default='iact_analytics'),
         'USER': config('DB_USER', default='iact_user'),
         'PASSWORD': config('DB_PASSWORD', default='iact_password_dev'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
+        # DB_SOCKET vacío → TCP (DB_HOST:DB_PORT).
+        # DB_SOCKET con valor → socket Unix, ignora HOST/PORT.
+        # Requiere en pg_hba.conf: local all django_user scram-sha-256
+        'HOST': config('DB_SOCKET', default='') or config('DB_HOST', default='localhost'),
+        'PORT': '' if config('DB_SOCKET', default='') else config('DB_PORT', default='5432'),
         'CONN_MAX_AGE': 600,
         'OPTIONS': {
             'connect_timeout': 10,
