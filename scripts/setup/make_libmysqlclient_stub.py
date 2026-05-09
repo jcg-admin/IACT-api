@@ -5,31 +5,27 @@ make_libmysqlclient_stub.py
 Crea /usr/local/lib/libmysqlclient.so.21 como librería stub cuando
 libmysqlclient21 no está instalado en el sistema.
 
-Uso:
-    sudo python3 scripts/setup/make_libmysqlclient_stub.py
+CUÁNDO USAR:
+    Solo en el sandbox de desarrollo donde archive.ubuntu.com está bloqueado.
+    En cualquier entorno con apt disponible, instalar la librería real:
 
-Propósito:
-    En el entorno de sandbox, la red bloquea archive.ubuntu.com, por lo que
-    no se puede instalar libmysqlclient21 vía apt. Sin la librería, Django
-    lanza ImportError al cargar django.db.backends.mysql, incluso si ningún
-    test usa MariaDB directamente.
+        sudo apt-get install -y libmysqlclient21   # MySQL 8.0
+        # o
+        sudo apt-get install -y libmariadb3        # MariaDB
 
-    Este stub expone los 50 símbolos que mysqlclient==2.2.1 necesita para
-    importar. Satisface al linker dinámico. No simula conexiones reales —
-    cualquier intento de conectarse a MySQL lanzará una excepción en runtime,
-    lo cual es correcto para unit tests que mockean la BD.
+POR QUÉ EXISTE:
+    Django carga django.db.backends.mysql al arrancar (por DATABASES['ivr']),
+    lo que importa MySQLdb, que necesita libmysqlclient.so.21. Sin ella,
+    426 tests de la suite unit fallan con ImportError antes de ejecutar
+    una sola línea de código de test.
 
-    Ver: IACT-api/docs/architecture/HALLAZGOS-ENTORNO-SANDBOX-2026-05-10.md H-ENV-001
+    El stub expone los 50 símbolos que mysqlclient==2.2.1 necesita para
+    importar. Las funciones retornan NULL — cualquier intento real de
+    conectarse a MariaDB fallará en runtime, no en import.
 
-Condiciones de aplicación:
-    - Solo en entornos sin libmysqlclient21 instalado.
-    - En producción y en el entorno de desarrollo con IACT-db, la librería
-      real está disponible y este script no debe ejecutarse.
+IDEMPOTENTE: Si la librería real o el stub ya existen, no hace nada.
 
-Requiere:
-    - gcc disponible en el sistema.
-    - Permisos de escritura en /usr/local/lib/.
-    - ldconfig disponible.
+Ver: docs/architecture/HALLAZGOS-ENTORNO-SANDBOX-2026-05-10.md H-ENV-001
 """
 
 import os
@@ -58,30 +54,28 @@ SYMBOLS = [
 ]
 
 TARGET = "/usr/local/lib/libmysqlclient.so.21"
-VERSION_SCRIPT = "libmysqlclient_21.0"
+VERSION_TAG = "libmysqlclient_21.0"
 
 
-def real_library_installed() -> bool:
-    """Devuelve True si la librería real ya está disponible."""
-    result = subprocess.run(
-        ["ldconfig", "-p"],
-        capture_output=True, text=True,
-    )
-    lines = result.stdout.splitlines()
-    return any("libmysqlclient.so.21" in line and "/usr/local/lib" not in line
-               for line in lines)
+def real_library_installed():
+    result = subprocess.run(["ldconfig", "-p"], capture_output=True, text=True)
+    for line in result.stdout.splitlines():
+        if "libmysqlclient.so.21" in line and "/usr/local/lib" not in line:
+            return True
+    return False
 
 
-def stub_already_present() -> bool:
+def stub_already_present():
     return os.path.exists(TARGET)
 
 
-def build_stub() -> None:
-    c_code = "/* stub: libmysqlclient.so.21 — sandbox sin MariaDB instalado */\n"
+def build_stub():
+    c_code = "/* stub: libmysqlclient.so.21 — sandbox sin MariaDB/MySQL */\n"
+    c_code += "#include <stddef.h>\n\n"
     for sym in SYMBOLS:
         c_code += f"void* {sym}() {{ return 0; }}\n"
 
-    vs_code = f"{VERSION_SCRIPT} {{\n  global:\n"
+    vs_code = f"{VERSION_TAG} {{\n  global:\n"
     for sym in SYMBOLS:
         vs_code += f"    {sym};\n"
     vs_code += "  local:\n    *;\n};\n"
@@ -89,53 +83,59 @@ def build_stub() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         c_path = os.path.join(tmp, "stub.c")
         vs_path = os.path.join(tmp, "stub.map")
-
         with open(c_path, "w") as f:
             f.write(c_code)
         with open(vs_path, "w") as f:
             f.write(vs_code)
 
         result = subprocess.run(
-            [
-                "gcc", "-shared", "-fPIC",
-                f"-Wl,--version-script={vs_path}",
-                "-o", TARGET,
-                c_path,
-            ],
+            ["gcc", "-shared", "-fPIC",
+             f"-Wl,--version-script={vs_path}",
+             "-o", TARGET, c_path],
             capture_output=True, text=True,
         )
         if result.returncode != 0:
-            print(f"ERROR: gcc falló\n{result.stderr}", file=sys.stderr)
+            print(f"ERROR gcc: {result.stderr}", file=sys.stderr)
             sys.exit(1)
 
-    subprocess.run(["ldconfig"], check=True, capture_output=True)
+    subprocess.run(["ldconfig"], check=True)
 
 
-def main() -> None:
-    if real_library_installed():
-        print("libmysqlclient.so.21 ya está instalada (real). No se requiere stub.")
-        sys.exit(0)
+def verify_import():
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    venv_python = os.path.join(script_dir, "../../venv/bin/python")
+    python = venv_python if os.path.exists(venv_python) else sys.executable
+    r = subprocess.run([python, "-c", "import MySQLdb; print('OK')"],
+                       capture_output=True, text=True)
+    return r.returncode == 0 and "OK" in r.stdout
 
-    if stub_already_present():
-        print(f"Stub ya presente en {TARGET}. Actualizando...")
 
+def main():
     if os.geteuid() != 0:
-        print("ERROR: requiere permisos root (sudo).", file=sys.stderr)
+        print("Ejecutar con: sudo python3 scripts/setup/make_libmysqlclient_stub.py",
+              file=sys.stderr)
         sys.exit(1)
 
+    if real_library_installed():
+        print("libmysqlclient.so.21 real instalada — nada que hacer.")
+        return
+
+    if stub_already_present():
+        if verify_import():
+            print(f"Stub ya presente en {TARGET} y MySQLdb importa. OK.")
+            return
+        print("Stub presente pero roto — reconstruyendo...")
+
+    print(f"Construyendo stub con {len(SYMBOLS)} símbolos...")
     build_stub()
 
-    # Verificar que MySQLdb importa
-    result = subprocess.run(
-        [sys.executable, "-c", "import MySQLdb; print('MySQLdb OK')"],
-        capture_output=True, text=True,
-    )
-    if result.returncode == 0:
-        print(f"Stub creado en {TARGET}")
-        print(result.stdout.strip())
+    if verify_import():
+        print(f"OK — {TARGET} instalado. MySQLdb importa correctamente.")
+        print()
+        print("Este es un stub de desarrollo — no hace conexiones reales.")
+        print("Para entorno completo: cd /ruta/IACT-db && sudo bash bootstrap.sh")
     else:
-        print(f"ADVERTENCIA: stub creado pero MySQLdb sigue fallando:")
-        print(result.stderr.strip(), file=sys.stderr)
+        print("ERROR: stub creado pero MySQLdb no importa.", file=sys.stderr)
         sys.exit(1)
 
 

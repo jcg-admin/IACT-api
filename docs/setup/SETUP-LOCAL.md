@@ -34,13 +34,79 @@ datos IVR legado, accedido exclusivamente en modo lectura.
   y usuario `django_user` creados
 - MariaDB 10.11+ corriendo en `127.0.0.1:3306` con `ivr_legacy`
   y usuario `django_user` creados
-- Ambas BDs aprovisionadas con `IACT-db` (ver `IACT-db/QUICKSTART.md`)
+- `libmysqlclient21` instalada en el sistema (ver sección Instalación)
+- Ambas BDs aprovisionadas con `IACT-db`
 
 Verificar que ambos motores responden antes de continuar:
 
 ```bash
 pg_isready -h 127.0.0.1 -p 5432
-mysqladmin -h 127.0.0.1 -u django_user -pdjango_pass ping
+mysql -u django_user -pdjango_pass -e "SELECT 1;"
+```
+
+O usar el script de verificación incluido:
+
+```bash
+bash scripts/setup/start_services.sh
+```
+
+---
+
+## Instalación de servicios (primera vez)
+
+Los servicios de BD se instalan y configuran desde el repositorio `IACT-db`:
+
+```bash
+cd /ruta/a/IACT-db
+
+# Copiar y ajustar configuración
+cp .env.example .env
+
+# Instalar PostgreSQL 16 + MariaDB 10.11 + crear usuarios y BDs
+sudo bash bootstrap.sh --no-adminer
+```
+
+El bootstrap instala:
+- PostgreSQL 16 con usuario `django_user` y BD `iact_analytics`
+- MariaDB 10.11 con usuario `django_user` y BD `ivr_legacy`
+- `libmysqlclient21` como dependencia de MariaDB
+
+### libmysqlclient21
+
+`mysqlclient==2.2.1` (cliente Python para MariaDB) requiere
+`libmysqlclient.so.21` en el sistema. Esta librería es instalada
+automáticamente por el bootstrap de IACT-db.
+
+Si `libmysqlclient21` no está disponible (por ejemplo, en el sandbox
+de desarrollo con red restringida), el import de `MySQLdb` falla
+con `ImportError` y produce 426 errores en `tests/unit/` aunque
+ningún test toque MariaDB.
+
+Solución para entorno sin apt:
+
+```bash
+# Genera /usr/local/lib/libmysqlclient.so.21 como stub
+sudo python3 scripts/setup/make_libmysqlclient_stub.py
+```
+
+El stub satisface al linker dinámico. No hace conexiones reales —
+es solo para que Django arranque sin `ImportError`.
+
+**Ver:** `docs/architecture/HALLAZGOS-ENTORNO-SANDBOX-2026-05-10.md` H-ENV-001
+
+### Arranque en sesiones posteriores
+
+PostgreSQL y MariaDB arrancan automáticamente con systemd. Si no:
+
+```bash
+# PostgreSQL
+sudo pg_ctlcluster 16 main start
+
+# MariaDB
+sudo systemctl start mariadb
+
+# Verificar ambos
+bash scripts/setup/start_services.sh
 ```
 
 ---
@@ -184,59 +250,45 @@ curl -s http://localhost:8000/api/schema/ | head -5
 
 ## Troubleshooting
 
+**`ImportError: libmysqlclient.so.21: cannot open shared object file`**
+
+MySQLdb no puede cargar porque `libmysqlclient21` no está instalada.
+Produce 426 errores en `tests/unit/` aunque ningún test toque MariaDB.
+
+```bash
+# Con apt disponible (entorno normal):
+sudo apt-get install -y libmysqlclient21
+
+# Sin apt (sandbox con red restringida):
+python3 scripts/setup/make_libmysqlclient_stub.py
+```
+
+Verificar:
+```bash
+venv/bin/python -c "import MySQLdb; print('OK')"
+```
+
 **`django.db.utils.OperationalError: connection refused` en PostgreSQL**
 
 ```bash
-# Verificar que PostgreSQL está corriendo
 pg_isready -h 127.0.0.1 -p 5432
 
-# Si no responde, iniciarlo
+# Si no responde:
 sudo pg_ctlcluster 16 main start
 ```
 
 **`django.db.utils.OperationalError: (2003, "Can't connect to MySQL server")` en MariaDB**
 
 ```bash
-# Verificar que MariaDB está corriendo
-sudo service mariadb status
+sudo systemctl start mariadb
 
-# Si no responde, iniciarlo
-sudo service mariadb start
+# Verificar con socket:
+mysql --socket=/run/mysqld/mysqld.sock -u django_user -pdjango_pass -e "SELECT 1;"
 ```
 
-**`ImportError: libmysqlclient.so.21: cannot open shared object file`**
-
-`mysqlclient==2.2.1` requiere `libmysqlclient.so.21` en el sistema.
-Esta librería la instala el bootstrap de IACT-db junto con MariaDB.
-Si falta después de la instalación:
+**`FATAL: role "django_user" does not exist`**
 
 ```bash
-# Ubuntu 24.04 — instalar el paquete del sistema
-sudo apt-get install -y libmysqlclient21
-# alternativa con MariaDB:
-sudo apt-get install -y libmariadb3
-
-# Verificar que el linker la encuentra
-ldconfig -p | grep mysqlclient
-
-# Verificar que Python puede cargar MySQLdb
-python -c "import MySQLdb; print('OK')"
-```
-
-En entornos sandbox sin acceso a apt (red bloqueada — típico en CI/Claude):
-
-```bash
-# Genera un stub con gcc que satisface el linker sin conexión real a MySQL
-# Solo para entornos de desarrollo sin MariaDB instalado
-sudo python3 scripts/setup/make_libmysqlclient_stub.py
-```
-
-Ver: `docs/architecture/HALLAZGOS-ENTORNO-SANDBOX-2026-05-10.md H-ENV-001`
-
-**`django.db.utils.OperationalError: FATAL: role "django_user" does not exist`**
-
-```bash
-# Ejecutar el setup de PostgreSQL desde IACT-db
 cd /ruta/a/IACT-db
 sudo bash provisioners/postgres/setup.sh
 ```
@@ -244,12 +296,9 @@ sudo bash provisioners/postgres/setup.sh
 **`Access denied for user 'django_user'@'...' (MariaDB)`**
 
 ```bash
-# Ejecutar el setup de MariaDB desde IACT-db
 cd /ruta/a/IACT-db
 sudo bash provisioners/mariadb/setup.sh
 ```
-
----
 
 ## Ver también
 
