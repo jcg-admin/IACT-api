@@ -4,7 +4,7 @@ Serializers core - IACT Call Center System.
 Django REST Framework serializers.
 """
 from rest_framework import serializers
-from .models import CallRecord, Center, Service
+from apps.pipeline.models import CallRecord, Center, Service  # modelos en apps.pipeline
 
 
 class CallRecordSerializer(serializers.ModelSerializer):

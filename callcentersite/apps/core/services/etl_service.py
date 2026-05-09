@@ -26,7 +26,7 @@ from typing import List, Dict
 # from apps.ivr_legacy.adapters import IVRAdapter   # import incorrecto (B-02)
 # from apps.ivr.adapters import IVRAdapter           # import correcto (desactivado)
 
-from apps.core.models import CallRecord
+from apps.pipeline.models import CallRecord  # CallRecord vive en apps.pipeline (no apps.core)
 
 logger = logging.getLogger(__name__)
 
