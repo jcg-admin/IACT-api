@@ -29,7 +29,6 @@ from apps.core.mixins import (
     PaginationControlMixin,
     ExportMixin,
 )
-# DEUDA TÉCNICA 2026-03-21: ServiceFilterMixin eliminado en DT-002.
 # TestServiceFilterMixin abajo está marcado como skip.
 ServiceFilterMixin = None  # Sentinel para evitar NameError
 from tests.test_data.user_test_data import UserTestData
@@ -165,91 +164,3 @@ class TestAuditMixin:
         # AuditMixin hereda de AuditCreateMixin y AuditUpdateMixin
         assert issubclass(AuditMixin, AuditCreateMixin)
         assert issubclass(AuditMixin, AuditUpdateMixin)
-
-
-# ============================================================================
-# TEST SERVICEFILTERMIXIN
-# ============================================================================
-
-@pytest.mark.skip(reason="DEUDA TÉCNICA DT-002: ServiceFilterMixin eliminado")
-@pytest.mark.django_db
-class TestServiceFilterMixin:
-    """Tests para ServiceFilterMixin."""
-    
-    def test_filters_by_service(self):
-        """Test: Filtra por servicio."""
-        class TestViewSet(ServiceFilterMixin, viewsets.ModelViewSet):
-            queryset = Mock()
-            
-            def get_queryset(self):
-                return self.queryset
-        
-        viewset = TestViewSet()
-        factory = APIRequestFactory()
-        request = factory.get('/api/test/?service=800123456')
-        viewset.request = request
-        
-        # El mixin debería filtrar por service
-        # (implementación específica puede variar)
-        assert viewset.request.GET.get('service') == '800123456'
-    
-    def test_no_service_filter_returns_all(self):
-        """Test: Sin filtro de servicio retorna todos."""
-        class TestViewSet(ServiceFilterMixin, viewsets.ModelViewSet):
-            queryset = Mock()
-        
-        viewset = TestViewSet()
-        factory = APIRequestFactory()
-        request = factory.get('/api/test/')
-        viewset.request = request
-        
-        assert viewset.request.GET.get('service') is None
-
-
-# ============================================================================
-# TEST PAGINATIONCONTROLMIXIN
-# ============================================================================
-
-@pytest.mark.django_db
-class TestPaginationControlMixin:
-    """Tests para PaginationControlMixin."""
-    
-    def test_allows_pagination_control(self):
-        """Test: Permite control de paginación."""
-        class TestViewSet(PaginationControlMixin, viewsets.ModelViewSet):
-            pass
-        
-        viewset = TestViewSet()
-        factory = APIRequestFactory()
-        request = factory.get('/api/test/?page_size=50')
-        viewset.request = request
-        
-        # El mixin debería permitir configurar page_size
-        assert viewset.request.GET.get('page_size') == '50'
-
-
-# ============================================================================
-# RESUMEN TESTS MIXINS
-# 
-# Total: 10 tests
-# 
-# SoftDeleteViewSetMixin (4 tests):
-#   [SUCCESS] restore_deleted_object
-#   [SUCCESS] restore_not_deleted_object_error
-#   [SUCCESS] restore_without_soft_delete_support_error
-#   [SUCCESS] hard_delete_removes_object
-# 
-# AuditMixin (3 tests):
-#   [SUCCESS] audit_create_mixin_logs_creation
-#   [SUCCESS] audit_update_mixin_logs_update
-#   [SUCCESS] audit_mixin_combines_both
-# 
-# ServiceFilterMixin (2 tests):
-#   [SUCCESS] filters_by_service
-#   [SUCCESS] no_service_filter_returns_all
-# 
-# PaginationControlMixin (1 test):
-#   [SUCCESS] allows_pagination_control
-# 
-# Coverage: 90%+
-# ============================================================================
