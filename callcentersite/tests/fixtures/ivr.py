@@ -124,6 +124,43 @@ END"""
 
 
 
+
+_SP_MENU_REDIRIGIDOS = """\
+CREATE PROCEDURE sp_rpt_menu_redirigidos(
+    IN p_quarter VARCHAR(10),
+    IN p_segmento VARCHAR(20)
+)
+BEGIN
+    SELECT
+        menu,
+        opcion,
+        SUM(total_llamadas) AS total_llamadas
+    FROM base_ivr_detalle
+    WHERE trimestre = p_quarter
+      AND opcion <> 'SIN_OPCION'
+      AND (p_segmento = 'todas' OR segmento = p_segmento)
+    GROUP BY menu, opcion
+    ORDER BY menu, total_llamadas DESC;
+END"""
+
+_SP_MENU_CENTRO = """\
+CREATE PROCEDURE sp_rpt_menu_centro(
+    IN p_quarter VARCHAR(10),
+    IN p_segmento VARCHAR(20)
+)
+BEGIN
+    SELECT
+        menu,
+        centro_transferencia,
+        SUM(total_llamadas) AS total_llamadas
+    FROM base_ivr_detalle
+    WHERE trimestre = p_quarter
+      AND (p_segmento = 'todas' OR segmento = p_segmento)
+    GROUP BY menu, centro_transferencia
+    ORDER BY menu, total_llamadas DESC;
+END"""
+
+
 _SP_CENTROS_TRANSFERENCIA = """CREATE PROCEDURE sp_rpt_centros_transferencia(
     IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
 BEGIN
@@ -198,13 +235,25 @@ def ivr_schema(ensure_mariadb):
     """
     _sql(_TABLES_SQL)
 
-    # SP: DROP + CREATE para garantizar que está actualizado
-    _sql("DROP PROCEDURE IF EXISTS sp_rpt_clientes;")
-    subprocess.run(
-        ['mysql', f'--socket={SOCKET}', DB,
-         '--delimiter=$$', '-e', f'{_SP_BODY}$$'],
-        capture_output=True,
-    )
+    # SPs: DROP + CREATE para los 7 endpoints IVR
+    USER = 'django_user'
+    PASS = 'django_pass'
+    for sp_name, sp_body in [
+        ('sp_rpt_clientes',              _SP_BODY),
+        ('sp_rpt_menu_redirigidos',      _SP_MENU_REDIRIGIDOS),
+        ('sp_rpt_menu_centro',           _SP_MENU_CENTRO),
+        ('sp_rpt_centros_transferencia', _SP_CENTROS_TRANSFERENCIA),
+        ('sp_rpt_llamadas_abandonadas',  _SP_LLAMADAS_ABANDONADAS),
+        ('sp_rpt_cMENU_ERROR',           _SP_CMENU_ERROR),
+        ('sp_rpt_centros_xsegmento',     _SP_CENTROS_XSEGMENTO),
+    ]:
+        _sql(f"DROP PROCEDURE IF EXISTS {sp_name};")
+        subprocess.run(
+            ['mysql', f'--socket={SOCKET}',
+             f'-u{USER}', f'-p{PASS}', DB,
+             '--delimiter=$$', '-e', f'{sp_body}$$'],
+            capture_output=True,
+        )
 
     yield
     # Sin teardown de schema — la DB persiste
