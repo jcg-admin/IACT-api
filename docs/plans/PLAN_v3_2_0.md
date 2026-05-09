@@ -1,175 +1,238 @@
-# Grafo de dependencias — Planes v3.0.0, v3.1.0, v3.2.0
+# Plan de implementación v3.2.0 — IACT API
 
+**Versión:** 3.2.0
 **Fecha:** 2026-05-08
-**Base:** Plan v2.0.1 completado (640 passed, 0 failed en `tests/unit/`)
-**Documentos relacionados:**
-- `plans/GAP_ANALYSIS_v3_0_0.md`
-- `plans/PLAN_v3_0_0.md`
-- `plans/PLAN_v3_1_0.md`
-- `plans/PLAN_v3_2_0.md`
+**Prerrequisito:** Plan v3.1.0 completado
+**Scope:** UC_RPT_03, UC_RPT_09, UC_RPT_11, UC_AUD_03
 
 ---
 
-## Resumen: cuántos planes y por qué
+## Contexto
 
-**3 planes** después del v2.0.1. Ni más ni menos.
+Este plan cierra los UCs de reportes y auditoría que tienen código cero
+o código parcial sin tests. Los modelos base ya existen:
+- `Report` — `apps/reports/models.py:13`
+- `SavedView` — `apps/reports/models.py:233`
+- `ExportJob` — `apps/reports/models.py:96`
+- `AuditLog` — `apps/audit/models.py:7`
 
-| Plan | Scope | Prerequisito estricto |
-|------|-------|-----------------------|
-| v3.0.0 | Pipeline ETL IVR (5 tareas) | v2.0.1 ✓ |
-| v3.1.0 | MenuItem + deuda de navegación (5 tareas) | ninguno técnico — v3.0.0 por orden |
-| v3.2.0 | Reports/Audit faltantes (5 tareas) | ninguno técnico — v3.1.0 por orden |
-
-v3.1.0 y v3.2.0 **pueden arrancar en paralelo con v3.0.0** porque sus entradas
-ya existen en la base. El orden sugerido (v3.0.0 → v3.1.0 → v3.2.0) es
-por riesgo, no por dependencia técnica estricta.
+`UC_AUD_04` (verificar integridad con HMAC-SHA256) ya está implementado
+como `AuditIntegrityView` — no es gap de este plan.
 
 ---
 
-## Inventario completo de tareas
-
-### v3.0.0 — Pipeline ETL IVR
-
-| Tarea | Descripción | Prerequisito |
-|-------|-------------|-------------|
-| T-001 | `manage.py run_etl` con heartbeat threading | ninguno |
-| T-002 | ETLScheduler → CronTrigger + `sp_etl_maestro` | T-001 |
-| T-003 | Separar endpoints `ivr/menu-redirigidos/` e `ivr/menu-centro/` | ninguno |
-| T-004 | Tests unitarios de `run_etl` (mock `connections['ivr']`) | T-001 |
-| T-005 | Tests de integración para ambos endpoints de menú IVR | T-003 |
-
-### v3.1.0 — MenuItem y deuda de navegación
-
-| Tarea | Descripción | Prerequisito |
-|-------|-------------|-------------|
-| T-101 | Quitar `pytestmark = skip` injustificado en `test_utils_network.py` | ninguno |
-| T-102 | Modelo `MenuItem` (CNST-032 v5.6.x, OneToOne sobre `Function`) | ninguno |
-| T-103 | Decisión DT-002: eliminar los 17 tests de clases eliminadas | ninguno |
-| T-104 | `MenuLifecycleService` (state machine DRAFT→ACTIVE→DEPRECATED→ARCHIVED) | T-102 |
-| T-105 | Tests de `MenuItem` y `MenuLifecycleService` | T-102, T-104 |
-
-### v3.2.0 — Reports y Audit faltantes
-
-| Tarea | Descripción | Prerequisito |
-|-------|-------------|-------------|
-| T-201 | UC_RPT_03 históricos (`HistoricalReportView`, periodos last_7d..custom) | ninguno |
-| T-202 | UC_RPT_09 filtros guardados (modelo `SavedFilter` + CRUD) | ninguno |
-| T-203 | UC_RPT_11 compartir reporte (campos `is_public`+`shared_with` a `SavedView`) | ninguno |
-| T-204 | UC_AUD_03 exportar auditoría async (modelo `AuditExportJob` + worker) | ninguno |
-| T-205 | Tests unitarios del plan v3.2.0 | T-201, T-202, T-203, T-204 |
-
----
-
-## Grafo de dependencias
-
-Las flechas indican "debe completarse antes de".
+## Estado de partida esperado
 
 ```
-BASE (v2.0.1)
-├── connections['ivr']  ──────────────────► T-001
-│   etl_runs (MariaDB)                         │
-│                                              ▼
-│                                          T-002 (ETLScheduler)
-│                                              │
-│                                              ▼
-│                                          T-004 (tests run_etl)
-│
-├── ivr_services.py ──────────────────────► T-003
-│   ivr_views.py                               │
-│                                              ▼
-│                                          T-005 (tests menú)
-│
-├── Function (model) ─────────────────────► T-102
-│                                              │
-│                                              ▼
-│                                          T-104 (MenuLifecycle)
-│                                              │
-│                                              ▼
-│                                          T-105 (tests MenuItem)
-│
-├── Report (model) ───────────────────────► T-201
-│
-├── SavedView (model) ────────────────────► T-203
-│
-│   [T-202 SavedFilter: modelo nuevo, sin prerequisito]
-│   [T-204 AuditExportJob: modelo nuevo, sin prerequisito]
-│
-│                        T-201 ─┐
-│                        T-202 ─┤
-│                        T-203 ─┼──► T-205 (tests v3.2.0)
-│                        T-204 ─┘
-│
-└── [T-101, T-103: sin prerequisito — solo decisiones/fixes triviales]
+tests/unit/         >= 660 passed, 0 failed (post v3.1.0)
+tests/integration/  >= 17 passed
+Django check:       0 issues
 ```
 
 ---
 
-## Dependencias cruzadas entre planes
+## Tareas
 
-No hay dependencias técnicas entre los tres planes. Cada plan opera
-sobre módulos distintos:
+### T-201 — Implementar `UC_RPT_03` — Ver Reportes Históricos
 
-- v3.0.0: `apps/pipeline/`, `apps/reports/ivr_views.py`
-- v3.1.0: `apps/access/` (modelo `MenuItem`)
-- v3.2.0: `apps/reports/` (modelos nuevos), `apps/audit/` (modelo nuevo)
+**Causa raíz:** No existe ningún endpoint ni lógica para reportes históricos.
+El modelo `Report` existe pero sin views de análisis retrospectivo.
 
-Los únicos modelos que podrían crear conflicto de migración son los de
-`apps/reports/` — T-202 (`SavedFilter`) y T-203 (extensión de `SavedView`)
-tocan el mismo app. Si se ejecutan en paralelo, deben coordinarse
-para que sus migraciones no colisionen en numeración.
+**Qué hace UC_RPT_03:**
+Análisis retrospectivo de datos IVR: tendencias mes a mes, comparativos
+periodo vs periodo, detalle por día/hora. Fuente: `base_ivr_detalle` en
+MariaDB via `connections['ivr']`.
 
----
+**Periodos soportados** (del spec `requisitos/casos-uso/reports/uc-rpt-03`):
+- `last_24h`, `last_7d`, `last_30d`, `last_90d`
+- `custom` (con `date_from`, `date_to`)
+- `year_to_date`
 
-## Qué queda fuera del scope de los tres planes
+**Archivos a crear o modificar:**
+```
+apps/reports/views.py          — HistoricalReportView
+apps/reports/urls.py           — path('historical/', ...)
+apps/reports/serializers/      — HistoricalReportSerializer
+```
 
-### Extension points declarados — no implementar
-
-| Módulo | UCs | Estado en spec |
-|--------|-----|----------------|
-| MOD_Supervision | UC_SUP_01..03 | Fuera de scope — extension point |
-| MOD_Operator | UC_OPR_01..10 | Fuera de scope — extension point |
-| Caller (IVR cliente) | UC_CLI_01..05 | Fuera de scope |
-
-Estos UCs están preservados en el spec como base para activación futura.
-No son especificación implementable en el proyecto IACT actual.
-
-### Infraestructura MariaDB — responsabilidad de ops
-
-- `evt_etl_diario` (MySQL Event Scheduler): se despliega con
-  `CREATE EVENT` vía script SQL.
-- Carga histórica: `CALL sp_etl_historico(year, quarter)` manualmente.
-
-### Skips intencionales que permanecen
-
-| Archivo | Cantidad | Razón |
-|---------|----------|-------|
-| `access/test_services.py::ModuleAccessService` | 2 | RBAC v6.0.0 lo simplificó — decisión intencional documentada |
-
-Estos 2 skips permanecen después de los tres planes. Son deuda
-técnica aceptada, no un fallo.
+**Función RBAC:** `view_reports`
 
 ---
 
-## Conteo de tests esperado al cierre de cada plan
+### T-202 — Implementar `UC_RPT_09` — Configurar Filtros Guardados
 
-| Estado | `tests/unit/` passed | `tests/integration/` passed | Skips |
-|--------|---------------------|----------------------------|-------|
-| Actual (v2.0.1) | 640 | 13 | 4 |
-| Post v3.0.0 | ~648 | ~17 | 4 |
-| Post v3.1.0 | ~680 | ~17 | 2 |
-| Post v3.2.0 | ~710 | ~17 | 2 |
+**Causa raíz:** No existe el modelo `SavedFilter` ni endpoints para CRUD
+de filtros guardados. `SavedView` (UC_RPT_10) existe pero es distinto:
+`SavedView` guarda una vista completa (filtros + columnas + nombre);
+`SavedFilter` guarda solo la configuración de filtros reutilizable.
 
-Los números son estimados. El criterio de cierre definitivo para cada plan
-está en su documento correspondiente.
+**Verificación:** `grep -n "SavedFilter" apps/reports/models.py` → vacío.
+
+**Modelo a crear:**
+```python
+class SavedFilter(models.Model):
+    name        = models.CharField(max_length=100)
+    report_type = models.CharField(max_length=50)
+    filters     = models.JSONField(default=dict)
+    created_by  = models.ForeignKey(User, on_delete=models.CASCADE,
+                                    related_name='saved_filters')
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'reports'
+```
+
+**Archivos a crear o modificar:**
+```
+apps/reports/models.py           — agregar SavedFilter
+apps/reports/migrations/         — migración nueva
+apps/reports/views.py            — SavedFilterViewSet
+apps/reports/serializers/        — SavedFilterSerializer
+apps/reports/urls.py             — router.register('saved-filters', ...)
+```
+
+**Función RBAC:** `view_reports`
 
 ---
 
-## Invariantes que no deben romperse en ningún plan
+### T-203 — Implementar `UC_RPT_11` — Compartir Reporte
 
-| Invariante | Verificación |
-|-----------|-------------|
-| `tests/unit/access/` 100 passed, 2 skipped | `python -m pytest tests/unit/access/ --tb=no -q` |
-| `tests/integration/pipeline/` 13+ passed | `python -m pytest tests/integration/ --tb=no -q` |
-| `python manage.py check` — 0 issues | Ejecutar al final de cada tarea |
-| 0 migraciones pendientes | `python manage.py showmigrations \| grep "\[ \]"` → vacío |
-| Alias `connections['ivr']` — no cambiar | El settings usa `ivr`, no `ivr_cliente` |
+**Causa raíz:** No existe endpoint para compartir una `SavedView` con
+otros usuarios. El modelo `SavedView` existe pero no tiene campo
+`shared_with` ni lógica de sharing.
+
+**Extensión al modelo `SavedView`:**
+```python
+# Agregar a SavedView
+is_public   = models.BooleanField(default=False)
+shared_with = models.ManyToManyField(
+                  User,
+                  blank=True,
+                  related_name='shared_views',
+              )
+```
+
+**Archivos a crear o modificar:**
+```
+apps/reports/models.py       — campos is_public + shared_with a SavedView
+apps/reports/migrations/     — migración nueva
+apps/reports/views.py        — ShareSavedViewView (POST /saved-views/{id}/share/)
+apps/reports/serializers/    — ShareSavedViewSerializer
+apps/reports/urls.py         — path en el router de SavedView
+```
+
+**Función RBAC:** `view_reports`
+
+---
+
+### T-204 — Implementar `UC_AUD_03` — Exportar Auditoría (async)
+
+**Causa raíz:** No existe endpoint para exportación asíncrona de `AuditLog`.
+El `ExportJob` de `apps/reports/models.py` es para reportes generales
+(no para auditoría). UC_AUD_03 requiere un job específico de auditoría.
+
+**Qué hace UC_AUD_03** (del spec `use-case-view/audit/uc-aud-03`):
+Genera archivo CSV/JSON con `AuditEvent` para auditores externos.
+Operación async — retorna 202 + `job_id`. Worker procesa
+streaming + sanitize (PII) + storage. Hash del archivo para integridad.
+
+**Modelo a crear:**
+```python
+class AuditExportJob(models.Model):
+    STATUS_CHOICES = [
+        ('pending',   'Pendiente'),
+        ('running',   'Ejecutando'),
+        ('completed', 'Completado'),
+        ('failed',    'Fallido'),
+    ]
+    FORMAT_CHOICES = [('csv', 'CSV'), ('json', 'JSON')]
+
+    requested_by = models.ForeignKey(User, on_delete=models.CASCADE,
+                                     related_name='audit_export_jobs')
+    date_from    = models.DateTimeField()
+    date_to      = models.DateTimeField()
+    format       = models.CharField(max_length=10, choices=FORMAT_CHOICES,
+                                    default='csv')
+    status       = models.CharField(max_length=20, choices=STATUS_CHOICES,
+                                    default='pending')
+    file_path    = models.CharField(max_length=500, blank=True, default='')
+    file_hash    = models.CharField(max_length=64,  blank=True, default='')
+    error        = models.TextField(blank=True, default='')
+    created_at   = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        app_label = 'audit'
+```
+
+**Restricción ADR-BACK-012:** Sin Redis/RabbitMQ. El worker se ejecuta
+con APScheduler o con un thread en background, mismo patrón que `run_etl`.
+
+**Archivos a crear o modificar:**
+```
+apps/audit/models.py         — agregar AuditExportJob
+apps/audit/migrations/       — migración nueva
+apps/audit/views.py          — AuditExportJobView (POST → 202 + job_id)
+                               AuditExportStatusView (GET job_id → estado)
+apps/audit/services/         — audit_export_service.py
+apps/audit/urls.py           — registrar endpoints
+```
+
+**Función RBAC:** `export_audit_log`
+
+---
+
+### T-205 — Tests unitarios e integración del plan v3.2.0
+
+**Archivos a crear:**
+```
+tests/unit/reports/test_historical_report_view.py
+tests/unit/reports/test_saved_filter_viewset.py
+tests/unit/reports/test_share_saved_view.py
+tests/unit/audit/test_audit_export_job.py
+```
+
+**Prerequisito:** T-201, T-202, T-203, T-204.
+
+---
+
+## Dependencias entre tareas
+
+```
+T-201  sin prerequisito  (Report ya existe)
+T-202  sin prerequisito  (modelo nuevo independiente)
+T-203  sin prerequisito  (SavedView ya existe)
+T-204  sin prerequisito  (AuditLog ya existe)
+T-205  depende de T-201, T-202, T-203, T-204
+```
+
+T-201..T-204 pueden ejecutarse en paralelo.
+
+---
+
+## Criterio de cierre
+
+```bash
+# 1. Tests unitarios — 0 failed
+python -m pytest tests/unit/ --tb=no -q
+
+# 2. Endpoints nuevos existen
+python -c "
+from django.urls import reverse
+print(reverse('reports:historical'))
+print(reverse('reports:savedfilter-list'))
+print(reverse('audit:audit-export'))
+"
+
+# 3. Modelos con migración aplicada
+python manage.py shell -c "
+from apps.reports.models import SavedFilter
+from apps.audit.models import AuditExportJob
+print('SavedFilter:', SavedFilter)
+print('AuditExportJob:', AuditExportJob)
+"
+
+# 4. Django check limpio
+python manage.py check
+```

@@ -1,238 +1,271 @@
-# Plan de implementación v3.2.0 — IACT API
+# Plan de implementación v3.1.0 — IACT API
 
-**Versión:** 3.2.0
+**Versión:** 3.1.0
 **Fecha:** 2026-05-08
-**Prerrequisito:** Plan v3.1.0 completado
-**Scope:** UC_RPT_03, UC_RPT_09, UC_RPT_11, UC_AUD_03
+**Prerrequisito:** Plan v3.0.0 completado
+**Scope:** MenuItem (CNST-032 v5.6.x) + resolución de skips heredados
 
 ---
 
 ## Contexto
 
-Este plan cierra los UCs de reportes y auditoría que tienen código cero
-o código parcial sin tests. Los modelos base ya existen:
-- `Report` — `apps/reports/models.py:13`
-- `SavedView` — `apps/reports/models.py:233`
-- `ExportJob` — `apps/reports/models.py:96`
-- `AuditLog` — `apps/audit/models.py:7`
+Este plan cierra la deuda de navegación del sistema IACT.
+El módulo de permisos RBAC fue simplificado en v6.0.0 eliminando
+`ServiceFilterMixin`, `ServiceAccessService` y `UserServiceAccess`.
+Esa simplificación dejó:
 
-`UC_AUD_04` (verificar integridad con HMAC-SHA256) ya está implementado
-como `AuditIntegrityView` — no es gap de este plan.
+- 17 tests en skip sin decisión explícita documentada (DT-002).
+- El modelo `MenuItem` del spec v5.6.x sin implementar — el API usa
+  `Module` (modelo legacy).
+- `ModuleAccessService` mencionado en 2 tests como no implementado.
+
+---
+
+## Distinción fundamental: MenuItem vs menú IVR
+
+**`MenuItem`** es el árbol de navegación UX del sistema IACT:
+el menú que el usuario autenticado ve en la interfaz, estructurado
+como `Domain → Section → Action`. Definido por `CNST-032` y `UC_PERM_08`.
+
+**Menú IVR** es el campo `cMenu` en los datos de llamadas telefónicas.
+Es completamente distinto — pertenece al plan v3.0.0.
+
+No confundir estos dos conceptos.
 
 ---
 
 ## Estado de partida esperado
 
 ```
-tests/unit/         >= 660 passed, 0 failed (post v3.1.0)
+tests/unit/         >= 645 passed, 0 failed (post v3.0.0)
 tests/integration/  >= 17 passed
 Django check:       0 issues
 ```
 
 ---
 
+## Restricciones técnicas aplicables
+
+| ID | Restricción | Impacto |
+|----|-------------|---------|
+| CNST-032 v2.0.0 | `MenuItem` es wrapper UX 1:1 sobre `Function` — NO es fuente de capability | La regla de acceso vive en `Function`; `MenuItem` solo tiene metadata visual |
+| ADR-BACK-008 | MenuItem lifecycle con state machine | DRAFT→ACTIVE→DEPRECATED→ARCHIVED, transiciones validadas |
+
+---
+
 ## Tareas
 
-### T-201 — Implementar `UC_RPT_03` — Ver Reportes Históricos
+### T-101 — Fix skip injustificado en `utils/test_utils_network.py`
 
-**Causa raíz:** No existe ningún endpoint ni lógica para reportes históricos.
-El modelo `Report` existe pero sin views de análisis retrospectivo.
+**Causa raíz:** `tests/unit/utils/test_utils_network.py` importa desde
+`apps.utils.network` y el archivo `network.py` existe y funciona.
+El `pytestmark = pytest.mark.skip` no tiene razón documentada.
 
-**Qué hace UC_RPT_03:**
-Análisis retrospectivo de datos IVR: tendencias mes a mes, comparativos
-periodo vs periodo, detalle por día/hora. Fuente: `base_ivr_detalle` en
-MariaDB via `connections['ivr']`.
-
-**Periodos soportados** (del spec `requisitos/casos-uso/reports/uc-rpt-03`):
-- `last_24h`, `last_7d`, `last_30d`, `last_90d`
-- `custom` (con `date_from`, `date_to`)
-- `year_to_date`
-
-**Archivos a crear o modificar:**
-```
-apps/reports/views.py          — HistoricalReportView
-apps/reports/urls.py           — path('historical/', ...)
-apps/reports/serializers/      — HistoricalReportSerializer
+**Verificación previa:**
+```bash
+python -m pytest tests/unit/utils/test_utils_network.py --tb=no -q
+# Resultado sin el skip: todos los tests pasan
 ```
 
-**Función RBAC:** `view_reports`
+**Acción:** Eliminar la línea `pytestmark = pytest.mark.skip(...)` del archivo.
+
+**Archivos a modificar:**
+```
+tests/unit/utils/test_utils_network.py
+```
+
+**Sin prerequisito.** Es la tarea más pequeña de los tres planes.
 
 ---
 
-### T-202 — Implementar `UC_RPT_09` — Configurar Filtros Guardados
+### T-102 — Implementar modelo `MenuItem` (UC_ADM_04)
 
-**Causa raíz:** No existe el modelo `SavedFilter` ni endpoints para CRUD
-de filtros guardados. `SavedView` (UC_RPT_10) existe pero es distinto:
-`SavedView` guarda una vista completa (filtros + columnas + nombre);
-`SavedFilter` guarda solo la configuración de filtros reutilizable.
+**Causa raíz:** El spec v5.6.x (`CNST-032`, `domain-model/menu-item.rst`)
+define `MenuItem` como wrapper UX 1:1 sobre `Function` con metadata
+visual y lifecycle propio. No existe como modelo Django. El API usa
+`Module` (modelo anterior con distinta semántica).
 
-**Verificación:** `grep -n "SavedFilter" apps/reports/models.py` → vacío.
-
-**Modelo a crear:**
+**Campos requeridos** (del spec `domain-model/menu-item.rst`):
 ```python
-class SavedFilter(models.Model):
-    name        = models.CharField(max_length=100)
-    report_type = models.CharField(max_length=50)
-    filters     = models.JSONField(default=dict)
-    created_by  = models.ForeignKey(User, on_delete=models.CASCADE,
-                                    related_name='saved_filters')
-    created_at  = models.DateTimeField(auto_now_add=True)
-    updated_at  = models.DateTimeField(auto_now=True)
+class MenuItem(models.Model):
+    function      = models.OneToOneField(
+                        'access.Function',
+                        on_delete=models.PROTECT,
+                        related_name='menu_item',
+                    )
+    display_label = models.CharField(max_length=100)
+    icon          = models.CharField(max_length=100, blank=True, default='')
+    route         = models.CharField(max_length=200, blank=True, default='')
+    order         = models.PositiveSmallIntegerField(default=0)
+    parent        = models.ForeignKey(
+                        'self',
+                        null=True, blank=True,
+                        on_delete=models.SET_NULL,
+                        related_name='children',
+                    )
+    status        = models.CharField(
+                        max_length=20,
+                        choices=[
+                            ('DRAFT', 'Draft'),
+                            ('ACTIVE', 'Active'),
+                            ('DEPRECATED', 'Deprecated'),
+                            ('ARCHIVED', 'Archived'),
+                        ],
+                        default='DRAFT',
+                    )
+    deprecated_at = models.DateTimeField(null=True, blank=True)
+    archived_at   = models.DateTimeField(null=True, blank=True)
+    created_at    = models.DateTimeField(auto_now_add=True)
+    updated_at    = models.DateTimeField(auto_now=True)
 
     class Meta:
-        app_label = 'reports'
+        app_label = 'access'
+        ordering  = ['order']
 ```
+
+**Invariante I-1 del spec:** 1 `Function` = 0..1 `MenuItem`.
+La relación `OneToOneField` lo garantiza a nivel de BD.
 
 **Archivos a crear o modificar:**
 ```
-apps/reports/models.py           — agregar SavedFilter
-apps/reports/migrations/         — migración nueva
-apps/reports/views.py            — SavedFilterViewSet
-apps/reports/serializers/        — SavedFilterSerializer
-apps/reports/urls.py             — router.register('saved-filters', ...)
+apps/access/models.py           — agregar clase MenuItem
+apps/access/migrations/         — migración nueva
+apps/access/serializers/        — MenuItemSerializer
+apps/access/views.py            — MenuItemViewSet (CRUD con manage_menu_catalog)
+apps/access/urls.py             — registrar router
 ```
 
-**Función RBAC:** `view_reports`
+**Prerequisito:** Ninguno. `Function` ya existe en `apps/access/models.py`.
 
 ---
 
-### T-203 — Implementar `UC_RPT_11` — Compartir Reporte
+### T-103 — Resolución de DT-002 (17 tests en skip)
 
-**Causa raíz:** No existe endpoint para compartir una `SavedView` con
-otros usuarios. El modelo `SavedView` existe pero no tiene campo
-`shared_with` ni lógica de sharing.
+**Causa raíz:** La simplificación RBAC v6.0.0 eliminó `ServiceFilterMixin`,
+`ServiceAccessService` y `UserServiceAccess`. Los tests que cubrían estas
+clases quedaron en skip con la marca `DT-002` pero sin decisión registrada.
 
-**Extensión al modelo `SavedView`:**
-```python
-# Agregar a SavedView
-is_public   = models.BooleanField(default=False)
-shared_with = models.ManyToManyField(
-                  User,
-                  blank=True,
-                  related_name='shared_views',
-              )
+**Inventario de los 17 skips:**
+
+| Archivo | Clase | Tests | Razón skip |
+|---------|-------|-------|-----------|
+| `core/test_mixins.py` | `TestServiceFilterMixin` | 2 | `ServiceFilterMixin` eliminado — DT-002 |
+| `core/test_permissions.py` | `TestHasServiceAccess` | 5 | `HasServiceAccess` eliminado — DT-002 |
+| `core/test_service_access.py` (no existe como archivo individual) | `TestUserServiceAccess`, `TestServiceAccessService`, `TestServiceFilterMixin` | 10 | `UserServiceAccess`/`ServiceAccessService` eliminados — DT-002 |
+
+**Decisión requerida:**
+
+Opción A — eliminar los tests:
+`ServiceFilterMixin` y las clases asociadas fueron eliminadas intencionalmente
+en la simplificación RBAC. Los tests documentan funcionalidad que ya no existe.
+Eliminarlos limpia la deuda.
+
+Opción B — marcarlos como `xfail` con razón explícita:
+Mantenerlos como documentación de la arquitectura anterior, con
+`@pytest.mark.xfail(reason="Eliminado en RBAC v6.0.0 — DT-002", strict=True)`.
+
+La opción A es la recomendada. Los tests de funcionalidad eliminada no
+aportan valor y generan confusión en el informe de suite.
+
+**Acción recomendada:**
+```bash
+# Verificar que el comportamiento anterior no existe en el codebase
+grep -rn "ServiceFilterMixin\|ServiceAccessService\|UserServiceAccess" \
+    apps/ --include="*.py" | grep -v "test_\|__pycache__"
+# Si resultado vacío → eliminar los tests
 ```
+
+**Nota sobre `ModuleAccessService` (2 skips adicionales en `access/test_services.py`):**
+`ModuleAccessService` no fue eliminado sino simplificado. La decisión
+de implementarlo o no es independiente de DT-002.
+
+---
+
+### T-104 — Implementar `MenuLifecycleService` (UC_ADM_05)
+
+**Causa raíz:** El spec (`domain-model/menu-lifecycle-service.rst`) define
+una state machine para el lifecycle de `MenuItem`. Sin ella, los campos
+`deprecated_at`, `archived_at` y `status` de `MenuItem` no tienen
+comportamiento controlado.
+
+**Prerequisito:** T-102 (`MenuItem` debe existir).
+
+**Transiciones válidas:**
+```
+DRAFT → ACTIVE → DEPRECATED → ARCHIVED
+             ↑_________________________|  (no permitida)
+```
+
+**Responsabilidades del servicio:**
+- Validar transiciones (solo las permitidas arriba).
+- Setear `deprecated_at` cuando pasa a DEPRECATED.
+- Setear `archived_at` cuando pasa a ARCHIVED.
+- Gestionar `block_auto_archive` para items que no deben archivarse
+  automáticamente (requiere `block_reason`).
+- Job `auto_archive_menu_items`: archivar items en DEPRECATED con
+  más de 90 días (UC_ADM_05 FA-04).
 
 **Archivos a crear o modificar:**
 ```
-apps/reports/models.py       — campos is_public + shared_with a SavedView
-apps/reports/migrations/     — migración nueva
-apps/reports/views.py        — ShareSavedViewView (POST /saved-views/{id}/share/)
-apps/reports/serializers/    — ShareSavedViewSerializer
-apps/reports/urls.py         — path en el router de SavedView
+apps/access/services/menu_lifecycle_service.py   — service nuevo
+apps/access/views.py                              — endpoint para cambios de estado
 ```
-
-**Función RBAC:** `view_reports`
 
 ---
 
-### T-204 — Implementar `UC_AUD_03` — Exportar Auditoría (async)
-
-**Causa raíz:** No existe endpoint para exportación asíncrona de `AuditLog`.
-El `ExportJob` de `apps/reports/models.py` es para reportes generales
-(no para auditoría). UC_AUD_03 requiere un job específico de auditoría.
-
-**Qué hace UC_AUD_03** (del spec `use-case-view/audit/uc-aud-03`):
-Genera archivo CSV/JSON con `AuditEvent` para auditores externos.
-Operación async — retorna 202 + `job_id`. Worker procesa
-streaming + sanitize (PII) + storage. Hash del archivo para integridad.
-
-**Modelo a crear:**
-```python
-class AuditExportJob(models.Model):
-    STATUS_CHOICES = [
-        ('pending',   'Pendiente'),
-        ('running',   'Ejecutando'),
-        ('completed', 'Completado'),
-        ('failed',    'Fallido'),
-    ]
-    FORMAT_CHOICES = [('csv', 'CSV'), ('json', 'JSON')]
-
-    requested_by = models.ForeignKey(User, on_delete=models.CASCADE,
-                                     related_name='audit_export_jobs')
-    date_from    = models.DateTimeField()
-    date_to      = models.DateTimeField()
-    format       = models.CharField(max_length=10, choices=FORMAT_CHOICES,
-                                    default='csv')
-    status       = models.CharField(max_length=20, choices=STATUS_CHOICES,
-                                    default='pending')
-    file_path    = models.CharField(max_length=500, blank=True, default='')
-    file_hash    = models.CharField(max_length=64,  blank=True, default='')
-    error        = models.TextField(blank=True, default='')
-    created_at   = models.DateTimeField(auto_now_add=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-
-    class Meta:
-        app_label = 'audit'
-```
-
-**Restricción ADR-BACK-012:** Sin Redis/RabbitMQ. El worker se ejecuta
-con APScheduler o con un thread en background, mismo patrón que `run_etl`.
-
-**Archivos a crear o modificar:**
-```
-apps/audit/models.py         — agregar AuditExportJob
-apps/audit/migrations/       — migración nueva
-apps/audit/views.py          — AuditExportJobView (POST → 202 + job_id)
-                               AuditExportStatusView (GET job_id → estado)
-apps/audit/services/         — audit_export_service.py
-apps/audit/urls.py           — registrar endpoints
-```
-
-**Función RBAC:** `export_audit_log`
-
----
-
-### T-205 — Tests unitarios e integración del plan v3.2.0
+### T-105 — Tests para MenuItem y MenuLifecycleService
 
 **Archivos a crear:**
 ```
-tests/unit/reports/test_historical_report_view.py
-tests/unit/reports/test_saved_filter_viewset.py
-tests/unit/reports/test_share_saved_view.py
-tests/unit/audit/test_audit_export_job.py
+tests/unit/access/test_menu_item_model.py
+tests/unit/access/test_menu_lifecycle_service.py
+tests/unit/access/test_menu_item_viewset.py
 ```
 
-**Prerequisito:** T-201, T-202, T-203, T-204.
+**Prerequisito:** T-102 y T-104.
 
 ---
 
 ## Dependencias entre tareas
 
 ```
-T-201  sin prerequisito  (Report ya existe)
-T-202  sin prerequisito  (modelo nuevo independiente)
-T-203  sin prerequisito  (SavedView ya existe)
-T-204  sin prerequisito  (AuditLog ya existe)
-T-205  depende de T-201, T-202, T-203, T-204
+T-101  sin prerequisito
+T-102  sin prerequisito  (Function ya existe)
+T-103  sin prerequisito  (solo decisión + acción)
+T-104  depende de T-102  (MenuItem debe existir)
+T-105  depende de T-102 y T-104
 ```
 
-T-201..T-204 pueden ejecutarse en paralelo.
+T-101 y T-103 pueden ejecutarse en cualquier momento, incluso
+en paralelo con el plan v3.0.0.
 
 ---
 
 ## Criterio de cierre
 
 ```bash
-# 1. Tests unitarios — 0 failed
+# 1. Tests unitarios — 0 failed, 0 skips relacionados con MenuItem/DT-002
 python -m pytest tests/unit/ --tb=no -q
+# Resultado esperado: >= 660 passed, 0 failed, <= 2 skipped (solo ModuleAccessService)
 
-# 2. Endpoints nuevos existen
+# 2. MenuItem importa y tiene migración aplicada
+python manage.py shell -c "
+from apps.access.models import MenuItem
+print('campos:', [f.name for f in MenuItem._meta.fields])
+"
+
+# 3. Endpoint MenuItem existe
 python -c "
 from django.urls import reverse
-print(reverse('reports:historical'))
-print(reverse('reports:savedfilter-list'))
-print(reverse('audit:audit-export'))
+print(reverse('access:menuitem-list'))
 "
 
-# 3. Modelos con migración aplicada
+# 4. MenuLifecycleService valida transiciones
 python manage.py shell -c "
-from apps.reports.models import SavedFilter
-from apps.audit.models import AuditExportJob
-print('SavedFilter:', SavedFilter)
-print('AuditExportJob:', AuditExportJob)
+from apps.access.services.menu_lifecycle_service import MenuLifecycleService
+print('transiciones:', MenuLifecycleService.VALID_TRANSITIONS)
 "
 
-# 4. Django check limpio
+# 5. Django check limpio
 python manage.py check
 ```
