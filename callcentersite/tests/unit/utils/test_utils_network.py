@@ -1,10 +1,6 @@
-# DEUDA TÉCNICA 2026-03-21
-# apps/utils/network.py nunca fue implementado (módulo no existe).
-# TODO: Crear apps/utils/network.py con get_client_ip, get_user_agent, get_request_metadata.
 import pytest
-pytestmark = pytest.mark.skip(
-    reason="DEUDA TÉCNICA: apps.utils.network no implementado"
-)
+from django.test import RequestFactory
+from apps.utils.network import get_client_ip, get_user_agent, get_request_metadata
 
 
 @pytest.fixture
