@@ -464,3 +464,90 @@ class UserFunctionAssignment(models.Model):
     def __str__(self):
         status = 'active' if self.is_active else 'revoked'
         return f'{self.user} -> {self.function.code} [{status}]'
+
+
+class MenuItem(models.Model):
+    """
+    Wrapper UX sobre Function — árbol de navegación del sistema IACT.
+
+    Invariante I-1 (CNST-032): 1 Function = 0..1 MenuItem.
+    La relación OneToOneField lo garantiza a nivel de BD.
+
+    El acceso al recurso lo controla Function.
+    MenuItem solo contiene metadata visual (label, icono, ruta, orden).
+    """
+
+    STATUS_DRAFT      = 'DRAFT'
+    STATUS_ACTIVE     = 'ACTIVE'
+    STATUS_DEPRECATED = 'DEPRECATED'
+    STATUS_ARCHIVED   = 'ARCHIVED'
+
+    STATUS_CHOICES = [
+        (STATUS_DRAFT,      'Draft'),
+        (STATUS_ACTIVE,     'Active'),
+        (STATUS_DEPRECATED, 'Deprecated'),
+        (STATUS_ARCHIVED,   'Archived'),
+    ]
+
+    function = models.OneToOneField(
+        'access.Function',
+        on_delete=models.PROTECT,
+        related_name='menu_item',
+        verbose_name=_('Función'),
+    )
+    display_label = models.CharField(
+        max_length=100,
+        verbose_name=_('Etiqueta'),
+    )
+    icon = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name=_('Icono'),
+    )
+    route = models.CharField(
+        max_length=200,
+        blank=True,
+        default='',
+        verbose_name=_('Ruta'),
+    )
+    order = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name=_('Orden'),
+    )
+    parent = models.ForeignKey(
+        'self',
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='children',
+        verbose_name=_('Padre'),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default=STATUS_DRAFT,
+        verbose_name=_('Estado'),
+    )
+    deprecated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Fecha deprecación'),
+    )
+    archived_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Fecha archivo'),
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        app_label = 'access'
+        ordering  = ['order']
+        verbose_name = _('Item de menú')
+        verbose_name_plural = _('Items de menú')
+        db_table = 'access_menu_item'
+
+    def __str__(self):
+        return f'{self.display_label} [{self.status}]'

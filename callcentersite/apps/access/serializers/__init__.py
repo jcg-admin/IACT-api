@@ -37,3 +37,7 @@ from .function_assignment_serializers import (
     RevokeFunctionSerializer,
     MyFunctionsSerializer,
 )
+from .menu_item_serializers import (
+    MenuItemSerializer,
+    MenuItemTreeSerializer,
+)

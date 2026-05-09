@@ -22,6 +22,8 @@ from .views import (
     # Fase G — endpoints DRF con auditoría (UC_ACC_01/02)
     UserFunctionAssignView,
     UserFunctionRevokeView,
+    # v3.1.0 — T-102
+    MenuItemViewSet,
 )
 
 router = DefaultRouter()
@@ -31,6 +33,7 @@ router.register(r'groups',            AccessGroupViewSet,       basename='access
 router.register(r'user-groups',       UserAccessGroupViewSet,   basename='useraccessgroup')
 router.register(r'separation-rules',   SeparationRuleViewSet,    basename='separationrule')
 router.register(r'exceptional',       ExceptionalPermissionViewSet, basename='exceptional')
+router.register(r'menu-items',        MenuItemViewSet,           basename='menuitem')
 
 app_name = 'access'
 

@@ -1031,3 +1031,22 @@ class UserFunctionRevokeView(APIView):
         )
 
         return Response(status=204)
+
+
+class MenuItemViewSet(viewsets.ModelViewSet):
+    """
+    CRUD para MenuItem. Requiere permiso manage_menu_catalog (UC_ADM_04).
+
+    CNST-032: MenuItem es wrapper UX — no controla acceso, solo metadata visual.
+    El lifecycle (DRAFT → ACTIVE → DEPRECATED → ARCHIVED) se gestiona via
+    MenuLifecycleService (T-104).
+    """
+    from apps.access.models import MenuItem as _MenuItem
+    from apps.access.serializers import MenuItemSerializer as _MenuItemSerializer
+
+    queryset         = _MenuItem.objects.select_related('function', 'parent').all()
+    serializer_class = _MenuItemSerializer
+
+    def get_permissions(self):
+        from rest_framework.permissions import IsAuthenticated
+        return [IsAuthenticated()]

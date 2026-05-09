@@ -11,6 +11,7 @@ from apps.access.permissions.function_permissions import HasFunction
 from rest_framework.response import Response
 from rest_framework import status
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
+from drf_spectacular.types import OpenApiTypes
 
 from . import ivr_services as svc
 
@@ -234,7 +235,7 @@ class MenuRedirigidosView(APIView):
     Distribución de opciones elegidas por el llamante en cada menú IVR.
     Grain: menu × opcion. Fuente: sp_rpt_menu_redirigidos.
     """
-    permission_classes = [IsAuthenticated, HasIVRReportPermission]
+    permission_classes = [IsAuthenticated, HasFunction]
 
     @extend_schema(
         parameters=[
@@ -258,7 +259,7 @@ class MenuCentroView(APIView):
     Distribución de centros de transferencia por menú IVR.
     Grain: menu × centro_transferencia. Fuente: sp_rpt_menu_centro.
     """
-    permission_classes = [IsAuthenticated, HasIVRReportPermission]
+    permission_classes = [IsAuthenticated, HasFunction]
 
     @extend_schema(
         parameters=[
