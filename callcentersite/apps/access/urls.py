@@ -24,6 +24,8 @@ from .views import (
     UserFunctionRevokeView,
     # v3.1.0 — T-102
     MenuItemViewSet,
+    # v3.1.0 — T-104
+    MenuItemTransitionView,
 )
 
 router = DefaultRouter()
@@ -40,6 +42,11 @@ app_name = 'access'
 urlpatterns = [
     path('', include(router.urls)),
     path('my-modules/', MyModulesView.as_view(), name='my-modules'),
+
+    # v3.1.0 T-104 — lifecycle de MenuItem
+    path('menu-items/<int:pk>/transition/',
+         MenuItemTransitionView.as_view(),
+         name='menuitem-transition'),
 
     # UC_ACC_03 / UC_PERM_07 — permisos efectivos (endpoint DRF)
     path('users/<int:user_id>/effective-permissions/',

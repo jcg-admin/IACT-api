@@ -1050,3 +1050,48 @@ class MenuItemViewSet(viewsets.ModelViewSet):
     def get_permissions(self):
         from rest_framework.permissions import IsAuthenticated
         return [IsAuthenticated()]
+
+
+class MenuItemTransitionView(APIView):
+    """
+    POST /api/access/menu-items/{id}/transition/
+
+    Aplica una transición de estado a un MenuItem (UC_ADM_05).
+    Body: {"status": "ACTIVE"} | {"status": "DEPRECATED", "block_reason": "..."}
+
+    Usa MenuLifecycleService — no permite saltar transiciones.
+    """
+
+    def post(self, request, pk):
+        from rest_framework.permissions import IsAuthenticated
+        from rest_framework.response import Response
+        from rest_framework import status as http_status
+        from apps.access.models import MenuItem
+        from apps.access.services.menu_lifecycle_service import (
+            MenuLifecycleService, InvalidTransitionError,
+        )
+
+        try:
+            item = MenuItem.objects.get(pk=pk)
+        except MenuItem.DoesNotExist:
+            return Response({'detail': 'No encontrado.'}, status=http_status.HTTP_404_NOT_FOUND)
+
+        new_status  = request.data.get('status')
+        block_reason = request.data.get('block_reason')
+
+        if not new_status:
+            return Response(
+                {'detail': 'Campo requerido: status.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            MenuLifecycleService.transition(item, new_status, block_reason=block_reason)
+        except (InvalidTransitionError, ValueError) as e:
+            return Response({'detail': str(e)}, status=http_status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            'id':     item.pk,
+            'status': item.status,
+            'allowed_next': MenuLifecycleService.get_allowed_transitions(item),
+        })
