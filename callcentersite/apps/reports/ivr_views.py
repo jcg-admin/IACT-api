@@ -226,3 +226,51 @@ class MenusIVRView(APIView):
         fn = svc.get_redirected_menus if vista == 'redirigidos' else svc.get_center_menus
         return _ivr_response(fn, quarter, segment,
                               extra={'quarter': quarter, 'vista': vista, 'segment': segment})
+
+
+class MenuRedirigidosView(APIView):
+    """
+    GET /api/reports/ivr/menu-redirigidos/
+    Distribución de opciones elegidas por el llamante en cada menú IVR.
+    Grain: menu × opcion. Fuente: sp_rpt_menu_redirigidos.
+    """
+    permission_classes = [IsAuthenticated, HasIVRReportPermission]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('quarter', str, description='Q0N_YY'),
+            OpenApiParameter('segment', str, description='todas|nacional_A|nacional_B|puebla'),
+        ],
+        responses={200: OpenApiTypes.OBJECT, 503: OpenApiResponse(description="MariaDB no disponible")},
+    )
+    def get(self, request):
+        quarter = request.query_params.get('quarter', 'Q01_25')
+        segment = request.query_params.get('segment', 'todas')
+        errors = _validate(quarter=quarter, segment=segment)
+        if errors:
+            return Response({'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+        return _ivr_response(svc.get_redirected_menus, quarter, segment)
+
+
+class MenuCentroView(APIView):
+    """
+    GET /api/reports/ivr/menu-centro/
+    Distribución de centros de transferencia por menú IVR.
+    Grain: menu × centro_transferencia. Fuente: sp_rpt_menu_centro.
+    """
+    permission_classes = [IsAuthenticated, HasIVRReportPermission]
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter('quarter', str, description='Q0N_YY'),
+            OpenApiParameter('segment', str, description='todas|nacional_A|nacional_B|puebla'),
+        ],
+        responses={200: OpenApiTypes.OBJECT, 503: OpenApiResponse(description="MariaDB no disponible")},
+    )
+    def get(self, request):
+        quarter = request.query_params.get('quarter', 'Q01_25')
+        segment = request.query_params.get('segment', 'todas')
+        errors = _validate(quarter=quarter, segment=segment)
+        if errors:
+            return Response({'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
+        return _ivr_response(svc.get_center_menus, quarter, segment)

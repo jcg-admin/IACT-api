@@ -25,12 +25,14 @@ import pytest
 
 SOCKET = '/run/mysqld/mysqld.sock'
 DB     = 'test_ivr_legacy'
+USER   = 'django_user'
+PASS   = 'django_pass'
 
 
 def _sql(statements: str) -> subprocess.CompletedProcess:
     """Ejecuta SQL en test_ivr_legacy. Commit implícito."""
     return subprocess.run(
-        ['mysql', f'--socket={SOCKET}', DB],
+        ['mysql', f'--socket={SOCKET}', f'-u{USER}', f'-p{PASS}', DB],
         input=statements, text=True, capture_output=True,
     )
 
@@ -40,6 +42,20 @@ def _sql(statements: str) -> subprocess.CompletedProcess:
 # ---------------------------------------------------------------------------
 
 _TABLES_SQL = """
+CREATE TABLE IF NOT EXISTS etl_runs (
+  id             INT AUTO_INCREMENT PRIMARY KEY,
+  trimestre      VARCHAR(20) NOT NULL,
+  inicio_at      DATETIME NOT NULL DEFAULT NOW(),
+  fin_at         DATETIME NULL,
+  timeout_at     DATETIME NULL,
+  heartbeat_at   DATETIME NULL,
+  status         ENUM('en_ejecucion','success','failed','timeout','skip') DEFAULT 'en_ejecucion',
+  registros_detalle  INT NULL,
+  registros_clientes INT NULL,
+  error_message  TEXT NULL,
+  trigger_source VARCHAR(100) DEFAULT 'scheduler'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS job_execution_log (
     id               INT AUTO_INCREMENT PRIMARY KEY,
     job_name         VARCHAR(100) NOT NULL,
@@ -106,6 +122,65 @@ BEGIN
     ORDER BY c.clientes_unicos DESC;
 END"""
 
+
+
+_SP_CENTROS_TRANSFERENCIA = """CREATE PROCEDURE sp_rpt_centros_transferencia(
+    IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
+BEGIN
+    SELECT trimestre, fecha, segmento, centro_transferencia,
+           menu, opcion, total_llamadas,
+           ROUND(total_llamadas / NULLIF((
+               SELECT SUM(total_llamadas) FROM base_ivr_detalle
+               WHERE trimestre=p_quarter), 0) * 100, 7) AS porcentaje,
+           misma_linea, linea_diferente, no_digito_telefono,
+           llamadas_entre_semana, llamadas_fines_semana
+    FROM base_ivr_detalle
+    WHERE trimestre=p_quarter
+      AND (p_segmento='todas' OR segmento=p_segmento)
+    ORDER BY fecha, segmento, total_llamadas DESC;
+END"""
+
+_SP_LLAMADAS_ABANDONADAS = """CREATE PROCEDURE sp_rpt_llamadas_abandonadas(
+    IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
+BEGIN
+    SELECT trimestre, segmento, menu,
+           SUM(total_llamadas) AS total_abandonadas
+    FROM base_ivr_detalle
+    WHERE trimestre=p_quarter
+      AND menu IN ('VACIO','cliente_colgo','SINOPCION_CABECERA')
+      AND (p_segmento='todas' OR segmento=p_segmento)
+    GROUP BY trimestre, segmento, menu
+    ORDER BY total_abandonadas DESC;
+END"""
+
+_SP_CMENU_ERROR = """CREATE PROCEDURE sp_rpt_cMENU_ERROR(
+    IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
+BEGIN
+    SELECT trimestre, segmento, menu, centro_transferencia,
+           SUM(total_llamadas) AS total_llamadas
+    FROM base_ivr_detalle
+    WHERE trimestre=p_quarter
+      AND menu REGEXP '^[0-9]+$' AND LENGTH(menu) >= 7
+      AND (p_segmento='todas' OR segmento=p_segmento)
+    GROUP BY trimestre, segmento, menu, centro_transferencia
+    ORDER BY total_llamadas DESC;
+END"""
+
+_SP_CENTROS_XSEGMENTO = """CREATE PROCEDURE sp_rpt_centros_xsegmento(
+    IN p_quarter VARCHAR(10))
+BEGIN
+    SELECT trimestre, segmento, centro_transferencia,
+           SUM(total_llamadas) AS total_llamadas,
+           SUM(llamadas_entre_semana) AS llamadas_entre_semana,
+           SUM(llamadas_fines_semana) AS llamadas_fines_semana,
+           ROUND(SUM(llamadas_entre_semana)/NULLIF(SUM(total_llamadas),0)*100,1)
+               AS pct_entre_semana,
+           'FUERA_SLA' AS clasificacion_sla
+    FROM base_ivr_detalle
+    WHERE trimestre=p_quarter
+    GROUP BY trimestre, segmento, centro_transferencia
+    ORDER BY segmento, total_llamadas DESC;
+END"""
 
 # ---------------------------------------------------------------------------
 # ivr_schema — session-scoped: crea tablas y SP una vez por sesión

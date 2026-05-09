@@ -10,6 +10,7 @@ from .views import (
     RealtimeMetricsView,
 )
 from .ivr_views import (
+    MenuRedirigidosView, MenuCentroView,
     ClientesReportView,
     CentrosTransferenciaView,
     LlamadasAbandonadasView,
@@ -38,5 +39,7 @@ urlpatterns = [
     path('ivr/abandoned/',          LlamadasAbandonadasView.as_view(),   name='ivr-abandoned'),
     path('ivr/menu-errors/',        CMENUErrorView.as_view(),            name='ivr-menu-errors'),
     path('ivr/centers-by-segment/', CentrosXSegmentoView.as_view(),      name='ivr-centers-by-segment'),
+    path('ivr/menu-redirigidos/', MenuRedirigidosView.as_view(),  name='ivr-menu-redirigidos'),
+    path('ivr/menu-centro/',      MenuCentroView.as_view(),       name='ivr-menu-centro'),
     path('ivr/menus/',              MenusIVRView.as_view(),              name='ivr-menus'),
 ]

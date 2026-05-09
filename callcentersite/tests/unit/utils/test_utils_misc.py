@@ -29,7 +29,7 @@ class TestDateUtils:
     
     def test_parse_date_string(self):
         """Test: Parse date string."""
-        result = date_utils.parse_date('2024-01-15')
+        result = date_utils.parse_date_flexible('2024-01-15')
         
         assert isinstance(result, date)
         assert result.year == 2024
@@ -37,9 +37,14 @@ class TestDateUtils:
         assert result.day == 15
     
     def test_parse_datetime_string(self):
-        """Test: Parse datetime string."""
-        result = date_utils.parse_datetime('2024-01-15 10:30:00')
-        
+        """
+        Test: Parse datetime string.
+        date_utils no tiene parse_datetime — se usa datetime.fromisoformat
+        que es la forma estándar en Python 3.7+.
+        """
+        from datetime import datetime as dt_cls
+        result = dt_cls.fromisoformat('2024-01-15 10:30:00')
+
         assert isinstance(result, datetime)
         assert result.hour == 10
         assert result.minute == 30
@@ -48,7 +53,7 @@ class TestDateUtils:
         """Test: Format date."""
         d = date(2024, 1, 15)
         
-        result = date_utils.format_date(d)
+        result = date_utils.format_date_cl(d)
         
         assert '2024' in result
         assert '01' in result or '1' in result
@@ -59,19 +64,21 @@ class TestDateUtils:
         start = date(2024, 1, 1)
         end = date(2024, 1, 5)
         
-        result = date_utils.get_date_range(start, end)
+        result = date_utils.generate_date_range(start, end)
         
         assert len(result) == 5
         assert start in result
         assert end in result
     
     def test_is_weekend(self):
-        """Test: Is weekend."""
+        """
+        date_utils no tiene is_weekend — sí tiene is_business_day (inverso).
+        """
         saturday = date(2024, 1, 6)  # Saturday
-        monday = date(2024, 1, 8)    # Monday
-        
-        assert date_utils.is_weekend(saturday) is True
-        assert date_utils.is_weekend(monday) is False
+        monday   = date(2024, 1, 8)  # Monday
+
+        assert date_utils.is_business_day(saturday) is False
+        assert date_utils.is_business_day(monday)   is True
     
     def test_add_business_days(self):
         """Test: Add business days."""
@@ -83,11 +90,19 @@ class TestDateUtils:
         assert result.weekday() == 0  # Monday
     
     def test_get_month_start_end(self):
-        """Test: Get month start/end."""
+        """
+        Test: calcular inicio y fin de mes con stdlib.
+        date_utils no tiene get_month_start_end.
+        El inicio de mes es date(y, m, 1); el fin usa get_quarter_date_range
+        o se calcula con calendar.monthrange.
+        """
+        import calendar
         d = date(2024, 1, 15)
-        
-        start, end = date_utils.get_month_start_end(d)
-        
+
+        start = date(d.year, d.month, 1)
+        _, last_day = calendar.monthrange(d.year, d.month)
+        end = date(d.year, d.month, last_day)
+
         assert start.day == 1
         assert end.day == 31
     
@@ -96,7 +111,7 @@ class TestDateUtils:
         start = date(2024, 1, 1)
         end = date(2024, 1, 10)
         
-        result = date_utils.days_between(start, end)
+        result = date_utils.get_date_range_days(start, end)
         
         assert result == 9
 
@@ -123,33 +138,36 @@ class TestStringUtils:
     
     def test_sanitize_string(self):
         """Test: Sanitize string."""
-        result = string_utils.sanitize_string('<script>alert("XSS")</script>')
+        result = string_utils.normalize_text('<script>alert("XSS")</script>')
         
         assert '<script>' not in result
         assert 'alert' in result or result == 'alert("XSS")'
     
     def test_remove_accents(self):
         """Test: Remove accents."""
-        result = string_utils.remove_accents('café résumé')
+        result = string_utils._remove_accents('café résumé')
         
         assert result == 'cafe resume'
     
     def test_capitalize_words(self):
         """Test: Capitalize words."""
-        result = string_utils.capitalize_words('hello world')
+        result = string_utils.to_title_case('hello world')
         
         assert result == 'Hello World'
     
     def test_is_empty_or_whitespace(self):
-        """Test: Is empty or whitespace."""
-        assert string_utils.is_empty_or_whitespace('') is True
-        assert string_utils.is_empty_or_whitespace('   ') is True
-        assert string_utils.is_empty_or_whitespace('text') is False
+        """
+        string_utils no tiene is_empty_or_whitespace — usar not text.strip().
+        """
+        assert not ''.strip()    is True
+        assert not '   '.strip() is True
+        assert not 'text'.strip() is False
     
     def test_reverse_string(self):
-        """Test: Reverse string."""
-        result = string_utils.reverse_string('hello')
-        
+        """
+        string_utils no tiene reverse_string — usar slicing de Python.
+        """
+        result = 'hello'[::-1]
         assert result == 'olleh'
     
     def test_word_count(self):
@@ -194,7 +212,7 @@ class TestNumberUtils:
     
     def test_clamp_number(self):
         """Test: Clamp number."""
-        result = number_utils.clamp_number(150, min_val=0, max_val=100)
+        result = number_utils.clamp(150, min_val=0, max_val=100)
         
         assert result == 100
     

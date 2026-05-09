@@ -53,10 +53,8 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 # ==============================================================================
 
 # Usar configuracion base con ajustes produccion
-DATABASES['default']['CONN_MAX_AGE'] = 600
-DATABASES['default']['OPTIONS']['connect_timeout'] = 10
-
-DATABASES['ivr']['OPTIONS']['connect_timeout'] = 10
+# base.py ya configura CONN_MAX_AGE=600, connect_timeout=10
+# La topología de red (socket vs TCP) va en .env (DB_SOCKET / IVR_DB_SOCKET)
 
 
 # ==============================================================================

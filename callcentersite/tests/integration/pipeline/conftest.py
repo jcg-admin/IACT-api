@@ -23,7 +23,8 @@ from django.db import connections
 
 def _mariadb_alive() -> bool:
     result = subprocess.run(
-        ['mysql', '--socket=/run/mysqld/mysqld.sock', '-e', 'SELECT 1;'],
+        ['mysql', '--socket=/run/mysqld/mysqld.sock',
+         '-u', 'django_user', '-pdjango_pass', '-e', 'SELECT 1;'],
         capture_output=True, timeout=3,
     )
     return result.returncode == 0
@@ -36,7 +37,8 @@ def _create_schema():
     El schema (tablas, SPs) es responsabilidad de ivr_schema.
     """
     subprocess.run(
-        ['mysql', '--socket=/run/mysqld/mysqld.sock', '-e',
+        ['mysql', '--socket=/run/mysqld/mysqld.sock',
+         '-u', 'django_user', '-pdjango_pass', '-e',
          'CREATE DATABASE IF NOT EXISTS test_ivr_legacy '
          'CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;'],
         capture_output=True,
@@ -82,8 +84,10 @@ def ensure_mariadb():
                 '--socket=/run/mysqld/mysqld.sock',
                 '--datadir=/var/lib/mysql',
                 '--pid-file=/run/mysqld/mysqld.pid',
-                '--skip-grant-tables',
                 '--innodb-buffer-pool-size=64M',
+                '--event-scheduler=ON',
+                # Sin --skip-grant-tables (DEFINER correcto)
+                # Ref: HALLAZGOS-EVENT-SCHEDULER-2026-05-09.md H-081-04
             ],
             preexec_fn=drop_privs,
             stderr=open('/tmp/mdb_conftest.log', 'w'),

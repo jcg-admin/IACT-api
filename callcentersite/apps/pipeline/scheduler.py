@@ -1,124 +1,102 @@
 from apscheduler.schedulers.background import BackgroundScheduler
-from apscheduler.triggers.interval import IntervalTrigger
-from datetime import datetime, timedelta
+from apscheduler.triggers.cron import CronTrigger
+from datetime import date
 import logging
+
+from django.db import connections, OperationalError
 
 logger = logging.getLogger(__name__)
 
 
 class ETLScheduler:
     """
-    Scheduler para ETL programado.
-    
-    CNST-004: ETL cada 12 horas (NO real-time).
-    
-    Responsabilidades:
-    - Iniciar scheduler en background
-    - Registrar job ETL con intervalo 12 horas
-    - Ejecutar ETL automaticamente
-    - Logging de ejecuciones
+    Scheduler para ETL nocturno IVR.
+
+    Dispara sp_etl_maestro() cada día a las 02:00 AM.
+    CNST-004: NO Celery — usa APScheduler en proceso.
     """
-    
+
     scheduler = None
-    
+
     @classmethod
     def start(cls):
-        """
-        Iniciar scheduler.
-        
-        Si ya esta iniciado, no hace nada (idempotente).
-        """
         if cls.scheduler is not None:
             logger.info("ETLScheduler ya iniciado")
             return
-        
+
         logger.info("Iniciando ETLScheduler...")
-        
         cls.scheduler = BackgroundScheduler()
-        
-        # ETL cada 12 horas
         cls.scheduler.add_job(
             cls.run_etl,
-            trigger=IntervalTrigger(hours=12),
+            trigger=CronTrigger(hour=2, minute=0),
             id='etl_job',
-            name='ETL IVR -> Analytics',
+            name='ETL IVR nocturno',
             replace_existing=True,
         )
-        
         cls.scheduler.start()
-        
-        logger.info("ETLScheduler iniciado exitosamente")
-    
+        logger.info("ETLScheduler iniciado — job etl_job @ 02:00 AM")
+
     @classmethod
     def stop(cls):
-        """
-        Detener scheduler.
-        
-        Si no esta iniciado, no hace nada.
-        """
         if cls.scheduler:
-            logger.info("Deteniendo ETLScheduler...")
             cls.scheduler.shutdown()
             cls.scheduler = None
-            logger.info("ETLScheduler detenido")
-    
+
+    @classmethod
+    def _quarter_activo(cls):
+        today = date.today()
+        q = (today.month - 1) // 3 + 1
+        return f"Q0{q}_{today.year % 100:02d}"
+
+    @classmethod
+    def _registrar_inicio(cls, cursor, quarter):
+        from django.utils import timezone
+        import datetime
+        timeout_at = timezone.now() + datetime.timedelta(minutes=30)
+        cursor.execute(
+            """INSERT INTO etl_runs
+               (trimestre, inicio_at, timeout_at, status, trigger_source)
+               VALUES (%s, NOW(), %s, 'en_ejecucion', 'mysql_event')""",
+            [quarter, timeout_at]
+        )
+        return cursor.lastrowid
+
+    @classmethod
+    def _update_run(cls, cursor, run_id, status, error_message=None):
+        try:
+            cursor.execute(
+                """UPDATE etl_runs
+                   SET status=%s, fin_at=NOW(), error_message=%s
+                   WHERE id=%s AND status='en_ejecucion'""",
+                [status, error_message, run_id]
+            )
+        except Exception:
+            pass
+
     @classmethod
     def run_etl(cls):
-        """
-        Ejecutar ETL.
-        
-        CNST-004: Programado cada 12 horas, NO real-time.
-        
-        Flujo:
-        1. Calcular rango (ultimas 24 horas)
-        2. Crear ETLExecution (status=RUNNING)
-        3. Ejecutar ETLService
-        4. Actualizar ETLExecution (status=SUCCESS/FAILED)
-        """
-        from apps.pipeline.models import ETLExecution
-        from apps.pipeline.services import ETLService
-        
-        logger.info("=== Iniciando ejecucion ETL programada ===")
-        
-        # Calcular rango (ultimas 24 horas)
-        end_date = datetime.now().date()
-        start_date = end_date - timedelta(days=1)
-        
-        logger.info(f"Rango: {start_date} a {end_date}")
-        
-        # Crear ejecucion
-        execution = ETLExecution.objects.create(
-            start_date=start_date,
-            end_date=end_date,
-            status='RUNNING',
-        )
-        
-        logger.info(f"ETLExecution creada: {execution.id}")
-        
+        quarter = cls._quarter_activo()
+        logger.info(f"ETL nocturno iniciando — quarter {quarter}")
+        run_id = None
         try:
-            # Ejecutar ETL
-            logger.info("Ejecutando ETLService...")
-            result = ETLService.run(start_date, end_date)
-            
-            # Actualizar ejecucion
-            execution.status = 'SUCCESS'
-            execution.records_extracted = result['extracted']
-            execution.records_loaded = result['loaded']
-            execution.completed_at = datetime.now()
-            execution.save()
-            
-            logger.info(f"ETL exitoso: {result['extracted']} extraidos, "
-                       f"{result['loaded']} cargados")
-            
+            with connections['ivr'].cursor() as cur:
+                run_id = cls._registrar_inicio(cur, quarter)
+                cur.callproc('sp_etl_maestro', [])
+                cls._update_run(cur, run_id, 'success')
+                logger.info(f"ETL nocturno completado — run_id={run_id}")
+        except OperationalError as e:
+            logger.error(f"ETL nocturno error BD: {e}")
+            if run_id:
+                try:
+                    with connections['ivr'].cursor() as cur:
+                        cls._update_run(cur, run_id, 'failed', str(e))
+                except Exception:
+                    pass
         except Exception as e:
-            logger.error(f"ETL fallido: {str(e)}", exc_info=True)
-            
-            execution.status = 'FAILED'
-            execution.error_message = str(e)
-            execution.completed_at = datetime.now()
-            execution.save()
-            
-            # Re-raise para que APScheduler lo registre
-            raise
-        
-        logger.info("=== Ejecucion ETL completada ===")
+            logger.error(f"ETL nocturno error: {e}", exc_info=True)
+            if run_id:
+                try:
+                    with connections['ivr'].cursor() as cur:
+                        cls._update_run(cur, run_id, 'failed', str(e))
+                except Exception:
+                    pass
