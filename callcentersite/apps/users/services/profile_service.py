@@ -13,7 +13,10 @@ from django.contrib.auth import get_user_model
 from django.core.files.uploadedfile import UploadedFile
 
 from apps.core.services import BaseService
-from apps.users.models import UserProfile
+try:
+    from apps.users.models import UserProfile
+except ImportError:
+    UserProfile = None
 from apps.users.exceptions import UserNotFoundError, UserServiceError
 from apps.utils.file_utils import sanitize_filename, calculate_file_hash
 from apps.audit.services import AuditLogService

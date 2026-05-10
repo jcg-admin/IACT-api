@@ -52,14 +52,70 @@ class User(AbstractUser):
                 return None
         return None
 
-    def get_functions(self):
+    def get_functions(self) -> list[str]:
         """
-        Retorna las funciones/permisos asignados al usuario.
+        Returns the effective function codes for this user.
 
-        Incluye funciones directas y las heredadas por roles.
+        Union of three sources:
+        1. UserPermission — functions assigned directly to the user.
+        2. AccessGroup — functions via group membership.
+        3. ExceptionalPermission — approved and currently valid.
+
+        SeparationRule is not applied here. Rules are enforced at
+        assignment time, not at query time. An already-assigned
+        permission remains valid.
         """
-        functions = set()
-        if hasattr(self, 'user_functions'):
-            for uf in self.user_functions.filter(is_active=True).select_related('function'):
-                functions.add(uf.function.code)
-        return list(functions)
+        from django.utils import timezone
+        from apps.access.models import (
+            UserPermission, Function,
+            ExceptionalPermission,
+        )
+
+        function_codes: set[str] = set()
+
+        # 1. Direct UserPermission
+        function_codes.update(
+            UserPermission.objects.filter(user=self)
+            .values_list('function__code', flat=True)
+        )
+
+        # 2. Via AccessGroup membership
+        function_codes.update(
+            Function.objects.filter(
+                access_groups__memberships__user=self
+            ).values_list('code', flat=True)
+        )
+
+        # 3. Active ExceptionalPermission
+        now = timezone.now()
+        function_codes.update(
+            ExceptionalPermission.objects.filter(
+                user=self,
+                status='approved',
+                valid_from__lte=now,
+                valid_until__gte=now,
+            ).values_list('function__code', flat=True)
+        )
+
+        return sorted(function_codes)
+
+    def has_function(self, permission_django: str) -> bool:
+        """
+        Returns True if the user has the given function (by permission_django).
+
+        Used by HasFunction permission class.
+        Superusers always return True.
+        """
+        if self.is_superuser:
+            return True
+        from apps.access.models import Function
+        # Resolve permission_django to function code, then check
+        try:
+            fn = Function.objects.get(
+                permission_django=permission_django,
+                is_active=True,
+            )
+        except Function.DoesNotExist:
+            # If the function doesn't exist in DB, deny
+            return False
+        return fn.code in self.get_functions()

@@ -1,8 +1,8 @@
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.urls import reverse
 from rest_framework.test import APIClient
-from rest_framework_simplejwt.tokens import RefreshToken
 
 
 @pytest.mark.unit
@@ -21,16 +21,15 @@ class TestUserViewSet:
     
     def test_list_users_authenticated(self):
         """Listar usuarios cuando esta autenticado."""
-        user = User.objects.create_user('testuser', password='test123')
-        
-        # Autenticar con JWT
-        refresh = RefreshToken.for_user(user)
+        user = User.objects.create_superuser(
+            'testuser', email='t@t.com', password='test123')
+
         client = APIClient()
-        client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
-        
+        client.force_authenticate(user=user)
+
         url = reverse('users:user-list')
         response = client.get(url)
-        
+
         assert response.status_code == 200
         # Respuesta paginada
         assert 'results' in response.data
@@ -54,11 +53,11 @@ class TestUserViewSet:
     
     def test_create_user_authenticated(self):
         """Crear usuario via API autenticado."""
-        admin = User.objects.create_user('admin', password='admin123')
-        
-        refresh = RefreshToken.for_user(admin)
+        admin = User.objects.create_superuser(
+            'admin', email='a@a.com', password='admin123')
+
         client = APIClient()
-        client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+        client.force_authenticate(user=admin)
         
         url = reverse('users:user-list')
         data = {
@@ -66,26 +65,25 @@ class TestUserViewSet:
             'email': 'new@example.com',
             'first_name': 'New',
             'last_name': 'User',
-            'password': 'newpass123'
+            'password': 'NewPass123!',
+            'password_confirm': 'NewPass123!',
         }
-        
+
         response = client.post(url, data, format='json')
-        
+
         assert response.status_code == 201
         assert User.objects.filter(username='newuser').exists()
-        
-        # Verificar password hasheado
         new_user = User.objects.get(username='newuser')
-        assert new_user.check_password('newpass123')
+        assert new_user.check_password('NewPass123!')
     
     def test_retrieve_user(self):
         """Obtener detalle de usuario."""
-        user = User.objects.create_user('testuser', password='test123')
+        user = User.objects.create_superuser(
+            'testuser', email='su@t.com', password='test123')
         other_user = User.objects.create_user('otheruser')
-        
-        refresh = RefreshToken.for_user(user)
+
         client = APIClient()
-        client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+        client.force_authenticate(user=user)
         
         url = reverse('users:user-detail', args=[other_user.id])
         response = client.get(url)
@@ -95,12 +93,12 @@ class TestUserViewSet:
     
     def test_update_user(self):
         """Actualizar usuario."""
-        user = User.objects.create_user('testuser', password='test123')
+        user = User.objects.create_superuser(
+            'testuser', email='su@t.com', password='test123')
         target = User.objects.create_user('targetuser', email='old@example.com')
-        
-        refresh = RefreshToken.for_user(user)
+
         client = APIClient()
-        client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+        client.force_authenticate(user=user)
         
         url = reverse('users:user-detail', args=[target.id])
         data = {
@@ -118,12 +116,12 @@ class TestUserViewSet:
     
     def test_delete_user(self):
         """Eliminar usuario."""
-        user = User.objects.create_user('testuser', password='test123')
+        user = User.objects.create_superuser(
+            'testuser', email='su@t.com', password='test123')
         target = User.objects.create_user('targetuser')
-        
-        refresh = RefreshToken.for_user(user)
+
         client = APIClient()
-        client.credentials(HTTP_AUTHORIZATION=f'Bearer {refresh.access_token}')
+        client.force_authenticate(user=user)
         
         url = reverse('users:user-detail', args=[target.id])
         response = client.delete(url)

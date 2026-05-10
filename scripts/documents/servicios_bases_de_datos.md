@@ -135,3 +135,9 @@ pero solo levanta el servicio para la sesion actual.
 | Despues de start manual           | Activo (PID xxxx) | Activo (Uptime: Xs)  |
 | Con systemctl enable (servidor)   | Arranca solo      | Arranca solo         |
 | Con systemctl enable (contenedor) | No aplica         | No aplica            |
+
+---
+
+## Ver también
+
+- [relacion_con_iact_db.md](relacion_con_iact_db.md) — separación de responsabilidades entre IACT-api e IACT-db

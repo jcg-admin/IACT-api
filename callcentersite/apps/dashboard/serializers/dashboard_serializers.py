@@ -125,9 +125,16 @@ class DashboardConfigDetailSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
     
     def get_widgets(self, obj):
-        """Serializar widgets anidados."""
+        """
+        Serializar widgets activos del dashboard.
+
+        Filtra is_active=True para no exponer widgets desactivados.
+        obj siempre pertenece al usuario autenticado o es público —
+        el filtro de propiedad lo aplica DashboardConfigViewSet.get_queryset().
+        """
         from apps.dashboard.serializers.widget_serializers import WidgetConfigSerializer
-        widgets = obj.widgets.all()
+        widgets = obj.widgets.filter(is_visible=True).order_by(
+            'position_y', 'position_x')
         return WidgetConfigSerializer(widgets, many=True).data
 
 

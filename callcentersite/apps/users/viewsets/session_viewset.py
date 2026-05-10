@@ -11,7 +11,10 @@ from rest_framework import viewsets
 from rest_framework.permissions import IsAuthenticated
 
 from apps.core.permissions import RequiresFunctionPermission
-from apps.users.models import SessionHistory
+try:
+    from apps.users.models import SessionHistory
+except ImportError:
+    SessionHistory = None
 from apps.users.serializers import SessionHistorySerializer
 from apps.users.constants import PERM_SESSIONS_VIEW
 

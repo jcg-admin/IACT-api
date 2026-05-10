@@ -8,7 +8,7 @@ from django.utils.deprecation import MiddlewareMixin
 from django.http import JsonResponse
 
 
-class HealthCheckMiddleware(MiddlewareMixin):
+class HealthCheckHandler(MiddlewareMixin):
     """
     Middleware para health check.
     
@@ -24,7 +24,7 @@ class HealthCheckMiddleware(MiddlewareMixin):
     Instalación:
         # settings.py
         MIDDLEWARE = [
-            'apps.core.middleware.healthcheck.HealthCheckMiddleware',  # <- Primero
+            'apps.core.middleware.healthcheck.HealthCheckHandler',  # <- Primero
             ...
         ]
     
@@ -71,7 +71,7 @@ class HealthCheckMiddleware(MiddlewareMixin):
 # ============================================================================
 # RESUMEN MIDDLEWARE HEALTHCHECK
 # 
-# Middleware: HealthCheckMiddleware
+# Middleware: HealthCheckHandler
 # Propósito: Endpoint /health/ para monitoring
 # 
 # Endpoint:

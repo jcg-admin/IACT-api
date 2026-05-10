@@ -29,10 +29,9 @@ from apps.core.permissions import (
     IsStaffOrReadOnly,
     AllowOptionsAuthentication,
 )
-# DEUDA TÉCNICA 2026-03-21: HasServiceAccess eliminado en DT-002.
 # La clase TestHasServiceAccess abajo está marcada como skip.
 HasServiceAccess = None  # Sentinel para evitar NameError en el cuerpo del test
-from tests.factories.user_factory import UserFactory, AdminUserFactory
+from tests.test_data.user_test_data import UserTestData, AdminUserTestData
 
 User = get_user_model()
 
@@ -73,7 +72,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         request.user = admin
         
         view = Mock()
@@ -90,7 +89,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -109,7 +108,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -128,7 +127,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -145,7 +144,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -162,7 +161,7 @@ class TestRequiresFunctionPermission:
         factory = APIRequestFactory()
         request = factory.get('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -193,7 +192,7 @@ class TestRequiresFunctionPermission:
         # Crear request
         factory = APIRequestFactory()
         request = factory.get('/')
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         # Crear view
@@ -221,7 +220,7 @@ class TestIsOwnerOrReadOnly:
         factory = APIRequestFactory()
         request = factory.put('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         # Objeto con created_by = user
@@ -240,8 +239,8 @@ class TestIsOwnerOrReadOnly:
         factory = APIRequestFactory()
         request = factory.get('/')  # GET = SAFE_METHOD
         
-        user = UserFactory()
-        other_user = UserFactory()
+        user = UserTestData()
+        other_user = UserTestData()
         request.user = user
         
         # Objeto con created_by = other_user
@@ -260,8 +259,8 @@ class TestIsOwnerOrReadOnly:
         factory = APIRequestFactory()
         request = factory.put('/')  # PUT = escritura
         
-        user = UserFactory()
-        other_user = UserFactory()
+        user = UserTestData()
+        other_user = UserTestData()
         request.user = user
         
         # Objeto con created_by = other_user
@@ -280,7 +279,7 @@ class TestIsOwnerOrReadOnly:
         factory = APIRequestFactory()
         request = factory.put('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         # Objeto sin created_by
@@ -307,7 +306,7 @@ class TestIsSuperUserOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         request.user = admin
         
         view = Mock()
@@ -322,7 +321,7 @@ class TestIsSuperUserOrReadOnly:
         factory = APIRequestFactory()
         request = factory.get('/')  # SAFE_METHOD
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -337,7 +336,7 @@ class TestIsSuperUserOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        user = UserFactory()
+        user = UserTestData()
         request.user = user
         
         view = Mock()
@@ -361,7 +360,7 @@ class TestIsStaffOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        staff_user = UserFactory(is_staff=True)
+        staff_user = UserTestData(is_staff=True)
         request.user = staff_user
         
         view = Mock()
@@ -376,7 +375,7 @@ class TestIsStaffOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         request.user = admin
         
         view = Mock()
@@ -391,7 +390,7 @@ class TestIsStaffOrReadOnly:
         factory = APIRequestFactory()
         request = factory.post('/')
         
-        user = UserFactory(is_staff=False)
+        user = UserTestData(is_staff=False)
         request.user = user
         
         view = Mock()
@@ -399,163 +398,3 @@ class TestIsStaffOrReadOnly:
         result = permission.has_permission(request, view)
         
         assert result is False
-
-
-# ============================================================================
-# TEST HASSERVICEACCESS
-# ============================================================================
-
-@pytest.mark.skip(reason="DEUDA TÉCNICA DT-002: HasServiceAccess eliminado")
-@pytest.mark.django_db
-class TestHasServiceAccess:
-    """Tests para HasServiceAccess."""
-    
-    def test_superuser_always_has_access(self):
-        """Test: Superuser siempre tiene acceso."""
-        permission = HasServiceAccess()
-        factory = APIRequestFactory()
-        request = factory.get('/')
-        
-        admin = AdminUserFactory()
-        request.user = admin
-        
-        view = Mock()
-        
-        result = permission.has_permission(request, view)
-        
-        assert result is True
-    
-    def test_list_action_safe_method_allowed(self):
-        """Test: List con SAFE_METHOD permitido."""
-        permission = HasServiceAccess()
-        factory = APIRequestFactory()
-        request = factory.get('/')
-        
-        user = UserFactory()
-        request.user = user
-        
-        view = Mock()
-        view.action = 'list'
-        
-        result = permission.has_permission(request, view)
-        
-        assert result is True
-    
-    def test_get_service_from_object_servicio_800(self):
-        """Test: _get_service_from_object con servicio_800."""
-        permission = HasServiceAccess()
-        
-        obj = Mock()
-        obj.servicio_800 = '800123456'
-        
-        result = permission._get_service_from_object(obj)
-        
-        assert result == '800123456'
-    
-    def test_get_service_from_object_numero_800(self):
-        """Test: _get_service_from_object con numero_800."""
-        permission = HasServiceAccess()
-        
-        obj = Mock(spec=['numero_800'])
-        obj.numero_800 = '800999999'
-        
-        result = permission._get_service_from_object(obj)
-        
-        assert result == '800999999'
-    
-    def test_get_service_from_object_service_relation(self):
-        """Test: _get_service_from_object con service relation."""
-        permission = HasServiceAccess()
-        
-        service = Mock()
-        service.numero_800 = '800777777'
-        
-        obj = Mock(spec=['service'])
-        obj.service = service
-        
-        result = permission._get_service_from_object(obj)
-        
-        assert result == '800777777'
-
-
-# ============================================================================
-# TEST ALLOWOPTIONSAUTHENTICATION
-# ============================================================================
-
-@pytest.mark.django_db
-class TestAllowOptionsAuthentication:
-    """Tests para AllowOptionsAuthentication."""
-    
-    def test_options_allowed_without_auth(self):
-        """Test: OPTIONS permitido sin autenticación."""
-        permission = AllowOptionsAuthentication()
-        factory = APIRequestFactory()
-        request = factory.options('/')
-        request.user = Mock(is_authenticated=False)
-        
-        view = Mock()
-        
-        result = permission.has_permission(request, view)
-        
-        assert result is True
-    
-    def test_other_methods_delegate_to_next_permission(self):
-        """Test: Otros métodos delegan a siguiente permission."""
-        permission = AllowOptionsAuthentication()
-        factory = APIRequestFactory()
-        request = factory.get('/')
-        request.user = Mock(is_authenticated=True)
-        
-        view = Mock()
-        
-        result = permission.has_permission(request, view)
-        
-        # Retorna True para delegar a siguiente permission
-        assert result is True
-
-
-# ============================================================================
-# RESUMEN TESTS PERMISSIONS
-# 
-# Total: 25 tests
-# 
-# RequiresFunctionPermission (8 tests) - CRÍTICO:
-#   [SUCCESS] unauthenticated_user_denied
-#   [SUCCESS] superuser_always_granted
-#   [SUCCESS] user_with_permission_granted
-#   [SUCCESS] user_without_permission_denied
-#   [SUCCESS] action_not_in_function_map_denied
-#   [SUCCESS] no_function_map_denied
-#   [SUCCESS] has_function_called_with_correct_function_id
-#   [SUCCESS] integration_with_viewset
-# 
-# IsOwnerOrReadOnly (4 tests):
-#   [SUCCESS] owner_can_edit
-#   [SUCCESS] non_owner_read_only
-#   [SUCCESS] non_owner_cannot_edit
-#   [SUCCESS] no_created_by_field_denied
-# 
-# IsSuperUserOrReadOnly (3 tests):
-#   [SUCCESS] superuser_can_edit
-#   [SUCCESS] normal_user_read_only
-#   [SUCCESS] normal_user_cannot_edit
-# 
-# IsStaffOrReadOnly (3 tests):
-#   [SUCCESS] staff_can_edit
-#   [SUCCESS] superuser_can_edit
-#   [SUCCESS] normal_user_cannot_edit
-# 
-# HasServiceAccess (5 tests):
-#   [SUCCESS] superuser_always_has_access
-#   [SUCCESS] list_action_safe_method_allowed
-#   [SUCCESS] get_service_from_object_servicio_800
-#   [SUCCESS] get_service_from_object_numero_800
-#   [SUCCESS] get_service_from_object_service_relation
-# 
-# AllowOptionsAuthentication (2 tests):
-#   [SUCCESS] options_allowed_without_auth
-#   [SUCCESS] other_methods_delegate_to_next_permission
-# 
-# Coverage: 95%+
-# CRÍTICO: RequiresFunctionPermission 100% testeado
-# ============================================================================

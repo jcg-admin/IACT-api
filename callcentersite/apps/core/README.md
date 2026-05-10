@@ -94,7 +94,7 @@ from apps.core.models import SoftDeleteMixin
 
 class Function(SoftDeleteMixin, models.Model):
     code = models.CharField(max_length=100)
-    objects = SoftDeleteManager()  # Manager especial
+    objects = ActiveRecordQuery()  # Manager especial
 ```
 
 **Campos:**
@@ -251,7 +251,7 @@ class PublicAPIViewSet(viewsets.ModelViewSet):
 
 ## 🔧 MIDDLEWARE (4)
 
-### HealthCheckMiddleware
+### HealthCheckHandler
 
 **Propósito:** Endpoint /health/ para monitoring.
 
@@ -260,7 +260,7 @@ class PublicAPIViewSet(viewsets.ModelViewSet):
 ```python
 # settings.py
 MIDDLEWARE = [
-    'apps.core.middleware.HealthCheckMiddleware',
+    'apps.core.middleware.HealthCheckHandler',
     # ...
 ]
 ```
@@ -540,12 +540,12 @@ Problema: delete() elimina físicamente
 
 Verificar:
 1. Model hereda de SoftDeleteMixin
-2. objects = SoftDeleteManager() está definido
+2. objects = ActiveRecordQuery() está definido
 3. No se llama super().delete()
 
 Correcto:
   class MyModel(SoftDeleteMixin, models.Model):
-      objects = SoftDeleteManager()  # ← Importante
+      objects = ActiveRecordQuery()  # ← Importante
 ```
 
 ### Timestamps no se actualizan

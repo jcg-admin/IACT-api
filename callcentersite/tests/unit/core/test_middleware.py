@@ -6,7 +6,7 @@ FASE 3 PARTE 2: Tests de middleware
 Coverage objetivo: 90%+
 
 Tests:
-- HealthCheckMiddleware (3 tests)
+- HealthCheckHandler (3 tests)
 - LoggingMiddleware (4 tests)
 - SecurityMiddleware (4 tests)
 - TimezoneMiddleware (3 tests)
@@ -21,10 +21,10 @@ from django.test import RequestFactory
 from django.utils import timezone as tz
 import pytz
 
-from apps.core.middleware.healthcheck import HealthCheckMiddleware
-from apps.core.middleware.logging import RequestLoggingMiddleware as LoggingMiddleware
-from apps.core.middleware.security import SecurityHeadersMiddleware as SecurityMiddleware
-from apps.core.middleware.timezone import UserTimezoneMiddleware as TimezoneMiddleware
+from apps.core.middleware.healthcheck import HealthCheckHandler
+from apps.core.middleware.logging import RequestLoggingHandler as LoggingMiddleware
+from apps.core.middleware.security import SecurityHeadersPolicy as SecurityMiddleware
+from apps.core.middleware.timezone import UserTimezoneHandler as TimezoneMiddleware
 
 
 # ============================================================================
@@ -32,7 +32,7 @@ from apps.core.middleware.timezone import UserTimezoneMiddleware as TimezoneMidd
 # ============================================================================
 
 class TestHealthCheckMiddleware:
-    """Tests para HealthCheckMiddleware."""
+    """Tests para HealthCheckHandler."""
     
     def test_health_endpoint_returns_200(self):
         """Test: GET /health/ -> 200 OK."""
@@ -40,7 +40,7 @@ class TestHealthCheckMiddleware:
         request = factory.get('/health/')
         
         get_response = Mock(return_value=HttpResponse())
-        middleware = HealthCheckMiddleware(get_response)
+        middleware = HealthCheckHandler(get_response)
         
         response = middleware(request)
         
@@ -53,7 +53,7 @@ class TestHealthCheckMiddleware:
         request = factory.get('/health/')
         
         get_response = Mock(return_value=HttpResponse())
-        middleware = HealthCheckMiddleware(get_response)
+        middleware = HealthCheckHandler(get_response)
         
         response = middleware(request)
         
@@ -70,7 +70,7 @@ class TestHealthCheckMiddleware:
         request = factory.get('/api/users/')
         
         get_response = Mock(return_value=HttpResponse('Original'))
-        middleware = HealthCheckMiddleware(get_response)
+        middleware = HealthCheckHandler(get_response)
         
         response = middleware(request)
         
@@ -272,7 +272,7 @@ class TestTimezoneMiddleware:
 # 
 # Total: 14 tests
 # 
-# HealthCheckMiddleware (3 tests):
+# HealthCheckHandler (3 tests):
 #   [SUCCESS] health_endpoint_returns_200
 #   [SUCCESS] health_endpoint_json_response
 #   [SUCCESS] other_endpoints_not_affected

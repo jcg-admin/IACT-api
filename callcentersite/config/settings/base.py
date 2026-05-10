@@ -63,6 +63,7 @@ INSTALLED_APPS = [
     
     # Third-party apps
     'rest_framework',
+    'rest_framework.authtoken',
     'rest_framework_simplejwt',
     'django_filters',
     'drf_spectacular',
@@ -76,7 +77,8 @@ INSTALLED_APPS = [
     'apps.audit',
     'apps.pipeline',
     'apps.reports',
-    'apps.alerts',  # <- Sistema de alertas internas
+    'apps.alerts',
+    'apps.logs',  # <- Sistema de alertas internas
     'apps.dashboard',  # <- Sistema de dashboards personalizables
 ]
 
@@ -154,8 +156,11 @@ DATABASES = {
         'NAME': config('DB_NAME', default='iact_analytics'),
         'USER': config('DB_USER', default='iact_user'),
         'PASSWORD': config('DB_PASSWORD', default='iact_password_dev'),
-        'HOST': config('DB_HOST', default='localhost'),
-        'PORT': config('DB_PORT', default='5432'),
+        # DB_SOCKET vacío → TCP (DB_HOST:DB_PORT).
+        # DB_SOCKET con valor → socket Unix, ignora HOST/PORT.
+        # Requiere en pg_hba.conf: local all django_user scram-sha-256
+        'HOST': config('DB_SOCKET', default='') or config('DB_HOST', default='localhost'),
+        'PORT': '' if config('DB_SOCKET', default='') else config('DB_PORT', default='5432'),
         'CONN_MAX_AGE': 600,
         'OPTIONS': {
             'connect_timeout': 10,
@@ -173,12 +178,20 @@ DATABASES = {
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            # unix_socket para conexión local (evita TCP cuando HOST='localhost')
+            # Se ignora si HOST no es 'localhost' o ''
+            'unix_socket': config('IVR_DB_SOCKET', default='/run/mysqld/mysqld.sock'),
         },
     },
 }
 
 # Database Router (CNST-003: READ-ONLY enforcement)
-DATABASE_ROUTERS = ['config.db_router.DatabaseRouter']  # CNST-003
+DATABASE_ROUTERS = ['config.db_router.DatabaseRouter']
+
+# IVR MariaDB query timeout (seconds).
+# Applies to all cursor.execute() and cursor.callproc() calls on connections['ivr'].
+# Override in settings_local.py for development.
+IVR_QUERY_TIMEOUT_SEC = int(config('IVR_QUERY_TIMEOUT_SEC', default='30'))  # CNST-003
 
 
 # ==============================================================================

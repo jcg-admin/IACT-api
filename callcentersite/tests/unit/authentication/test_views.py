@@ -16,7 +16,7 @@ from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
 
-from tests.factories import UserFactory, LoginAttemptFactory
+from tests.test_data import UserTestData, LoginAttemptTestData
 from apps.authentication.models import LoginAttempt, SessionLog, LoginLockout
 
 
@@ -41,7 +41,7 @@ class TestAuthViewSetLogin:
 
     def test_login_exitoso_retorna_200(self):
         """Login con credenciales correctas retorna 200."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -55,7 +55,7 @@ class TestAuthViewSetLogin:
 
     def test_login_exitoso_retorna_success_true(self):
         """Login exitoso incluye success: true en la respuesta."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -69,7 +69,7 @@ class TestAuthViewSetLogin:
 
     def test_login_exitoso_retorna_token(self):
         """Login exitoso retorna token DRF en data."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -84,7 +84,7 @@ class TestAuthViewSetLogin:
 
     def test_login_exitoso_retorna_session_key(self):
         """Login exitoso retorna session_key en data."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -98,7 +98,7 @@ class TestAuthViewSetLogin:
 
     def test_login_exitoso_retorna_datos_usuario(self):
         """Login exitoso retorna id, username, email, first_name, last_name."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -117,7 +117,7 @@ class TestAuthViewSetLogin:
 
     def test_login_exitoso_crea_login_attempt_exitoso(self):
         """Login exitoso registra LoginAttempt con success=True."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -134,7 +134,7 @@ class TestAuthViewSetLogin:
 
     def test_login_exitoso_crea_session_log(self):
         """Login exitoso crea SessionLog con is_active=True."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -151,7 +151,7 @@ class TestAuthViewSetLogin:
 
     def test_login_exitoso_retorna_first_login_true_en_primer_intento(self):
         """Primer login exitoso retorna first_login: true."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -165,12 +165,12 @@ class TestAuthViewSetLogin:
 
     def test_login_exitoso_retorna_first_login_false_en_segundo_intento(self):
         """Segundo login exitoso retorna first_login: false."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
         # Primer login — registra un LoginAttempt exitoso
-        LoginAttemptFactory(user=user, username=user.username, success=True)
+        LoginAttemptTestData(user=user, username=user.username, success=True)
 
         response = self.client.post(
             self.url,
@@ -186,7 +186,7 @@ class TestAuthViewSetLogin:
 
     def test_credenciales_invalidas_retorna_401(self):
         """Password incorrecto retorna 401 Unauthorized."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -200,7 +200,7 @@ class TestAuthViewSetLogin:
 
     def test_credenciales_invalidas_retorna_error_code_invalid_credentials(self):
         """Password incorrecto retorna error_code INVALID_CREDENTIALS."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -215,7 +215,7 @@ class TestAuthViewSetLogin:
 
     def test_credenciales_invalidas_retorna_attempts_remaining(self):
         """Primer intento fallido retorna attempts_remaining: 4."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -240,7 +240,7 @@ class TestAuthViewSetLogin:
 
     def test_credenciales_invalidas_registra_login_attempt_fallido(self):
         """Intento fallido registra LoginAttempt con success=False."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -275,7 +275,7 @@ class TestAuthViewSetLogin:
 
     def test_cuenta_bloqueada_retorna_403(self):
         """Cuenta con lockout activo retorna 403 Forbidden."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -295,7 +295,7 @@ class TestAuthViewSetLogin:
 
     def test_cuenta_bloqueada_retorna_error_code_account_locked(self):
         """Cuenta bloqueada retorna error_code ACCOUNT_LOCKED."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -314,7 +314,7 @@ class TestAuthViewSetLogin:
 
     def test_cuenta_bloqueada_retorna_locked_minutes(self):
         """Cuenta ya bloqueada (intento posterior) retorna details.locked_minutes."""
-        user = UserFactory()
+        user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
@@ -339,7 +339,7 @@ class TestAuthViewSetLogin:
 
     def test_usuario_inactivo_retorna_403(self):
         """Usuario con is_active=False retorna 403 Forbidden."""
-        user = UserFactory(is_active=False)
+        user = UserTestData(is_active=False)
         user.set_password('pass1234')
         user.save()
 
@@ -353,7 +353,7 @@ class TestAuthViewSetLogin:
 
     def test_usuario_inactivo_retorna_error_code_user_inactive(self):
         """Usuario inactivo retorna error_code USER_INACTIVE."""
-        user = UserFactory(is_active=False)
+        user = UserTestData(is_active=False)
         user.set_password('pass1234')
         user.save()
 

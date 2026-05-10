@@ -1,0 +1,20 @@
+"""
+URLs para logs app (UC_LOG_01..07).
+"""
+from django.urls import path
+from .views import (
+    DjangoLogTailView, ETLLogTailView, LogSearchView,
+    LogExportView, InfraLogView, LogHealthView, LogMetricsView,
+)
+
+app_name = 'logs'
+
+urlpatterns = [
+    path('django/tail/',       DjangoLogTailView.as_view(), name='django-tail'),    # UC_LOG_01
+    path('etl/tail/',          ETLLogTailView.as_view(),    name='etl-tail'),       # UC_LOG_02
+    path('search/',            LogSearchView.as_view(),     name='search'),         # UC_LOG_03
+    path('export/',            LogExportView.as_view(),     name='export'),         # UC_LOG_04
+    path('infra/',             InfraLogView.as_view(),      name='infra'),          # UC_LOG_05
+    path('health/',            LogHealthView.as_view(),     name='health'),         # UC_LOG_06
+    path('metrics/',           LogMetricsView.as_view(),    name='metrics'),        # UC_LOG_07
+]

@@ -9,7 +9,7 @@ from rest_framework import status
 from unittest.mock import patch
 
 from apps.users.models import User
-from tests.factories.user_factory import UserFactory
+from tests.test_data.user_test_data import UserTestData
 
 
 @pytest.mark.django_db
@@ -18,7 +18,7 @@ class TestPasswordChange:
     
     def test_change_password_success(self, api_client):
         """Test: Cambiar password exitosamente."""
-        user = UserFactory(password='OldPass123!')
+        user = UserTestData(password='OldPass123!')
         api_client.force_authenticate(user=user)
         
         data = {
@@ -38,7 +38,7 @@ class TestPasswordChange:
     
     def test_change_password_wrong_old_password(self, api_client):
         """Test: Old password incorrecto retorna error."""
-        user = UserFactory(password='OldPass123!')
+        user = UserTestData(password='OldPass123!')
         api_client.force_authenticate(user=user)
         
         data = {
@@ -53,7 +53,7 @@ class TestPasswordChange:
     
     def test_change_password_mismatch(self, api_client):
         """Test: New passwords no coinciden retorna error."""
-        user = UserFactory(password='OldPass123!')
+        user = UserTestData(password='OldPass123!')
         api_client.force_authenticate(user=user)
         
         data = {
@@ -69,7 +69,7 @@ class TestPasswordChange:
     
     def test_change_password_same_as_old(self, api_client):
         """Test: New password igual al old retorna error."""
-        user = UserFactory(password='OldPass123!')
+        user = UserTestData(password='OldPass123!')
         api_client.force_authenticate(user=user)
         
         data = {
@@ -85,7 +85,7 @@ class TestPasswordChange:
     
     def test_change_password_weak(self, api_client):
         """Test: Password débil retorna error."""
-        user = UserFactory(password='OldPass123!')
+        user = UserTestData(password='OldPass123!')
         api_client.force_authenticate(user=user)
         
         data = {
@@ -113,7 +113,7 @@ class TestPasswordChange:
     
     def test_change_password_no_old_password(self, api_client):
         """Test: Sin old_password retorna error."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         data = {
@@ -128,7 +128,7 @@ class TestPasswordChange:
     
     def test_change_password_no_confirmation(self, api_client):
         """Test: Sin confirmation retorna error."""
-        user = UserFactory(password='OldPass123!')
+        user = UserTestData(password='OldPass123!')
         api_client.force_authenticate(user=user)
         
         data = {

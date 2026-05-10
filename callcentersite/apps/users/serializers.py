@@ -9,7 +9,13 @@ CLEAN_CODE v3.0.1: Serializers auto-documentados.
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
-from apps.users.models import UserProfile, UserSettings, SessionHistory
+from apps.users.models import User
+try:
+    from apps.users.models import UserProfile, UserSettings, SessionHistory
+except ImportError:
+    UserProfile = None
+    UserSettings = None
+    SessionHistory = None
 
 User = get_user_model()
 

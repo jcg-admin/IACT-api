@@ -1,18 +1,5 @@
 """Shared constants for the IACT API."""
 
-# User roles
-ROLE_ADMIN = 'admin'
-ROLE_SUPERVISOR = 'supervisor'
-ROLE_AGENT = 'agent'
-ROLE_READONLY = 'readonly'
-
-ROLE_CHOICES = [
-    (ROLE_ADMIN, 'Administrador'),
-    (ROLE_SUPERVISOR, 'Supervisor'),
-    (ROLE_AGENT, 'Agente'),
-    (ROLE_READONLY, 'Solo lectura'),
-]
-
 # Call statuses
 CALL_STATUS_PENDING = 'pending'
 CALL_STATUS_IN_PROGRESS = 'in_progress'

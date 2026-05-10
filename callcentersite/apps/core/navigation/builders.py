@@ -1,10 +1,17 @@
 """
 Builders para el sistema de navegacion del menu principal.
 """
+from pathlib import Path
+from typing import Dict, List, Optional, Tuple
 
 
 class MenuValidator:
     """Valida la estructura de datos del menu."""
+
+    # Rangos de ID por nivel (según convención del dominio IVR)
+    _LEVEL1_ID_RANGE = (1, 99)
+    _LEVEL2_ID_RANGE = (100, 899)
+    _REQUIRED_MENU_FIELDS = ('id_menu', 'des_name', 'nivel', 'orden')
 
     def validate_module(self, module_data):
         required_fields = ('code', 'name', 'url_path')
@@ -23,6 +30,70 @@ class MenuValidator:
             for err in item_errors:
                 errors.append(f'Item {i}: {err}')
         return errors
+
+    @staticmethod
+    def validate_numeric_id(value) -> bool:
+        """Verifica que value es un entero positivo."""
+        if not isinstance(value, int) or isinstance(value, bool):
+            return False
+        lo, hi = MenuValidator._LEVEL1_ID_RANGE[0], MenuValidator._LEVEL2_ID_RANGE[1]
+        return lo <= value <= hi
+
+    @staticmethod
+    def validate_level1_id(value) -> bool:
+        """Nivel 1: rango 1–99."""
+        if not isinstance(value, int) or isinstance(value, bool):
+            return False
+        lo, hi = MenuValidator._LEVEL1_ID_RANGE
+        return lo <= value <= hi
+
+    @staticmethod
+    def validate_level2_id(value) -> bool:
+        """Nivel 2: rango 100–899."""
+        if not isinstance(value, int) or isinstance(value, bool):
+            return False
+        lo, hi = MenuValidator._LEVEL2_ID_RANGE
+        return lo <= value <= hi
+
+    @staticmethod
+    def validate_menu_structure(menu: Dict) -> Tuple[bool, List[str]]:
+        """
+        Valida la estructura de un item de menú.
+
+        Comprueba:
+        - Presencia de campos requeridos.
+        - Consistencia entre id_menu y nivel (ID debe estar en el rango del nivel).
+
+        Returns:
+            (is_valid, errors): bool y lista de mensajes de error.
+        """
+        errors = []
+
+        for field in MenuValidator._REQUIRED_MENU_FIELDS:
+            if field not in menu:
+                errors.append(f"Campo requerido faltante: '{field}'")
+
+        if errors:
+            return False, errors
+
+        id_menu = menu['id_menu']
+        nivel = menu['nivel']
+
+        if nivel == 1 and not MenuValidator.validate_level1_id(id_menu):
+            errors.append(
+                f"ID {id_menu} no es valido para nivel 1 (rango 1–99)"
+            )
+        elif nivel == 2 and not MenuValidator.validate_level2_id(id_menu):
+            errors.append(
+                f"ID {id_menu} no es valido para nivel 2 (rango 100–899)"
+            )
+
+        return len(errors) == 0, errors
+
+    @staticmethod
+    def validate_icon_path(path: str) -> bool:
+        """Verifica que el archivo de icono existe en el sistema de archivos."""
+        return Path(path).exists()
 
 
 class MenuBuilder:

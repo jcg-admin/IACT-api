@@ -14,6 +14,26 @@ from django.utils.translation import gettext_lazy as _
 # String validators
 # ---------------------------------------------------------------------------
 
+
+def _clean_phone_number(phone: str) -> str:
+    """
+    Elimina caracteres de formato de un número de teléfono.
+    Retorna solo los dígitos significativos (sin espacios, guiones ni paréntesis).
+
+    Usada por formatters.format_phone_number() para normalizar antes de formatear.
+
+    Ejemplo:
+        '+52 55 1234 5678' -> '5512345678'
+        '(55) 1234-5678'   -> '5512345678'
+        '55 1234 5678'     -> '5512345678'
+    """
+    cleaned = re.sub(r'[\s\-\(\)\+]', '', phone)
+    # Eliminar prefijo de país 52 si dejó el número mayor a 10 dígitos
+    if cleaned.startswith('52') and len(cleaned) > 10:
+        cleaned = cleaned[2:]
+    return cleaned
+
+
 def validate_no_special_chars(value: str) -> None:
     """Allow only alphanumeric, spaces, hyphens and underscores."""
     if not re.match(r'^[\w\s\-]+$', value, re.UNICODE):
@@ -191,3 +211,19 @@ def validate_rut(value: str) -> None:
         raise ValidationError(
             _("RUT invalido. Use el formato XXXXXXXX-X."),
         )
+
+
+def validate_email(value: str) -> bool:
+    """Valida formato de email. Retorna True si es valido."""
+    import re as _re
+    pattern = r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$'
+    return bool(_re.match(pattern, value))
+
+
+def validate_export_row_limit(value: int, max_rows: int = 50000) -> bool:
+    """
+    Valida que el numero de filas solicitado para exportacion
+    no exceda el limite configurado.
+    CNST-010: sin cache, el limite se evalua en cada request.
+    """
+    return 0 < value <= max_rows

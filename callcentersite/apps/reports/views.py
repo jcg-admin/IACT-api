@@ -9,6 +9,7 @@ from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from apps.access.permissions.function_permissions import HasFunction
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.filters import OrderingFilter, SearchFilter
 
@@ -223,7 +224,8 @@ class ExportJobViewSet(viewsets.ReadOnlyModelViewSet):
     
     queryset = ExportJob.objects.all()
     serializer_class = ExportJobSerializer
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.export'
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['status', 'format']
     ordering_fields = ['created_at']
@@ -241,3 +243,167 @@ class ExportJobViewSet(viewsets.ReadOnlyModelViewSet):
         
         # Solo jobs de reportes del usuario
         return ExportJob.objects.filter(report__created_by=user)
+
+
+# ---------------------------------------------------------------------------
+# K-002 / K-003: ScheduledReport (UC_RPT_07/08)
+# ---------------------------------------------------------------------------
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
+from rest_framework import viewsets
+from rest_framework.permissions import IsAuthenticated
+from apps.access.permissions.function_permissions import HasFunction
+from apps.access.permissions.function_permissions import HasFunction
+from .models import ScheduledReport, SavedView
+from .serializers import ScheduledReportSerializer, SavedViewSerializer
+
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="UC_RPT_08 — List scheduled reports",
+        tags=["Reportes"]),
+    create=extend_schema(
+        summary="UC_RPT_07 — Schedule a report",
+        tags=["Reportes"]),
+    retrieve=extend_schema(
+        summary="UC_RPT_08 — Scheduled report detail",
+        tags=["Reportes"]),
+    partial_update=extend_schema(
+        summary="UC_RPT_07 — Update scheduled report",
+        tags=["Reportes"]),
+    destroy=extend_schema(
+        summary="UC_RPT_07 — Delete scheduled report",
+        tags=["Reportes"]),
+)
+class ScheduledReportViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for ScheduledReport.
+
+    POST /api/reports/scheduled/       — UC_RPT_07 schedule a report
+    GET  /api/reports/scheduled/       — UC_RPT_08 list scheduled reports
+    GET  /api/reports/scheduled/{id}/  — detail
+    PATCH                              — update
+    DELETE                             — remove
+    """
+    serializer_class   = ScheduledReportSerializer
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.schedule'
+
+    def get_queryset(self):
+        return ScheduledReport.objects.filter(
+            created_by=self.request.user
+        ).select_related('report').order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+# ---------------------------------------------------------------------------
+# K-004: SavedView (UC_RPT_10)
+# ---------------------------------------------------------------------------
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="UC_RPT_10 — List saved views",
+        tags=["Reportes"]),
+    create=extend_schema(
+        summary="UC_RPT_10 — Save a view",
+        tags=["Reportes"]),
+    retrieve=extend_schema(
+        summary="UC_RPT_10 — Saved view detail",
+        tags=["Reportes"]),
+    partial_update=extend_schema(
+        summary="UC_RPT_10 — Update saved view",
+        tags=["Reportes"]),
+    destroy=extend_schema(
+        summary="UC_RPT_10 — Delete saved view",
+        tags=["Reportes"]),
+)
+class SavedViewViewSet(viewsets.ModelViewSet):
+    """
+    CRUD for SavedView.
+
+    GET  /api/reports/saved-views/       — UC_RPT_10 list saved views
+    POST /api/reports/saved-views/       — save a view
+    """
+    serializer_class   = SavedViewSerializer
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view'
+
+    def get_queryset(self):
+        return SavedView.objects.filter(
+            created_by=self.request.user
+        ).select_related('report').order_by('-created_at')
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+
+# ---------------------------------------------------------------------------
+# K-005: UC_RPT_02 — Real-time metrics stub (CNST-004)
+# ---------------------------------------------------------------------------
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from django.utils import timezone
+
+
+@extend_schema(
+    summary="UC_RPT_02 — Real-time metrics (CNST-004: static snapshot)",
+    description=(
+        "CNST-004 prohibits WebSockets and Celery. "
+        "This endpoint returns a static snapshot of the latest metrics. "
+        "Full SSE streaming is available after migrating to an ASGI server."
+    ),
+    responses={
+        200: OpenApiResponse(
+            description="Static snapshot with CNST-004 limitation note"),
+    },
+    tags=["Reportes"]
+)
+class RealtimeMetricsView(APIView):
+    """
+    GET /api/reports/realtime/
+
+    UC_RPT_02 stub. Returns a static snapshot.
+    CNST-004: SSE/WebSocket not available in sync Django.
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view'
+
+    def get(self, request):
+        from django.db import connections, OperationalError
+
+        snapshot: dict = {
+            'timestamp': timezone.now().isoformat(),
+            'cnst_004_note': (
+                'Real-time streaming (SSE) requires an ASGI server. '
+                'This response is a static snapshot.'
+            ),
+            'pipeline': None,
+            'reports': None,
+        }
+
+        # Pipeline status from MariaDB
+        try:
+            with connections['ivr'].cursor() as cursor:
+                cursor.execute(
+                    "SELECT status, COUNT(*) FROM job_execution_log "
+                    "WHERE start_time >= DATE_SUB(NOW(), INTERVAL 24 HOUR) "
+                    "GROUP BY status"
+                )
+                snapshot['pipeline'] = {
+                    row[0]: row[1] for row in cursor.fetchall()
+                }
+        except OperationalError:
+            snapshot['pipeline'] = {'error': 'MariaDB unavailable'}
+
+        # Reports summary from PostgreSQL
+        from .models import Report
+        snapshot['reports'] = {
+            'total': Report.objects.count(),
+            'pending': Report.objects.filter(status='pending').count(),
+            'completed': Report.objects.filter(status='completed').count(),
+        }
+
+        return Response(snapshot)

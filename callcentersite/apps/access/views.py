@@ -2,6 +2,12 @@
 Views para sistema de acceso y módulos.
 """
 from rest_framework import viewsets, status
+from apps.access.permissions.function_permissions import HasFunction
+from apps.core.permissions import RequiresFunctionPermission
+from drf_spectacular.utils import (
+    extend_schema, extend_schema_view, OpenApiParameter,
+    OpenApiResponse, inline_serializer)
+from rest_framework import serializers as drf_serializers_module
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -9,12 +15,23 @@ from rest_framework.views import APIView
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import filters
 
-from .models import Module, UserModuleAccess
+from .models import (
+    Module, UserModuleAccess, Function, UserPermission,
+    AccessGroup, UserAccessGroup,
+    SeparationRule, ExceptionalPermission,
+)
 from .serializers import (
     ModuleSerializer,
     ModuleTreeSerializer,
     UserModuleAccessSerializer,
     MyModulesSerializer,
+    AccessGroupSerializer,
+    AccessGroupListSerializer,
+    UserAccessGroupSerializer,
+    SeparationRuleSerializer,
+    SeparationRuleCheckSerializer,
+    ExceptionalPermissionSerializer,
+    FunctionSerializer,
 )
 from .services import ModuleAccessService
 
@@ -107,6 +124,12 @@ class UserModuleAccessViewSet(viewsets.ModelViewSet):
         instance.save()
 
 
+@extend_schema(
+    summary="UC_PERM_08 — Menu dinamico del usuario autenticado",
+    description="Retorna los modulos accesibles segun las funciones del usuario.",
+    responses={200: OpenApiResponse(description="Arbol de modulos accesibles")},
+    tags=["Control de Acceso"]
+)
 class MyModulesView(APIView):
     """
     Vista para obtener módulos accesibles por el usuario autenticado.
@@ -132,13 +155,943 @@ class MyModulesView(APIView):
         
         # Obtener árbol de módulos del usuario
         modules_tree = ModuleAccessService.get_user_module_tree(user)
-        
+
         # Obtener todos los módulos accesibles (plano)
         all_modules = ModuleAccessService.get_user_modules(user)
         root_modules = all_modules.filter(parent__isnull=True)
-        
+
         return Response({
-            'modules': modules_tree,
+            'modules': ModuleTreeSerializer(modules_tree, many=True).data,
             'total_count': all_modules.count(),
             'root_count': root_modules.count(),
+        })
+
+
+# ---------------------------------------------------------------------------
+# B-05: AccessGroup ViewSet (UC_ACC_04, UC_PERM_01..06, UC_ADM_03)
+# ---------------------------------------------------------------------------
+from .models import AccessGroup, UserAccessGroup, SeparationRule, ExceptionalPermission
+from rest_framework import serializers as drf_serializers
+
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="UC_PERM_05 — Listar grupos de acceso", tags=["Control de Acceso"]),
+    create=extend_schema(
+        summary="UC_PERM_05 — Crear grupo de acceso", tags=["Control de Acceso"]),
+    retrieve=extend_schema(
+        summary="UC_PERM_05 — Detalle de grupo", tags=["Control de Acceso"]),
+    partial_update=extend_schema(
+        summary="UC_PERM_05 — Modificar grupo", tags=["Control de Acceso"]),
+    destroy=extend_schema(
+        summary="UC_PERM_05 — Eliminar grupo (baja logica)", tags=["Control de Acceso"]),
+)
+class AccessGroupViewSet(viewsets.ModelViewSet):
+    """
+    CRUD de grupos de acceso.
+
+    UC_ACC_04, UC_PERM_05, UC_ADM_03.
+    GET    /api/access/groups/            — listar grupos
+    POST   /api/access/groups/            — crear grupo
+    GET    /api/access/groups/{id}/       — detalle
+    PATCH  /api/access/groups/{id}/       — modificar
+    DELETE /api/access/groups/{id}/       — baja logica
+    POST   /api/access/groups/{id}/add-function/    — UC_PERM_06
+    DELETE /api/access/groups/{id}/remove-function/ — UC_PERM_06
+    """
+    queryset = AccessGroup.objects.all()
+    permission_classes = [IsAuthenticated, RequiresFunctionPermission]
+    function_map = {
+        'list':           'access.view_groups',
+        'retrieve':       'access.view_groups',
+        'create':         'access.manage_groups',
+        'update':         'access.manage_groups',
+        'partial_update': 'access.manage_groups',
+        'destroy':        'access.manage_groups',
+        'add_function':   'access.manage_groups',
+        'remove_function':'access.manage_groups',
+    }
+
+    serializer_class = AccessGroupSerializer
+
+    def get_serializer_class(self):
+        if self.action == 'list':
+            return AccessGroupListSerializer
+        return AccessGroupSerializer
+
+    @action(detail=True, methods=['post'], url_path='add-function')
+    def add_function(self, request, pk=None):
+        """UC_PERM_06 — Asignar funcion a grupo."""
+        group = self.get_object()
+        function_id = request.data.get('function_id')
+        try:
+            from .models import Function
+            fn = Function.objects.get(id=function_id)
+            group.functions.add(fn)
+            return Response({'detail': f'Function {fn.code} added to group {group.code}.'})
+        except Function.DoesNotExist:
+            return Response({'error': 'Function not found.'}, status=404)
+
+    @action(detail=True, methods=['delete'], url_path='remove-function')
+    def remove_function(self, request, pk=None):
+        """UC_PERM_06 — Remover funcion de grupo."""
+        group = self.get_object()
+        function_id = request.data.get('function_id')
+        try:
+            from .models import Function
+            fn = Function.objects.get(id=function_id)
+            group.functions.remove(fn)
+            return Response({'detail': f'Function {fn.code} removed from group {group.code}.'})
+        except Function.DoesNotExist:
+            return Response({'error': 'Function not found.'}, status=404)
+
+
+class UserAccessGroupViewSet(viewsets.ModelViewSet):
+    """
+    Asignacion/revocacion de AccessGroups a usuarios.
+
+    UC_ACC_04, UC_PERM_01..02.
+    POST   /api/access/user-groups/       — asignar grupo a usuario
+    DELETE /api/access/user-groups/{id}/  — revocar grupo
+    GET    /api/access/user-groups/?user={id} — listar grupos de un usuario
+    """
+    queryset = UserAccessGroup.objects.select_related('user', 'access_group').all()
+    permission_classes = [IsAuthenticated, RequiresFunctionPermission]
+    function_map = {
+        'list': 'access.view_groups',
+        'create': 'access.assign_functions',
+        'destroy': 'access.assign_functions',
+    }
+
+    serializer_class = UserAccessGroupSerializer
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        user_id = self.request.query_params.get('user')
+        if user_id:
+            qs = qs.filter(user_id=user_id)
+        return qs
+
+    def perform_create(self, serializer):
+        """
+        G-004: Verificar SeparationRule antes de asignar el AccessGroup.
+
+        Cada función del grupo se verifica contra las funciones actuales
+        del usuario. Si alguna genera conflicto, se rechaza con 400.
+        """
+        from django.db import models as dj_models
+        from rest_framework.exceptions import ValidationError
+
+        user  = serializer.validated_data["user"]
+        group = serializer.validated_data["access_group"]
+
+        existing_codes = user.get_functions()
+
+        for fn in group.functions.filter(is_active=True):
+            conflict = SeparationRule.objects.filter(
+                status="active"
+            ).filter(
+                dj_models.Q(function_a=fn, function_b__code__in=existing_codes) |
+                dj_models.Q(function_b=fn, function_a__code__in=existing_codes)
+            ).first()
+
+            if conflict:
+                raise ValidationError({
+                    "error":         "Separation rule conflict detected.",
+                    "conflict_rule": conflict.name,
+                    "function":      fn.code,
+                    "conflicts_with": (
+                        conflict.function_b.code
+                        if conflict.function_a == fn
+                        else conflict.function_a.code
+                    ),
+                })
+
+        serializer.save(granted_by=self.request.user)
+
+
+# ---------------------------------------------------------------------------
+# B-05: SeparationRule ViewSet (UC_ACC_05, UC_ADM_01)
+# ---------------------------------------------------------------------------
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="UC_ACC_05 — Listar reglas de separacion", tags=["Control de Acceso"]),
+    create=extend_schema(
+        summary="UC_ACC_05 — Crear regla de separacion", tags=["Control de Acceso"]),
+    retrieve=extend_schema(
+        summary="UC_ACC_05 — Detalle de regla", tags=["Control de Acceso"]),
+    partial_update=extend_schema(
+        summary="UC_ACC_05 — Modificar regla", tags=["Control de Acceso"]),
+    destroy=extend_schema(
+        summary="UC_ACC_05 — Eliminar regla", tags=["Control de Acceso"]),
+)
+class SeparationRuleViewSet(viewsets.ModelViewSet):
+    """
+    CRUD de reglas de Separacion de Deberes.
+
+    UC_ACC_05, UC_ADM_01.
+    GET    /api/access/separation-rules/  — listar reglas
+    POST   /api/access/separation-rules/  — crear regla
+    GET    /api/access/separation-rules/{id}/  — detalle
+    PATCH  /api/access/separation-rules/{id}/ — modificar
+    DELETE /api/access/separation-rules/{id}/ — baja logica
+    """
+    queryset = SeparationRule.objects.select_related('function_a', 'function_b').all()
+    permission_classes = [IsAuthenticated, RequiresFunctionPermission]
+    function_map = {
+        'list': 'access.view_separation_rules',
+        'retrieve': 'access.view_separation_rules',
+        'create': 'access.manage_separation_rules',
+        'update': 'access.manage_separation_rules',
+        'partial_update': 'access.manage_separation_rules',
+        'destroy': 'access.manage_separation_rules',
+        'check_conflict': 'access.view_separation_rules',
+    }
+
+    serializer_class = SeparationRuleSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user)
+
+    @action(detail=False, methods=['get'], url_path='check')
+    def check_conflict(self, request):
+        """
+        UC_ACC_05 — Verificar si dos funciones tienen conflicto SoD.
+        GET /api/access/separation-rules/check/?function_a=X&function_b=Y
+        """
+        from django.db.models import Q
+        fa = request.query_params.get('function_a')
+        fb = request.query_params.get('function_b')
+        conflicto = SeparationRule.objects.filter(
+            status='active'
+        ).filter(
+            Q(function_a_id=fa, function_b_id=fb) |
+            Q(function_a_id=fb, function_b_id=fa)
+        ).first()
+        return Response({
+            'tiene_conflicto': conflicto is not None,
+            'regla': str(conflicto) if conflicto else None,
+        })
+
+
+# ---------------------------------------------------------------------------
+# B-07: ExceptionalPermission ViewSet (UC_ACC_08, UC_PERM_03..04)
+# ---------------------------------------------------------------------------
+
+@extend_schema_view(
+    list=extend_schema(
+        summary="UC_ACC_08 — Listar permisos excepcionales", tags=["Control de Acceso"]),
+    create=extend_schema(
+        summary="UC_ACC_08 — Solicitar permiso excepcional", tags=["Control de Acceso"]),
+    retrieve=extend_schema(
+        summary="UC_ACC_08 — Detalle de permiso excepcional", tags=["Control de Acceso"]),
+    partial_update=extend_schema(
+        summary="UC_ACC_08 — Modificar permiso excepcional", tags=["Control de Acceso"]),
+)
+class ExceptionalPermissionViewSet(viewsets.ModelViewSet):
+    """
+    Gestion de permisos temporales excepcionales.
+
+    UC_ACC_08, UC_PERM_03..04.
+    POST   /api/access/exceptional/           — solicitar permiso excepcional
+    GET    /api/access/exceptional/           — listar permisos excepcionales
+    PATCH  /api/access/exceptional/{id}/      — aprobar/revocar
+    """
+    queryset = ExceptionalPermission.objects.select_related(
+        'user', 'function', 'granted_by'
+    ).all()
+    permission_classes = [IsAuthenticated, RequiresFunctionPermission]
+    function_map = {
+        'list': 'access.view_exceptional_permissions',
+        'retrieve': 'access.view_exceptional_permissions',
+        'create': 'access.request_exceptional_permission',
+        'partial_update': 'access.manage_exceptional_permissions',
+        'approve': 'access.manage_exceptional_permissions',
+        'revoke': 'access.manage_exceptional_permissions',
+    }
+
+    serializer_class = ExceptionalPermissionSerializer
+
+    @action(detail=True, methods=['patch'], url_path='approve')
+    def approve(self, request, pk=None):
+        """UC_ACC_08 / UC_PERM_03 — Aprobar permiso excepcional."""
+        perm = self.get_object()
+        if perm.status != 'pending':
+            return Response({'error': 'Only pending permissions can be approved.'}, status=400)
+        perm.status = 'approved'
+        perm.granted_by = request.user
+        perm.save()
+        return Response({'detail': 'Permission approved.', 'status': perm.status})
+
+    @action(detail=True, methods=['patch'], url_path='revoke')
+    def revoke(self, request, pk=None):
+        """UC_PERM_04 — Revocar permiso excepcional."""
+        perm = self.get_object()
+        if perm.status in ('revoked', 'expired'):
+            return Response({'error': f'Permission already in status {perm.status}.'}, status=400)
+        perm.status = 'revoked'
+        perm.save()
+        return Response({'detail': 'Permission revoked.', 'status': perm.status})
+
+
+# ---------------------------------------------------------------------------
+# B-05: EffectivePermissions endpoint (UC_ACC_03, UC_PERM_07)
+# ---------------------------------------------------------------------------
+
+@extend_schema(
+    summary="UC_ACC_03 / UC_PERM_07 — Permisos efectivos del usuario",
+    description=(
+        "Union de: UserPermission directos + funciones via AccessGroup "
+        "+ ExceptionalPermission aprobados y vigentes."
+    ),
+    parameters=[OpenApiParameter('user_id', int, location='path')],
+    responses={
+        200: OpenApiResponse(description="Permisos efectivos con desglose por fuente"),
+        404: OpenApiResponse(description="Usuario no encontrado"),
+    },
+    tags=["Control de Acceso"]
+)
+class EffectivePermissionsView(APIView):
+    """
+    UC_ACC_03 / UC_PERM_07 — Consultar permisos efectivos de un usuario.
+
+    GET /api/access/users/{user_id}/effective-permissions/
+
+    Retorna la union de:
+    - UserPermission directos
+    - Funciones de los AccessGroup del usuario
+    - ExceptionalPermission activos
+    Menos cualquier funcion que viole una SeparationRule activa.
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_permissions'
+
+    def get(self, request, user_id):
+        from apps.access.services import get_user_function_codes
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=404)
+
+        # Funciones directas
+        direct = set(UserPermission.objects.filter(
+            user=user
+        ).values_list('function__code', flat=True))
+
+        # Funciones via AccessGroup
+        group_fns = set(Function.objects.filter(
+            access_groups__memberships__user=user
+        ).values_list('code', flat=True))
+
+        # Funciones excepcionales activas
+        from django.utils import timezone
+        now = timezone.now()
+        exceptional = set(ExceptionalPermission.objects.filter(
+            user=user, status='approved',
+            valid_from__lte=now, valid_until__gte=now
+        ).values_list('function__code', flat=True))
+
+        all_functions = direct | group_fns | exceptional
+
+        return Response({
+            'user_id': user_id,
+            'total_functions': len(all_functions),
+            'sources': {
+                'direct':       list(direct),
+                'from_groups':  list(group_fns),
+                'exceptional':  list(exceptional),
+            },
+            'effective': sorted(all_functions),
+        })
+
+
+# ---------------------------------------------------------------------------
+# Endpoints requeridos por IACT-ui (accessService.js)
+# ---------------------------------------------------------------------------
+
+@extend_schema(
+    summary="UC_ACC — Listar funciones disponibles",
+    description=(
+        "Retorna todas las funciones activas con campo 'category' para FunctionSelector.jsx."
+    ),
+    tags=["Control de Acceso"],
+    responses={200: OpenApiResponse(description='Lista de funciones con category')},
+)
+class FunctionListView(APIView):
+    """
+    accessService.getAllFunctions()
+    GET /api/access/functions/
+
+    FunctionSelector.jsx espera:
+      [{ id, code, name, description, category, permission_django, is_active }]
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_permissions'
+
+    def get(self, request):
+        qs = Function.objects.filter(
+            is_active=True
+        ).select_related('module').order_by('module__code', 'code')
+        serializer = FunctionSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+@extend_schema(
+    summary="UC_ACC_03 — Permisos del usuario (alias accessService)",
+    description=(
+        "Alias de /users/{id}/effective-permissions/ para compatibilidad con accessService.js."
+    ),
+    tags=["Control de Acceso"],
+    responses={200: OpenApiResponse(description='Permisos efectivos'), 404: OpenApiResponse(description='Usuario no encontrado')},
+)
+class UserEffectivePermissionsAliasView(APIView):
+    """
+    accessService.getUserPermissions(userId)
+    GET /api/access/permissions/{userId}/
+
+    Alias de /api/access/users/{id}/effective-permissions/
+    para compatibilidad con accessService.js del frontend.
+
+    Retorna estructura que Redux espera en state.access.userPermissions:
+      { user_id, functions: [...codes], sources: {...} }
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_permissions'
+
+    def get(self, request, user_id):
+        from django.contrib.auth import get_user_model
+        from django.utils import timezone
+        User = get_user_model()
+
+        try:
+            user = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=404)
+
+        direct = set(UserPermission.objects.filter(
+            user=user
+        ).values_list('function__code', flat=True))
+
+        from_groups = set(Function.objects.filter(
+            access_groups__memberships__user=user
+        ).values_list('code', flat=True))
+
+        now = timezone.now()
+        exceptional = set(ExceptionalPermission.objects.filter(
+            user=user, status='approved',
+            valid_from__lte=now, valid_until__gte=now,
+        ).values_list('function__code', flat=True))
+
+        all_functions = sorted(direct | from_groups | exceptional)
+
+        return Response({
+            'user_id':   user_id,
+            'functions': all_functions,
+            'sources': {
+                'direct':      sorted(direct),
+                'from_groups': sorted(from_groups),
+                'exceptional': sorted(exceptional),
+            },
+        })
+
+
+@extend_schema(
+    summary="UC_ACC_01 — Asignar funcion a usuario",
+    description=(
+        "Verifica SeparationRule antes de crear UserPermission. Retorna newFunction para Redux."
+    ),
+    tags=["Control de Acceso"],
+    request=inline_serializer('FunctionAssignRequest', fields={
+        'userId':     drf_serializers_module.IntegerField(),
+        'functionId': drf_serializers_module.IntegerField(),
+        'expiresAt':  drf_serializers_module.DateTimeField(required=False),
+    }),
+    responses={
+        201: inline_serializer('FunctionAssignResponse', fields={
+            'newFunction': drf_serializers_module.DictField(),
+            'user_id':     drf_serializers_module.IntegerField(),
+        }),
+        409: OpenApiResponse(description='Conflicto SeparationRule o duplicado'),
+    },
+)
+class FunctionAssignView(APIView):
+    """
+    accessService.assignFunction(userId, functionId)
+    POST /api/access/functions/assign
+    Body: { userId, functionId, expiresAt? }
+
+    assignFunction.fulfilled actualiza:
+      state.userPermissions.functions.push(action.payload.newFunction)
+    Retorna: { newFunction: { id, code, name }, user_id }
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.assign_functions'
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        from django.db import models as dj_models
+        User = get_user_model()
+
+        user_id     = request.data.get('userId')
+        function_id = request.data.get('functionId')
+
+        if not user_id or not function_id:
+            return Response(
+                {'error': 'userId and functionId are required.'}, status=400)
+
+        try:
+            user     = User.objects.get(pk=user_id)
+            function = Function.objects.get(pk=function_id, is_active=True)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=404)
+        except Function.DoesNotExist:
+            return Response({'error': 'Function not found or inactive.'}, status=404)
+
+        # Verificar conflicto de SeparationRule
+        existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
+        conflict = SeparationRule.objects.filter(
+            status='active'
+        ).filter(
+            dj_models.Q(function_a=function, function_b__code__in=existing_codes) |
+            dj_models.Q(function_b=function, function_a__code__in=existing_codes)
+        ).first()
+
+        if conflict:
+            return Response({
+                'error':   'Conflicto de separacion de funciones detectado.',
+                'message': str(conflict),
+                'conflict_rule': conflict.name,
+            }, status=409)
+
+        perm, created = UserPermission.objects.get_or_create(
+            user=user, function=function)
+
+        if not created:
+            return Response(
+                {'error': 'Function already assigned to this user.'}, status=409)
+
+        return Response({
+            'newFunction': {
+                'id':   function.id,
+                'code': function.code,
+                'name': function.name,
+            },
+            'user_id': user_id,
+        }, status=201)
+
+
+@extend_schema(
+    summary="UC_ACC_02 — Revocar funcion de usuario",
+    description=(
+        "Elimina el UserPermission del usuario."
+    ),
+    tags=["Control de Acceso"],
+    request=inline_serializer('FunctionRevokeRequest', fields={
+        'userId':     drf_serializers_module.IntegerField(),
+        'functionId': drf_serializers_module.IntegerField(),
+    }),
+    responses={
+        200: inline_serializer('FunctionRevokeResponse', fields={
+            'detail': drf_serializers_module.CharField(),
+        }),
+        404: OpenApiResponse(description='Asignacion no encontrada'),
+    },
+)
+class FunctionRevokeView(APIView):
+    """
+    accessService.revokeFunction(userId, functionId)
+    POST /api/access/functions/revoke
+    Body: { userId, functionId }
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.assign_functions'
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        user_id     = request.data.get('userId')
+        function_id = request.data.get('functionId')
+
+        if not user_id or not function_id:
+            return Response(
+                {'error': 'userId and functionId are required.'}, status=400)
+
+        deleted, _ = UserPermission.objects.filter(
+            user_id=user_id, function_id=function_id
+        ).delete()
+
+        if not deleted:
+            return Response(
+                {'error': 'Assignment not found.'}, status=404)
+
+        return Response({'detail': 'Function revoked successfully.'})
+
+
+@extend_schema(
+    summary="UC_ACC_05 — Validar conflicto de separacion",
+    description=(
+        "Retorna conflicts[] con la estructura que consume accessSlice.sodConflicts."
+    ),
+    tags=["Control de Acceso"],
+    request=inline_serializer('SeparationValidateRequest', fields={
+        'userId':     drf_serializers_module.IntegerField(),
+        'functionId': drf_serializers_module.IntegerField(),
+    }),
+    responses={
+        200: inline_serializer('SeparationValidateResponse', fields={
+            'conflicts': drf_serializers_module.ListField(
+                child=drf_serializers_module.DictField()),
+        }),
+        404: OpenApiResponse(description='Usuario o funcion no encontrados'),
+    },
+)
+class SeparationRuleValidateView(APIView):
+    """
+    accessService.validateSoD(userId, functionId)
+    POST /api/access/validate-sod
+    Body: { userId, functionId }
+
+    NOTA: El nombre del endpoint respeta el contrato del frontend
+    (strings opacos de API). El nombre de la clase en Python sigue
+    CLEAN_CODE_NAMING_PRINCIPLES (sin acronimos).
+
+    Retorna estructura que consume accessSlice:
+      { conflicts: [{ rule, ruleDesc, setA, setB, message }] }
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_separation_rules'
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        from django.db import models as dj_models
+        User = get_user_model()
+
+        user_id     = request.data.get('userId')
+        function_id = request.data.get('functionId')
+
+        if not user_id or not function_id:
+            return Response(
+                {'error': 'userId and functionId are required.'}, status=400)
+
+        try:
+            user     = User.objects.get(pk=user_id)
+            function = Function.objects.get(pk=function_id)
+        except (User.DoesNotExist, Function.DoesNotExist) as e:
+            return Response({'error': str(e)}, status=404)
+
+        existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
+        rules = SeparationRule.objects.filter(
+            status='active'
+        ).filter(
+            dj_models.Q(function_a=function) | dj_models.Q(function_b=function)
+        ).select_related('function_a', 'function_b')
+
+        conflicts = []
+        for rule in rules:
+            other_fn = rule.function_b if rule.function_a == function else rule.function_a
+            if other_fn.code in existing_codes:
+                conflicts.append({
+                    'rule':     rule.name,
+                    'ruleDesc': rule.justification,
+                    'setA':     [function.code],
+                    'setB':     [other_fn.code],
+                    'message':  f'{rule.name}: {function.code} incompatible con {other_fn.code}',
+                })
+
+        return Response({'conflicts': conflicts})
+
+
+@extend_schema(
+    summary="UC_PERM_05 — Listar agrupadores (alias accessService)",
+    description=(
+        "Alias de /access/groups/ para compatibilidad con accessService.getGroupers()."
+    ),
+    tags=["Control de Acceso"],
+    responses={200: OpenApiResponse(description='Lista de AccessGroups activos')},
+)
+class GrouperListView(APIView):
+    """
+    accessService.getGroupers()
+    GET /api/access/groupers/
+
+    Alias de /api/access/groups/ para compatibilidad con frontend.
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.view_groups'
+
+    def get(self, request):
+        qs = AccessGroup.objects.filter(is_active=True).order_by('name')
+        serializer = AccessGroupListSerializer(qs, many=True)
+        return Response(serializer.data)
+
+
+@extend_schema(
+    summary="UC_ACC_04 — Asignar agrupador a usuario",
+    description=(
+        "Crea UserAccessGroup. Alias de POST /access/user-groups/."
+    ),
+    tags=["Control de Acceso"],
+    request=inline_serializer('GrouperAssignRequest', fields={
+        'userId':    drf_serializers_module.IntegerField(),
+        'grouperId': drf_serializers_module.IntegerField(),
+    }),
+    responses={
+        201: OpenApiResponse(description='Agrupador asignado'),
+        409: OpenApiResponse(description='Ya pertenece al agrupador'),
+    },
+)
+class GrouperAssignView(APIView):
+    """
+    accessService.assignGrouper(userId, grouperId)
+    POST /api/access/groupers/assign
+    Body: { userId, grouperId }
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'access.assign_functions'
+
+    def post(self, request):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+
+        user_id   = request.data.get('userId')
+        grouper_id = request.data.get('grouperId')
+
+        if not user_id or not grouper_id:
+            return Response(
+                {'error': 'userId and grouperId are required.'}, status=400)
+
+        try:
+            user   = User.objects.get(pk=user_id)
+            group  = AccessGroup.objects.get(pk=grouper_id, is_active=True)
+        except User.DoesNotExist:
+            return Response({'error': 'User not found.'}, status=404)
+        except AccessGroup.DoesNotExist:
+            return Response({'error': 'Group not found.'}, status=404)
+
+        membership, created = UserAccessGroup.objects.get_or_create(
+            user=user, access_group=group,
+            defaults={'granted_by': request.user}
+        )
+
+        if not created:
+            return Response(
+                {'error': 'User already belongs to this group.'}, status=409)
+
+        serializer = UserAccessGroupSerializer(membership)
+        return Response(serializer.data, status=201)
+
+
+# ---------------------------------------------------------------------------
+# G-001: UserFunctionAssignView — UC_ACC_01 (endpoint DRF con auditoría)
+# Distinto de FunctionAssignView (Fase C, compatibilidad IACT-ui)
+# ---------------------------------------------------------------------------
+
+@extend_schema(
+    summary="UC_ACC_01 — Asignar función a usuario (con auditoría)",
+    description=(
+        "Asigna una Function a un usuario creando un UserPermission. "
+        "Verifica SeparationRule activa antes de asignar. "
+        "Emite evento de auditoría ACTION=ACCESS_FUNCTION_ASSIGNED."
+    ),
+    request=inline_serializer("AssignFunctionByIdRequest", fields={
+        "function_id": drf_serializers_module.IntegerField(),
+    }),
+    responses={
+        201: OpenApiResponse(description="Función asignada correctamente"),
+        409: OpenApiResponse(description="Función ya asignada o conflicto de separación"),
+        404: OpenApiResponse(description="Usuario o función no encontrados"),
+    },
+    tags=["Control de Acceso"]
+)
+class UserFunctionAssignView(APIView):
+    """
+    POST /api/access/users/{user_id}/functions/
+    Body: { "function_id": 42 }
+
+    Verifica SeparationRule activa antes de crear UserPermission.
+    Emite AuditLog con action=ACCESS_FUNCTION_ASSIGNED.
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = "access.assign_functions"
+
+    def post(self, request, user_id):
+        from django.contrib.auth import get_user_model
+        from django.db import models as dj_models
+        from apps.audit.models import AuditLog
+
+        User = get_user_model()
+        function_id = request.data.get("function_id")
+
+        if not function_id:
+            return Response(
+                {"error": "function_id is required."}, status=400)
+
+        try:
+            target_user = User.objects.get(pk=user_id)
+            function    = Function.objects.get(pk=function_id, is_active=True)
+        except User.DoesNotExist:
+            return Response({"error": "User not found."}, status=404)
+        except Function.DoesNotExist:
+            return Response({"error": "Function not found or inactive."}, status=404)
+
+        # Verify no duplicate
+        if UserPermission.objects.filter(user=target_user, function=function).exists():
+            return Response(
+                {"error": "Function already assigned to this user."}, status=409)
+
+        # Verify SeparationRule
+        existing_codes = target_user.get_functions()
+        conflict = SeparationRule.objects.filter(
+            status="active"
+        ).filter(
+            dj_models.Q(function_a=function, function_b__code__in=existing_codes) |
+            dj_models.Q(function_b=function, function_a__code__in=existing_codes)
+        ).first()
+
+        if conflict:
+            AuditLog.record(
+                user=request.user,
+                action="ACCESS_FUNCTION_ASSIGN_DENIED",
+                resource=f"User:{user_id}/Function:{function.code}",
+                result="FAILURE",
+                details={"reason": "separation_rule_conflict",
+                         "rule": conflict.name}
+            )
+            return Response({
+                "error":         "Separation rule conflict detected.",
+                "conflict_rule": conflict.name,
+                "function_a":    conflict.function_a.code,
+                "function_b":    conflict.function_b.code,
+            }, status=409)
+
+        # Create UserPermission
+        UserPermission.objects.create(user=target_user, function=function)
+
+        AuditLog.record(
+            user=request.user,
+            action="ACCESS_FUNCTION_ASSIGNED",
+            resource=f"User:{user_id}/Function:{function.code}",
+            result="SUCCESS",
+            details={"function_code":          function.code,
+                     "function_permission_django": function.permission_django}
+        )
+
+        return Response({
+            "function_id":   function.id,
+            "function_code": function.code,
+            "user_id":       user_id,
+        }, status=201)
+
+
+# ---------------------------------------------------------------------------
+# G-002: UserFunctionRevokeView — UC_ACC_02 (endpoint DRF con auditoría)
+# ---------------------------------------------------------------------------
+
+@extend_schema(
+    summary="UC_ACC_02 — Revocar función de usuario (con auditoría)",
+    description=(
+        "Elimina el UserPermission de un usuario para una función. "
+        "Emite evento de auditoría ACTION=ACCESS_FUNCTION_REVOKED."
+    ),
+    responses={
+        204: OpenApiResponse(description="Función revocada correctamente"),
+        404: OpenApiResponse(description="UserPermission no encontrado"),
+    },
+    tags=["Control de Acceso"]
+)
+class UserFunctionRevokeView(APIView):
+    """
+    DELETE /api/access/users/{user_id}/functions/{function_id}/
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = "access.assign_functions"
+
+    def delete(self, request, user_id, function_id):
+        from apps.audit.models import AuditLog
+
+        try:
+            perm = UserPermission.objects.select_related("function").get(
+                user_id=user_id, function_id=function_id)
+        except UserPermission.DoesNotExist:
+            return Response({"error": "UserPermission not found."}, status=404)
+
+        fn_code = perm.function.code
+        perm.delete()
+
+        AuditLog.record(
+            user=request.user,
+            action="ACCESS_FUNCTION_REVOKED",
+            resource=f"User:{user_id}/Function:{fn_code}",
+            result="SUCCESS",
+            details={"function_code": fn_code}
+        )
+
+        return Response(status=204)
+
+
+class MenuItemViewSet(viewsets.ModelViewSet):
+    """
+    CRUD para MenuItem. Requiere permiso manage_menu_catalog (UC_ADM_04).
+
+    CNST-032: MenuItem es wrapper UX — no controla acceso, solo metadata visual.
+    El lifecycle (DRAFT → ACTIVE → DEPRECATED → ARCHIVED) se gestiona via
+    MenuLifecycleService (T-104).
+    """
+    from apps.access.models import MenuItem as _MenuItem
+    from apps.access.serializers import MenuItemSerializer as _MenuItemSerializer
+
+    queryset         = _MenuItem.objects.select_related('function', 'parent').all()
+    serializer_class = _MenuItemSerializer
+
+    def get_permissions(self):
+        from rest_framework.permissions import IsAuthenticated
+        return [IsAuthenticated()]
+
+
+class MenuItemTransitionView(APIView):
+    """
+    POST /api/access/menu-items/{id}/transition/
+
+    Aplica una transición de estado a un MenuItem (UC_ADM_05).
+    Body: {"status": "ACTIVE"} | {"status": "DEPRECATED", "block_reason": "..."}
+
+    Usa MenuLifecycleService — no permite saltar transiciones.
+    """
+
+    def post(self, request, pk):
+        from rest_framework.permissions import IsAuthenticated
+        from rest_framework.response import Response
+        from rest_framework import status as http_status
+        from apps.access.models import MenuItem
+        from apps.access.services.menu_lifecycle_service import (
+            MenuLifecycleService, InvalidTransitionError,
+        )
+
+        try:
+            item = MenuItem.objects.get(pk=pk)
+        except MenuItem.DoesNotExist:
+            return Response({'detail': 'No encontrado.'}, status=http_status.HTTP_404_NOT_FOUND)
+
+        new_status  = request.data.get('status')
+        block_reason = request.data.get('block_reason')
+
+        if not new_status:
+            return Response(
+                {'detail': 'Campo requerido: status.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+
+        try:
+            MenuLifecycleService.transition(item, new_status, block_reason=block_reason)
+        except (InvalidTransitionError, ValueError) as e:
+            return Response({'detail': str(e)}, status=http_status.HTTP_400_BAD_REQUEST)
+
+        return Response({
+            'id':     item.pk,
+            'status': item.status,
+            'allowed_next': MenuLifecycleService.get_allowed_transitions(item),
         })

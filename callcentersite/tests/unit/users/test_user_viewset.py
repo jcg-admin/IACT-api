@@ -10,7 +10,7 @@ from rest_framework import status
 from unittest.mock import patch, MagicMock
 
 from apps.users.models import User
-from tests.factories.user_factory import UserFactory, AdminUserFactory
+from tests.test_data.user_test_data import UserTestData, AdminUserTestData
 
 
 @pytest.mark.django_db
@@ -20,11 +20,11 @@ class TestUserViewSetList:
     def test_list_users_with_permission(self, api_client):
         """Test: Listar usuarios requiere permission 'users.view'."""
         # Crear admin con permission
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         # Crear algunos usuarios
-        UserFactory.create_batch(3)
+        UserTestData.create_batch(3)
         
         # Mock has_function para simular permission
         with patch.object(User, 'has_function', return_value=True):
@@ -35,7 +35,7 @@ class TestUserViewSetList:
     
     def test_list_users_without_permission(self, api_client):
         """Test: Sin permission 'users.view' retorna 403."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         # Mock has_function retorna False
@@ -52,12 +52,12 @@ class TestUserViewSetList:
     
     def test_list_users_filter_by_is_active(self, api_client):
         """Test: Filtrar usuarios por is_active."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         # Crear usuarios activos e inactivos
-        UserFactory.create_batch(2, is_active=True)
-        UserFactory.create_batch(1, is_active=False)
+        UserTestData.create_batch(2, is_active=True)
+        UserTestData.create_batch(1, is_active=False)
         
         with patch.object(User, 'has_function', return_value=True):
             response = api_client.get('/api/users/?is_active=true')
@@ -69,12 +69,12 @@ class TestUserViewSetList:
     
     def test_list_users_search(self, api_client):
         """Test: Buscar usuarios por username/email."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         # Crear usuario con username específico
-        UserFactory(username='johnsmith', email='john@example.com')
-        UserFactory(username='janedoe')
+        UserTestData(username='johnsmith', email='john@example.com')
+        UserTestData(username='janedoe')
         
         with patch.object(User, 'has_function', return_value=True):
             response = api_client.get('/api/users/?search=john')
@@ -89,7 +89,7 @@ class TestUserViewSetCreate:
     
     def test_create_user_with_permission(self, api_client):
         """Test: Crear usuario requiere permission 'users.create'."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         data = {
@@ -109,7 +109,7 @@ class TestUserViewSetCreate:
     
     def test_create_user_password_mismatch(self, api_client):
         """Test: Passwords no coinciden retorna error."""
-        admin = AdminUserFactory()
+        admin = AdminUserTestData()
         api_client.force_authenticate(user=admin)
         
         data = {
@@ -127,7 +127,7 @@ class TestUserViewSetCreate:
     
     def test_create_user_without_permission(self, api_client):
         """Test: Sin permission 'users.create' retorna 403."""
-        user = UserFactory()
+        user = UserTestData()
         api_client.force_authenticate(user=user)
         
         data = {
@@ -149,8 +149,8 @@ class TestUserViewSetRetrieve:
     
     def test_retrieve_user_with_permission(self, api_client):
         """Test: Ver detalle de usuario."""
-        admin = AdminUserFactory()
-        user = UserFactory(username='testuser')
+        admin = AdminUserTestData()
+        user = UserTestData(username='testuser')
         api_client.force_authenticate(user=admin)
         
         with patch.object(User, 'has_function', return_value=True):
@@ -167,8 +167,8 @@ class TestUserViewSetUpdate:
     
     def test_update_user_with_permission(self, api_client):
         """Test: Actualizar usuario."""
-        admin = AdminUserFactory()
-        user = UserFactory(first_name='Old')
+        admin = AdminUserTestData()
+        user = UserTestData(first_name='Old')
         api_client.force_authenticate(user=admin)
         
         data = {'first_name': 'New', 'last_name': 'Name'}
@@ -187,8 +187,8 @@ class TestUserViewSetDestroy:
     
     def test_delete_user_with_permission(self, api_client):
         """Test: Soft delete de usuario."""
-        admin = AdminUserFactory()
-        user = UserFactory()
+        admin = AdminUserTestData()
+        user = UserTestData()
         api_client.force_authenticate(user=admin)
         
         with patch.object(User, 'has_function', return_value=True):
@@ -207,8 +207,8 @@ class TestUserViewSetCustomActions:
     
     def test_activate_user(self, api_client):
         """Test: Activar usuario."""
-        admin = AdminUserFactory()
-        user = UserFactory(is_active=False)
+        admin = AdminUserTestData()
+        user = UserTestData(is_active=False)
         api_client.force_authenticate(user=admin)
         
         data = {'is_active': True, 'reason': 'Usuario verificado'}
@@ -222,8 +222,8 @@ class TestUserViewSetCustomActions:
     
     def test_deactivate_user(self, api_client):
         """Test: Desactivar usuario."""
-        admin = AdminUserFactory()
-        user = UserFactory(is_active=True)
+        admin = AdminUserTestData()
+        user = UserTestData(is_active=True)
         api_client.force_authenticate(user=admin)
         
         data = {'is_active': False, 'reason': 'Usuario reportado'}

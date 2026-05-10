@@ -128,7 +128,7 @@ class Command(BaseCommand):
             # Pipeline
             {
                 'code': 'MOD_Pipeline',
-                'name': 'Pipeline ETL',
+                'name': 'Estado del Pipeline',
                 'description': 'Pipeline ETL de datos',
                 'parent_code': None,
                 'order': 9,

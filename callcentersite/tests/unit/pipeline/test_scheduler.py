@@ -38,17 +38,19 @@ class TestETLScheduler:
         # Limpiar
         ETLScheduler.stop()
     
-    def test_scheduler_job_interval_12_hours(self):
-        """Job ETL configurado para cada 12 horas."""
+    def test_scheduler_job_cron_02am(self):
+        """Job ETL configurado para las 02:00 AM diario (CronTrigger)."""
         ETLScheduler.start()
         
         job = ETLScheduler.scheduler.get_job('etl_job')
         
-        # Verificar trigger es IntervalTrigger
         assert job is not None
-        assert 'interval' in str(type(job.trigger)).lower()
+        # CronTrigger, no IntervalTrigger
+        assert 'cron' in str(type(job.trigger)).lower()
+        # Dispara a las 02:00
+        trigger_str = str(job.trigger)
+        assert '2' in trigger_str  # hora=2
         
-        # Limpiar
         ETLScheduler.stop()
     
     def test_scheduler_idempotent_start(self):

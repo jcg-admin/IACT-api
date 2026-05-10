@@ -18,6 +18,7 @@ from apps.users.serializers import (
     UserListSerializer,
     # UserDetailSerializer,  # TODO: No existe - usando UserSerializer temporalmente
 )
+from apps.users.serializers.user_serializer import UserCreateSerializer
 from apps.users.filters import UserFilter
 
 # [SUCCESS] BEST PRACTICE: Use get_user_model() instead of direct import
@@ -73,7 +74,9 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action == 'list':
             return UserListSerializer
         elif self.action == 'retrieve':
-            return UserSerializer  # TODO: Debería ser UserDetailSerializer cuando exista
+            return UserSerializer
+        if self.action == 'create':
+            return UserCreateSerializer
         return UserSerializer
     
     def perform_destroy(self, instance):

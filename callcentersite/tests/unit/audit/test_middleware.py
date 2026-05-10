@@ -1,10 +1,11 @@
 import pytest
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
+User = get_user_model()
 from django.test import RequestFactory
 from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 from apps.audit.models import AuditLog
-from apps.audit.middleware.session_security import SessionSecurityMiddleware
+from apps.audit.middleware.session_security import SessionSecurityPolicy
 
 
 @pytest.mark.unit
@@ -106,7 +107,7 @@ class TestSessionSecurityMiddleware:
         factory = RequestFactory()
         request = factory.get('/', HTTP_X_FORWARDED_FOR='10.0.0.1, 192.168.1.1')
         
-        middleware = SessionSecurityMiddleware(lambda r: None)
+        middleware = SessionSecurityPolicy(lambda r: None)
         ip = middleware.get_client_ip(request)
         
         # Debe tomar la primera IP
@@ -118,7 +119,7 @@ class TestSessionSecurityMiddleware:
         request = factory.get('/')
         request.META['REMOTE_ADDR'] = '192.168.1.50'
         
-        middleware = SessionSecurityMiddleware(lambda r: None)
+        middleware = SessionSecurityPolicy(lambda r: None)
         ip = middleware.get_client_ip(request)
         
         assert ip == '192.168.1.50'

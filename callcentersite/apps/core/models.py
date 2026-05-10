@@ -3,14 +3,14 @@ Abstract base models for the IACT API.
 
 REPARACION v1.0.1 — 2026-04-30:
   Se restauran los modelos abstractos que el resto de las apps esperan importar.
-  La implementacion real de SoftDeleteMixin/SoftDeleteManager vive en utils/models.py
+  La implementacion real de SoftDeleteMixin/ActiveRecordQuery vive en utils/models.py
   y se re-exporta aqui para mantener compatibilidad de imports.
 
 Modelos disponibles:
   - TimestampedModel    (created_at, updated_at)
   - TimeStampedModel    (alias de TimestampedModel para compatibilidad)
   - SoftDeleteMixin     (is_deleted, deleted_at, delete(), restore())
-  - SoftDeleteManager   (filtra is_deleted=False por defecto)
+  - ActiveRecordQuery   (filtra is_deleted=False por defecto)
   - AuditedModel        (created_by, updated_by + timestamps)
   - CompleteBaseModel   (timestamps + audit + soft-delete)
 """
@@ -20,7 +20,7 @@ from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 
 # Re-exportar desde utils para compatibilidad de imports
-from apps.utils.models import SoftDeleteMixin, SoftDeleteManager, SoftDeleteQuerySet
+from apps.utils.models import SoftDeleteMixin, ActiveRecordQuery, SoftDeleteQuerySet
 
 
 # ==============================================================================

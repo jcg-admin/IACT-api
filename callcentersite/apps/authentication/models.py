@@ -12,7 +12,7 @@ CORRECCIONES v1.0.0:
 [SUCCESS] Heredar de TimeStampedModel (NO duplicar created_at, updated_at)
 [SUCCESS] Heredar de SoftDeleteMixin donde aplique
 [SUCCESS] Heredar de CompleteBaseModel para auditoría completa
-[SUCCESS] Usar SoftDeleteManager
+[SUCCESS] Usar ActiveRecordQuery
 """
 
 from django.db import models
@@ -26,7 +26,7 @@ from apps.core.models import (
     SoftDeleteMixin,
     AuditedModel,
     CompleteBaseModel,
-    SoftDeleteManager
+    ActiveRecordQuery
 )
 
 User = get_user_model()
@@ -162,7 +162,7 @@ class SecurityQuestion(TimeStampedModel, SoftDeleteMixin):
     # [SUCCESS] NO CREAR created_at - heredado de TimeStampedModel
     # [SUCCESS] NO CREAR is_deleted, deleted_at - heredado de SoftDeleteMixin
     
-    objects = SoftDeleteManager()  # [SUCCESS] Manager con active(), deleted()
+    objects = ActiveRecordQuery()  # [SUCCESS] Manager con active(), deleted()
     
     class Meta:
         db_table = 'tbl_preguntas_seguridad'
@@ -229,7 +229,7 @@ class UserSecurityAnswer(CompleteBaseModel):
     # [SUCCESS] NO CREAR created_by, updated_by - heredados de CompleteBaseModel
     # [SUCCESS] NO CREAR is_deleted, deleted_at - heredados de CompleteBaseModel
     
-    objects = SoftDeleteManager()  # [SUCCESS] Manager
+    objects = ActiveRecordQuery()  # [SUCCESS] Manager
     
     class Meta:
         db_table = 'tbl_respuestas_seguridad'
@@ -365,7 +365,7 @@ class SessionLog(CompleteBaseModel):
     # [SUCCESS] NO CREAR created_by, updated_by - heredados
     # [SUCCESS] NO CREAR is_deleted, deleted_at - heredados
     
-    objects = SoftDeleteManager()  # [SUCCESS] Manager
+    objects = ActiveRecordQuery()  # [SUCCESS] Manager
     
     class Meta:
         db_table = 'tbl_log_sesiones'
@@ -581,7 +581,7 @@ class LoginLockout(TimeStampedModel):
 #   [SUCCESS] TimeStampedModel: created_at, updated_at
 #   [SUCCESS] SoftDeleteMixin: is_deleted, deleted_at, delete(), restore()
 #   [SUCCESS] CompleteBaseModel: Combina los 3
-#   [SUCCESS] SoftDeleteManager: active(), deleted()
+#   [SUCCESS] ActiveRecordQuery: active(), deleted()
 # 
 # CNST-010 Compliance:
 #   [SUCCESS] LoginLockout usa PostgreSQL (NO cache/Redis)

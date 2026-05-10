@@ -56,7 +56,6 @@ class UserSerializer(serializers.ModelSerializer):
             'last_name',
             'full_name',
             'phone',
-            'position',
             'avatar',
             'avatar_url',
             'is_active',
@@ -115,7 +114,6 @@ class UserListSerializer(serializers.ModelSerializer):
             'username',
             'email',
             'full_name',
-            'position',
             'is_active',
             'last_login',
         )
@@ -206,7 +204,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'phone',
-            'position',
         ]
     
     def validate(self, data):
@@ -263,7 +260,6 @@ class UserCreateSerializer(serializers.ModelSerializer):
             first_name=validated_data.get('first_name', ''),
             last_name=validated_data.get('last_name', ''),
             phone=validated_data.get('phone'),
-            position=validated_data.get('position'),
         )
         
         return user
@@ -297,7 +293,6 @@ class UserUpdateSerializer(serializers.ModelSerializer):
             'first_name',
             'last_name',
             'phone',
-            'position',
         ]
     
     def update(self, instance, validated_data):

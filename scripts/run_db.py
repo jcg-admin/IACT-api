@@ -127,13 +127,13 @@ MANAGE_PY = os.path.join(DJANGO_DIR, "manage.py")
 # Constants for file and directory names
 APPS_DIR_NAME = "apps"
 MIGRATIONS_DIR_NAME = "migrations"
-DB_FILENAME = "db.sqlite3"
+# Las bases de datos (PostgreSQL + MariaDB) son gestionadas por IACT-db.
 INIT_FILENAME = "__init__.py"
 PYTHON_EXTENSION = ".py"
 
 # Derived paths
 APPS_DIR = os.path.join(DJANGO_DIR, APPS_DIR_NAME)
-DB_FILE = os.path.join(DJANGO_DIR, DB_FILENAME)
+# Ver: IACT-db/docs/architecture/SEPARACION-IACT-API.md
 
 # Verify manage.py exists
 if not os.path.isfile(MANAGE_PY):
@@ -260,21 +260,20 @@ def option_delete_migrations():
 
 
 def option_delete_database():
-    """Option 6: Delete Database"""
-    print_header("DELETE DATABASE")
-    print_warning("This will DELETE the database file!")
-    confirm = input("Type 'yes' to confirm: ").strip()
-
-    if confirm != "yes":
-        print_warning("Cancelled")
-        return
-
-    print_info("Deleting database...")
-
-    if delete_file(DB_FILE, show_size=True):
-        print_success("Database deleted")
-    else:
-        print_info("Database file not found (already deleted or doesn't exist)")
+    """Option 6: Database management is handled by IACT-db."""
+    print_header("DATABASE MANAGEMENT")
+    print_warning(
+        "IACT-api does not manage its databases directly.\n"
+        "  PostgreSQL (iact_analytics) and MariaDB (ivr_legacy)\n"
+        "  are provisioned and managed by the IACT-db repository.\n"
+        "\n"
+        "  To recreate the PostgreSQL database:\n"
+        "    See IACT-db/docs/architecture/HALLAZGOS-IACT-API-2026-05-07.md\n"
+        "\n"
+        "  To reset migrations:\n"
+        "    python manage.py migrate <app> zero\n"
+        "    python manage.py migrate"
+    )
 
 
 def option_make_and_migrate():

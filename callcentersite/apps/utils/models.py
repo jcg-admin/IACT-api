@@ -3,7 +3,7 @@ Utilidades reutilizables para modelos Django.
 
 Incluye:
 - SoftDeleteQuerySet: QuerySet con soporte para delete lógico
-- SoftDeleteManager: Manager para modelos con delete lógico
+- ActiveRecordQuery: Manager para modelos con delete lógico
 - SoftDeleteMixin: Mixin para agregar funcionalidad de delete lógico
 """
 from django.db import models
@@ -73,7 +73,7 @@ class SoftDeleteQuerySet(models.QuerySet):
         return self.all()
 
 
-class SoftDeleteManager(models.Manager):
+class ActiveRecordQuery(models.Manager):
     """
     Manager personalizado para modelos con delete lógico.
     
@@ -150,7 +150,7 @@ class SoftDeleteMixin(models.Model):
         help_text="Fecha y hora en que se eliminó el registro"
     )
     
-    objects = SoftDeleteManager()
+    objects = ActiveRecordQuery()
     
     class Meta:
         abstract = True
