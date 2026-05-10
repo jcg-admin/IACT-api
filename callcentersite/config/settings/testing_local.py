@@ -15,6 +15,10 @@ DATABASES['default']['TEST'] = {
 }
 
 DATABASES['ivr']['TEST'] = {
+    # 'test_ivr_legacy' = 'test_' + DB_MARIADB_NAME (default: 'ivr_legacy').
+    # El provisioner (provisioners/mariadb/setup.sh) crea esta BD con
+    # GRANT CREATE, DROP en test_* al usuario django_user.
+    # Debe coincidir con DB_MARIADB_NAME definido en .env o su default.
     'NAME': 'test_ivr_legacy',
     'MIGRATE': False,
     'CREATE_DB': False,

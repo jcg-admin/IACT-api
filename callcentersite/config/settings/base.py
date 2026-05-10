@@ -171,8 +171,11 @@ DATABASES = {
     'ivr': {
         'ENGINE': 'django.db.backends.mysql',
         'NAME': config('IVR_DB_NAME', default='ivr_legacy'),
-        'USER': config('IVR_DB_USER', default='ivr_readonly'),
-        'PASSWORD': config('IVR_DB_PASSWORD', default='ivr_readonly_password'),
+        # H-MDB-014: default alineado con el usuario que crea provisioners/mariadb/setup.sh.
+        # El default anterior ('ivr_readonly') no coincidía con el usuario provisionado,
+        # causando 'Access denied' si el .env no estaba presente.
+        'USER': config('IVR_DB_USER', default='django_user'),
+        'PASSWORD': config('IVR_DB_PASSWORD', default='django_pass'),
         'HOST': config('IVR_DB_HOST', default='localhost'),
         'PORT': config('IVR_DB_PORT', default='3306'),
         'OPTIONS': {
