@@ -1,6 +1,6 @@
 # Arquitectura de configuración — IACT-api
 
-**Versión:** 1.0.0 | **Fecha:** 2026-05-09
+**Versión:** 1.1.0 | **Fecha:** 2026-05-10
 
 ## Principio fundamental
 
@@ -54,6 +54,40 @@ IVR_DB_SOCKET=/run/mysqld/mysqld.sock
 IVR_QUERY_TIMEOUT_SEC=30
 ```
 
+## Variables PostgreSQL (`iact_analytics`)
+
+| Variable | Default en `base.py` | Descripción |
+|---|---|---|
+| `DB_NAME` | `iact_analytics` | Nombre de la BD analítica |
+| `DB_USER` | `iact_user` | Usuario de Django |
+| `DB_PASSWORD` | `iact_password_dev` | Contraseña |
+| `DB_SOCKET` | `` (vacío) | Path del socket Unix; si vacío, usa TCP |
+| `DB_HOST` | `localhost` | Host TCP (ignorado si `DB_SOCKET` tiene valor) |
+| `DB_PORT` | `5432` | Puerto TCP (ignorado si `DB_SOCKET` tiene valor) |
+
+## Variables MariaDB (`ivr_legacy`)
+
+| Variable | Default en `base.py` | Descripción |
+|---|---|---|
+| `IVR_DB_NAME` | `ivr_legacy` | Base de datos del sistema IVR |
+| `IVR_DB_USER` | `django_user` | Usuario de Django (READ-ONLY — CNST-003) |
+| `IVR_DB_PASSWORD` | `django_pass` | Contraseña |
+| `IVR_DB_SOCKET` | `/run/mysqld/mysqld.sock` | Path del socket Unix; si vacío, usa TCP |
+| `IVR_DB_HOST` | `localhost` | Host TCP (ignorado si `IVR_DB_SOCKET` tiene valor) |
+| `IVR_DB_PORT` | `3306` | Puerto TCP (ignorado si `IVR_DB_SOCKET` tiene valor) |
+| `IVR_QUERY_TIMEOUT_SEC` | `30` | Timeout en segundos para `cursor.execute()` en la BD ivr |
+
+Para desarrollo local con TCP, eliminar o vaciar `IVR_DB_SOCKET` en el `.env`:
+
+```
+IVR_DB_SOCKET=
+IVR_DB_HOST=127.0.0.1
+IVR_DB_PORT=3306
+```
+
+Ver detalles de aprovisionamiento y objetos requeridos:
+`docs/setup/PREREQUISITOS-MARIADB.md`
+
 ## Prerequisito para socket Unix en PostgreSQL
 
 `pg_hba.conf` necesita antes de la línea `peer` genérica:
@@ -65,6 +99,8 @@ local   all   all           peer
 `django_user` no existe como usuario OS — `peer` auth falla.
 `scram-sha-256` local permite auth con password.
 
+Ver detalles: `docs/setup/PREREQUISITOS-POSTGRESQL.md`
+
 ## Guía rápida
 
 | Quiero cambiar... | Va en |
@@ -74,4 +110,6 @@ local   all   all           peer
 | Activar HTTPS | `production.py` |
 | Contraseña de BD | `.env` → `DB_PASSWORD` |
 | DEBUG | `production.py` / `development.py` |
-| Socket Unix | `.env` → `DB_SOCKET` |
+| Socket Unix PostgreSQL | `.env` → `DB_SOCKET` |
+| Socket Unix MariaDB | `.env` → `IVR_DB_SOCKET` |
+| Timeout IVR | `.env` → `IVR_QUERY_TIMEOUT_SEC` |
