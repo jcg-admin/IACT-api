@@ -89,6 +89,26 @@ def get_center_menus(quarter: str, segment: str = 'todas') -> list[dict]:
     return _call_sp('sp_rpt_menu_centro', [quarter, segment])
 
 
+def get_abandonment_summary(quarter: str) -> list[dict]:
+    """
+    Resumen ejecutivo de abandono con jerarquía completa.
+    Llama: sp_rpt_resumen_abandono_rollup(p_quarter)
+
+    Retorna ~13 filas con jerarquía WITH ROLLUP:
+      - Detalle: (segmento, menu)
+      - Subtotal por segmento: (segmento, '--- SUBTOTAL ---')
+      - Grand total: ('TOTAL', '--- SUBTOTAL ---')
+
+    Columnas: segmento, menu, abandonadas, pct_del_quarter
+
+    pct_del_quarter es % sobre el total de los 3 menús de abandono
+    (no % del total del quarter). Fila TOTAL siempre muestra 100.00.
+
+    El SP no acepta p_segmento — siempre devuelve los 3 segmentos.
+    """
+    return _call_sp('sp_rpt_resumen_abandono_rollup', [quarter])
+
+
 # Segmentos y quarters validos para validacion en views
 VALID_SEGMENTS = {'todas', 'nacional_A', 'nacional_B', 'puebla'}
 

@@ -5,7 +5,7 @@ Center, Service, CallRecord y CallNote eliminados en FASE 3.
 UC_OPR/UC_SUP/UC_CLI están fuera del scope analítico de IACT-api.
 """
 from django.urls import path
-from .views import etl_status, etl_errors, etl_data_availability, etl_retry, ivr_health
+from .views import etl_status, etl_errors, etl_data_availability, etl_retry, ivr_health, etl_performance
 
 app_name = 'pipeline'
 
@@ -24,4 +24,7 @@ urlpatterns = [
 
     # ivr-health — MariaDB connectivity check
     path('ivr-health/',        ivr_health,            name='ivr-health'),
+
+    # v_etl_rendimiento — regresiones de rendimiento por step
+    path('performance/',       etl_performance,       name='etl-performance'),
 ]

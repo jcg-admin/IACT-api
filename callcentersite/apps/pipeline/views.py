@@ -550,3 +550,90 @@ def ivr_health(request):
             {'status': 'error', 'detail': str(e)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
+
+
+@extend_schema(
+    summary="ETL step performance — regresiones vía LAG()",
+    description=(
+        "Lee v_etl_rendimiento en MariaDB ivr_legacy. "
+        "Muestra duracion_seg, duracion_anterior_seg y delta_seg por step. "
+        "delta_seg > 0: regresión (tardó más); delta_seg < 0: mejora; "
+        "delta_seg = NULL: primera ejecución registrada del step. "
+        "Solo incluye ejecuciones con status=SUCCESS."
+    ),
+    parameters=[
+        OpenApiParameter(
+            'step_name', str, required=False,
+            description=(
+                "Filtrar por paso del pipeline: "
+                "etl_base_detalle | etl_base_clientes | validacion | maestro"
+            ),
+        ),
+        OpenApiParameter(
+            'limit', int, required=False,
+            description="Máximo de registros a retornar (default: 50, máx: 200).",
+        ),
+    ],
+    responses={
+        200: OpenApiResponse(description="Regresiones de rendimiento por step"),
+        503: OpenApiResponse(description="MariaDB no disponible"),
+    },
+    tags=["Estado del Pipeline"],
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasFunction])
+def etl_performance(request):
+    """
+    GET /api/pipeline/performance/
+
+    Lee v_etl_rendimiento — duracion_seg, duracion_anterior_seg y delta_seg
+    por step del pipeline ETL. Usa LAG() sobre job_execution_log (status=SUCCESS).
+    Permite detectar regresiones de rendimiento entre ejecuciones consecutivas.
+    """
+    if not (request.user.is_superuser or
+            request.user.has_function('pipeline.view_status')):
+        return Response(
+            {'error': 'Function pipeline.view_status required.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    step_name = request.query_params.get('step_name')
+    try:
+        limit = min(200, max(1, int(request.query_params.get('limit', 50))))
+    except (ValueError, TypeError):
+        limit = 50
+
+    conditions = []
+    params     = []
+    if step_name:
+        conditions.append('step_name = %s')
+        params.append(step_name)
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ''
+
+    sql = f"""
+        SELECT job_name, quarter_name, step_name, status,
+               start_time, duracion_seg, duracion_anterior_seg, delta_seg
+        FROM v_etl_rendimiento
+        {where}
+        ORDER BY step_name, start_time DESC
+        LIMIT %s
+    """
+    params.append(limit)
+
+    try:
+        with connections['ivr'].cursor() as cursor:
+            cursor.execute(sql, params)
+            cols  = [c[0] for c in cursor.description]
+            steps = [dict(zip(cols, row)) for row in cursor.fetchall()]
+    except OperationalError as e:
+        return Response(
+            {'error': 'Could not connect to MariaDB.', 'detail': str(e)},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    return Response({
+        'total':     len(steps),
+        'limit':     limit,
+        'step_name': step_name,
+        'steps':     steps,
+    })

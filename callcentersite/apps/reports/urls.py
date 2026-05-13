@@ -17,6 +17,7 @@ from .ivr_views import (
     CMENUErrorView,
     CentrosXSegmentoView,
     MenusIVRView,
+    AbandonmentSummaryView,
 )
 
 router = DefaultRouter()
@@ -42,4 +43,5 @@ urlpatterns = [
     path('ivr/menu-redirigidos/', MenuRedirigidosView.as_view(),  name='ivr-menu-redirigidos'),
     path('ivr/menu-centro/',      MenuCentroView.as_view(),       name='ivr-menu-centro'),
     path('ivr/menus/',              MenusIVRView.as_view(),              name='ivr-menus'),
+    path('ivr/abandonment-summary/', AbandonmentSummaryView.as_view(),  name='ivr-abandonment-summary'),
 ]

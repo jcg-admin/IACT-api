@@ -275,3 +275,44 @@ class MenuCentroView(APIView):
         if errors:
             return Response({'errors': errors}, status=status.HTTP_400_BAD_REQUEST)
         return _ivr_response(svc.get_center_menus, quarter, segment)
+
+
+@extend_schema(
+    summary="Resumen ejecutivo de abandono con jerarquía completa",
+    description=(
+        "Invoca sp_rpt_resumen_abandono_rollup(p_quarter) en MariaDB. "
+        "Retorna ~13 filas con jerarquía WITH ROLLUP: "
+        "detalle (segmento, menu), subtotal por segmento y grand total. "
+        "pct_del_quarter es % sobre el total de los 3 menús de abandono — "
+        "la fila TOTAL siempre muestra 100.00. "
+        "El SP no acepta p_segmento: devuelve siempre los 3 segmentos."
+    ),
+    parameters=[_IVR_QUARTER_PARAM],
+    responses={
+        200: OpenApiResponse(description="Jerarquía de abandono (~13 filas)"),
+        400: OpenApiResponse(description="Quarter inválido"),
+        503: OpenApiResponse(description="MariaDB no disponible"),
+    },
+    tags=["Reportes de Llamadas"],
+)
+class AbandonmentSummaryView(APIView):
+    """
+    Resumen ejecutivo de abandono — sp_rpt_resumen_abandono_rollup.
+
+    GET /api/reports/ivr/abandonment-summary/?quarter=Q01_25
+
+    Columnas de respuesta: segmento, menu, abandonadas, pct_del_quarter.
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view_ivr'
+
+    def get(self, request):
+        quarter = request.query_params.get('quarter', 'Q01_25')
+        errors  = _validate(quarter=quarter)
+        if errors:
+            return Response({'errors': errors}, status=400)
+        return _ivr_response(
+            svc.get_abandonment_summary,
+            quarter,
+            extra={'quarter': quarter},
+        )
