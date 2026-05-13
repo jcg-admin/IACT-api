@@ -229,21 +229,31 @@ class IvrMenusView(APIView):
                               extra={'quarter': quarter, 'vista': vista, 'segment': segment})
 
 
+@extend_schema(
+    summary="UC_RPT_16 — Menús redirigidos: opciones elegidas por el llamante",
+    description=(
+        "Invoca sp_rpt_menu_redirigidos(p_quarter, p_segmento) en MariaDB. "
+        "Retorna la distribución de opciones elegidas por el llamante en cada menú IVR. "
+        "Grain: menu × opcion. Denominador: total de llamadas del menú en el segmento."
+    ),
+    parameters=[_IVR_QUARTER_PARAM, _IVR_SEGMENTO_PARAM],
+    responses={
+        200: OpenApiResponse(description="Distribución de opciones por menú IVR"),
+        400: OpenApiResponse(description="Quarter o segmento inválido"),
+        503: OpenApiResponse(description="MariaDB no disponible"),
+    },
+    tags=["Reportes de Llamadas"],
+)
 class RedirectedMenusView(APIView):
     """
-    GET /api/reports/ivr/menu-redirigidos/
+    UC_RPT_16 — Menús redirigidos.
+    GET /api/reports/ivr/menu-redirigidos/?quarter=Q01_25&segment=todas
     Distribución de opciones elegidas por el llamante en cada menú IVR.
     Grain: menu × opcion. Fuente: sp_rpt_menu_redirigidos.
     """
     permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view_ivr'
 
-    @extend_schema(
-        parameters=[
-            OpenApiParameter('quarter', str, description='Q0N_YY'),
-            OpenApiParameter('segment', str, description='todas|nacional_A|nacional_B|puebla'),
-        ],
-        responses={200: OpenApiTypes.OBJECT, 503: OpenApiResponse(description="MariaDB no disponible")},
-    )
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
         segment = request.query_params.get('segment', 'todas')
@@ -253,21 +263,32 @@ class RedirectedMenusView(APIView):
         return _ivr_response(svc.get_redirected_menus, quarter, segment)
 
 
+@extend_schema(
+    summary="UC_RPT_16 — Menú centro: centros de transferencia por menú IVR",
+    description=(
+        "Invoca sp_rpt_menu_centro(p_quarter, p_segmento) en MariaDB. "
+        "Retorna la distribución de centros de transferencia por menú IVR. "
+        "Grain: menu × centro_transferencia. "
+        "Denominador: total de llamadas del menú en el segmento."
+    ),
+    parameters=[_IVR_QUARTER_PARAM, _IVR_SEGMENTO_PARAM],
+    responses={
+        200: OpenApiResponse(description="Distribución de centros de transferencia por menú IVR"),
+        400: OpenApiResponse(description="Quarter o segmento inválido"),
+        503: OpenApiResponse(description="MariaDB no disponible"),
+    },
+    tags=["Reportes de Llamadas"],
+)
 class CenterMenuView(APIView):
     """
-    GET /api/reports/ivr/menu-centro/
+    UC_RPT_16 — Menú centro.
+    GET /api/reports/ivr/menu-centro/?quarter=Q01_25&segment=todas
     Distribución de centros de transferencia por menú IVR.
     Grain: menu × centro_transferencia. Fuente: sp_rpt_menu_centro.
     """
     permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'reports.view_ivr'
 
-    @extend_schema(
-        parameters=[
-            OpenApiParameter('quarter', str, description='Q0N_YY'),
-            OpenApiParameter('segment', str, description='todas|nacional_A|nacional_B|puebla'),
-        ],
-        responses={200: OpenApiTypes.OBJECT, 503: OpenApiResponse(description="MariaDB no disponible")},
-    )
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
         segment = request.query_params.get('segment', 'todas')
