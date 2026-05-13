@@ -135,12 +135,11 @@ ANALISIS-INTEGRACION-IACT-DB para el código de los endpoints faltantes.
 ```
 REQUEST:
   Cliente HTTP
-      │ HTTPS / HTTP
+      │ HTTPS / HTTP (puerto 80 / 443)
       ▼
-  Nginx (reverse proxy, opcional)
-      │ HTTP (localhost)
-      ▼
-  Gunicorn  (WSGI workers)
+  Apache 2.4 + mod_wsgi
+      │ WSGIDaemonProcess iact  processes=2  threads=4
+      │ Django WSGI application (wsgi.py)
       │ Python → mysqlclient 2.2.1 (C extension sobre libmysqlclient)
       │ alias connections['ivr']
       │
@@ -227,18 +226,42 @@ IVR_DB_HOST=localhost                   ← ignorado
    → conexión se cierra (CONN_MAX_AGE=0 default)
 ```
 
-### Gestión de conexiones en Django
+### Servidor WSGI: Apache 2.4 + mod_wsgi
+
+La configuración real del proyecto está en `scripts/apache/iact-apache.conf`:
+
+```apache
+WSGIDaemonProcess iact \
+    python-home=${VENV_DIR} \
+    python-path=${DJANGO_DIR} \
+    processes=2 \
+    threads=4 \
+    display-name=%{GROUP}
+```
+
+Esto crea **2 procesos Python** con **4 threads cada uno** = hasta 8 requests
+concurrentes. Las conexiones Django (`connections['ivr']`) son **thread-local**
+en mod_wsgi daemon mode — cada thread mantiene su propia conexión, independiente
+de los otros threads del mismo proceso.
+
+Nota: `requirements/production.txt` incluye también `gunicorn==21.2.0` como
+alternativa viable, pero el despliegue documentado usa Apache + mod_wsgi.
+
+### Gestión de conexiones en Django con mod_wsgi
 
 Django **no tiene connection pooling nativo**. Con `CONN_MAX_AGE=0` (default):
 - Cada request abre una conexión al primer `cursor()`
 - La conexión se cierra al terminar el request
-- Con Unix socket, abrir/cerrar una conexión es casi gratuito (microsegundos)
+- Con Unix socket (misma VPS), abrir/cerrar es gratuito (~microsegundos)
+- Con 2 procesos × 4 threads: máximo **8 conexiones simultáneas** a MariaDB
 
 Con `CONN_MAX_AGE=N` segundos (no configurado actualmente):
-- Django reutiliza la conexión durante N segundos por worker
+- Django reutiliza la conexión durante N segundos por thread
+- Con mod_wsgi daemon mode: los threads son persistentes → la conexión se
+  reutiliza entre requests del mismo thread durante N segundos
 - Seguro con Unix socket (misma máquina)
-- Con TCP requiere que MariaDB tenga `wait_timeout` > N
-- Evita el overhead de reconexión en cargas altas
+- Con TCP requiere que MariaDB `wait_timeout` > N para no cerrar la conexión idle
+- Reduce la tasa de apertura de conexiones bajo carga sostenida
 
 ### Garantías que provee el Unix socket
 
@@ -301,10 +324,11 @@ ufw deny 3306
 ┌──────────────────────────────────────────────┐
 │  VPS Ubuntu 24.04                            │
 │                                              │
-│  ┌─────────────┐  unix_socket  ┌──────────┐ │
-│  │  IACT-api   │◄─────────────►│  IACT-db │ │
-│  │  Django     │ mysqld.sock   │  MariaDB │ │
-│  └─────────────┘               └──────────┘ │
+│  ┌─────────────────┐  unix   ┌──────────┐   │
+│  │  IACT-api        │◄───────►│  IACT-db │   │
+│  │  Apache+mod_wsgi │ socket  │  MariaDB │   │
+│  │  2 proc × 4 thr  │ .sock   │          │   │
+│  └─────────────────┘         └──────────┘   │
 │  ┌──────────────────────────┐               │
 │  │  PostgreSQL              │               │
 │  └──────────────────────────┘               │
@@ -334,7 +358,7 @@ simplicidad operacional supera la resiliencia.
 │  Ubuntu 24.04         │                           │  Ubuntu 24.04         │
 │                      │                           │                      │
 │  IACT-api            │◄──────── TCP 3306 ───────►│  IACT-db             │
-│  Django + Gunicorn    │        (sin SSL)          │  MariaDB 10.11        │
+│  Django + mod_wsgi   │        (sin SSL)          │  MariaDB 10.11        │
 │  PostgreSQL           │                           │  ivr_legacy           │
 └──────────────────────┘                           └──────────────────────┘
 ```
@@ -431,12 +455,12 @@ la CLI de MariaDB desde la máquina del desarrollador.
 ### Opción E — ProxySQL como middleware (alta disponibilidad)
 
 Añade un proxy entre Django y MariaDB para connection pooling, routing
-y failover. Útil cuando el número de workers de Gunicorn supera el
+y failover. Útil si el número de threads de Apache mod_wsgi supera el
 `max_connections` de MariaDB o cuando se necesitan réplicas de lectura.
 
 ```
 IACT-api                ProxySQL              MariaDB
-Gunicorn workers         (mismo servidor       ┌─────────────┐
+Apache mod_wsgi          (mismo servidor       ┌─────────────┐
     │                    o servidor propio)    │  Primary    │
     └─── TCP 6033 ───►  ┌──────────┐ ────────►│  ivr_legacy │
                         │ ProxySQL │           └─────────────┘
@@ -466,7 +490,7 @@ IVR_DB_PORT=6033          # puerto estándar de ProxySQL
 - Si ProxySQL cae, toda la integración cae
 
 **Cuándo usar:** producción de alta disponibilidad con más de 50 workers
-de Gunicorn o cuando se necesita réplica de lectura para los reportes pesados.
+de mod_wsgi o cuando se necesita réplica de lectura para los reportes pesados.
 
 ---
 
