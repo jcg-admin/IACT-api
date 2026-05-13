@@ -21,7 +21,7 @@ identificadores Python y no están sujetos a la regla de inglés.
 | V5 | Sufijo `Builder` prohibido | 1 clase | `apps/core/navigation/builders.py` | Bajo |
 | V6 | Sufijo `Factory` prohibido | ~90 clases | `tests/factories/` (8 archivos) | Medio |
 | V7 | Directorio `tests/testdata/` duplicado de `tests/test_data/` | 11 archivos | `tests/testdata/` | Bajo |
-| V8 | `TblTempPruebaIvr*` — nombre de tabla BD expuesto en clase | 3 clases | `apps/ivr/` | Bajo |
+| V8 | `apps/ivr/` — código muerto con deuda técnica pendiente desde 2026-03-21 | Toda la app | `apps/ivr/`, `tests/unit/ivr_legacy/` | Bajo (solo borrar) |
 
 ---
 
@@ -202,62 +202,70 @@ Reemplazar `MenuBuilder` → `NavigationMenuAssembler` en todos los archivos.
 
 ---
 
-### FASE 4 — `TblTempPruebaIvr*` en `apps/ivr/`
+### FASE 4 — Eliminar `apps/ivr/` (código muerto)
 
-**Archivos:** `apps/ivr/models.py`, `apps/ivr/viewsets.py`,
-`apps/ivr/serializers/temp_prueba_serializer.py`
+**Archivos a eliminar:**
+- `apps/ivr/` completo (models, viewsets, serializers, urls, adapters, tests, migrations, apps.py, schema.py)
+- `tests/unit/ivr_legacy/` completo (tests de TblTempPruebaIvr)
+- `tests/factories/ivr_factories.py` (vacío — solo contiene comentario de deuda técnica)
+
 **Commits esperados:** 1
 
-#### Análisis
+#### Contexto
 
-`TblTempPruebaIvr` expone el nombre físico de la tabla de MariaDB como nombre
-de clase Python. El nombre mezcla convención técnica de BD (`Tbl` = tabla),
-idioma español (`Prueba` = prueba/test) y el acrónimo del sistema (`Ivr`).
+La eliminación estaba programada para el 2026-03-21. Razones para eliminar:
 
-El rol de la clase es: registro de prueba de conectividad IVR.
+1. `CallLog`, `IVRAdapter`, `CallLogViewSet` — comentados con fecha de baja vencida
+2. `TblTempPruebaIvr` — tabla de seed con 3000 números aleatorios, sin valor de negocio
+3. Los endpoints de `apps/ivr/urls.py` **no están registrados** en `config/urls.py` — inaccesibles
+4. `ivr_health` en `pipeline/views.py` ya verifica la conectividad con MariaDB
+5. `managed=False` — Django nunca gestionó la tabla real, eliminar la app no borra datos
 
-#### Tabla de renombres
-
-| Elemento actual | Elemento nuevo |
-|---|---|
-| `TblTempPruebaIvr` | `IvrProbeRecord` |
-| `TblTempPruebaIvrSerializer` | `IvrProbeRecordSerializer` |
-| `TblTempPruebaIvrViewSet` | `IvrProbeRecordViewSet` |
-| `db_table = 'tbl_temp_prueba_ivr'` | **sin cambio** — contrato de BD |
-| `IvrConfig` (AppConfig) | **sin cambio** — convención del framework |
-
-#### T4.1 — Renombrar en `apps/ivr/models.py`
+#### T4.1 — Quitar `apps.ivr` de `INSTALLED_APPS`
 
 ```python
-# ANTES:
-class TblTempPruebaIvr(models.Model):
-    class Meta:
-        managed  = False
-        db_table = 'tbl_temp_prueba_ivr'   # ← se mantiene: contrato de BD
-
-# DESPUÉS:
-class IvrProbeRecord(models.Model):
-    class Meta:
-        managed  = False
-        db_table = 'tbl_temp_prueba_ivr'   # ← sin cambio
+# config/settings/base.py
+INSTALLED_APPS = [
+    ...
+    # 'apps.ivr',    ← eliminar esta línea
+    ...
+]
 ```
 
-#### T4.2 — Renombrar en serializer y viewset
+#### T4.2 — Eliminar directorios
 
-```python
-# ANTES:                                 # DESPUÉS:
-class TblTempPruebaIvrSerializer → class IvrProbeRecordSerializer
-class TblTempPruebaIvrViewSet    → class IvrProbeRecordViewSet
+```bash
+rm -rf callcentersite/apps/ivr/
+rm -rf callcentersite/tests/unit/ivr_legacy/
+rm -f  callcentersite/tests/factories/ivr_factories.py
 ```
 
-Actualizar la URL en `apps/ivr/urls.py`:
-```python
-router.register(r'temp-prueba', IvrProbeRecordViewSet, basename='ivr-probe')
+#### T4.3 — Verificar que no quedan referencias
+
+```bash
+grep -r "apps.ivr\|from apps.ivr\|TblTempPruebaIvr\|temp.prueba"     callcentersite/ --include="*.py"
+# Resultado esperado: 0 líneas
 ```
 
-Nota: el path `temp-prueba` puede simplificarse a `probe-records` para
-completar la limpieza, pero es una decisión de API pública — documentar
-antes de cambiar si ya hay clientes del endpoint.
+#### T4.4 — Squash o eliminación de la migración
+
+La migración `apps/ivr/migrations/0001_initial.py` crea un modelo con
+`managed=False` — Django nunca ejecutó DDL con ella. Al eliminar la app,
+la migración desaparece con el directorio. No quedan operaciones pendientes
+en la base de datos.
+
+Si Django ya ejecutó `migrate` con esta migración registrada en
+`django_migrations`, ejecutar:
+```bash
+python manage.py migrate ivr zero   # revertir
+# luego eliminar el directorio
+```
+
+#### T4.5 — `tbl_temp_prueba_ivr` en MariaDB
+
+La tabla en MariaDB **no se elimina**. Es responsabilidad de `IACT-db`,
+no de `IACT-api`. Si el equipo de IACT-db decide eliminarla, lo hará
+desde sus propios scripts de provisión.
 
 ---
 
@@ -535,7 +543,7 @@ print(CallRecord.objects.count(), Center.objects.count(), Service.objects.count(
 | `db_table = 'tbl_temp_prueba_ivr'` | Contrato de BD |
 | Archivos `ivr_views.py`, `ivr_services.py` | IVR es acrónimo inglés, nombres aceptables |
 | `CMENUErrorView` | cMENU es término del dominio, no una palabra en español |
-| `IvrConfig` (AppConfig) | Convención generada por el framework Django |
+| `tbl_temp_prueba_ivr` en MariaDB | La tabla pertenece a IACT-db, no a IACT-api |
 | Comentarios y docstrings en español | Permitidos por RA-011 |
 | Nombres de columnas en `tests/fixtures/ivr.py` | Son strings SQL, contratos de BD |
 
@@ -548,7 +556,7 @@ print(CallRecord.objects.count(), Center.objects.count(), Service.objects.count(
 | 1 | `refactor(pipeline): renombrar _build_resumen_salud a _build_pipeline_health_summary` |
 | 2 | `refactor(reports): renombrar vistas IVR de español a inglés (RA-011)` |
 | 3 | `refactor(core): MenuBuilder → NavigationMenuAssembler (sufico Builder prohibido)` |
-| 4 | `refactor(ivr): TblTempPruebaIvr* → IvrProbeRecord* (nombre de tabla BD en clase)` |
+| 4 | `chore(ivr): eliminar apps/ivr/ — código muerto desde 2026-03-21` |
 | 5a | `refactor(pipeline): renombrar campos de modelo de español a inglés (RA-011)` |
 | 5b | `feat(pipeline): migración rename_spanish_fields_to_english` |
 | 5c | `refactor(pipeline): actualizar serializers y filtros por renombres de FASE 5` |
