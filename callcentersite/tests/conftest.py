@@ -233,38 +233,6 @@ def authenticated_client_with_rbac(db, mock_access_service):
 
     return client
 
-
-@pytest.fixture
-def etl_job_with_mocks(db, mock_ivr_connection, mock_etl_service):
-    """
-    ETL Job con BD IVR y service mockeados.
-    
-    Combina:
-        - SuccessETLJobTestData
-        - mock_ivr_connection (BD IVR)
-        - mock_etl_service (ETL service)
-    
-    Uso:
-        def test_etl_execution(etl_job_with_mocks):
-            job = etl_job_with_mocks
-            assert job.status == 'SUCCESS'
-    """
-    from tests.test_data import SuccessETLJobTestData
-    
-    # BD IVR retorna datos fake
-    mock_ivr_connection.cursor.return_value.fetchall.return_value = [
-        (2025, 1, 10000, 5000, 180)
-    ]
-    
-    # Service retorna resultado exitoso
-    mock_etl_service.extract_quarterly_data.return_value = [
-        {'year': 2025, 'quarter': 1, 'total_calls': 10000}
-    ]
-    
-    job = SuccessETLJobTestData()
-    return job
-
-
 @pytest.fixture
 def report_with_export_mocks(db, mock_report_generator_service, mock_excel_exporter):
     """
@@ -351,31 +319,6 @@ def alert_with_notification_mocks(db, mock_send_mail):
     alert.notification = notification
     
     return alert
-
-
-@pytest.fixture
-def quarterly_data_with_mocks(db, mock_ivr_cursor_quarterly):
-    """
-    Datos trimestrales completos con BD IVR mockeada.
-    
-    Combina:
-        - CompleteQuarterDataTestData
-        - mock_ivr_cursor_quarterly
-    
-    Uso:
-        def test_quarterly_data(quarterly_data_with_mocks):
-            data = quarterly_data_with_mocks
-            assert data['quarterly'].year == 2025
-    """
-    from tests.test_data.ivr_test_data import CompleteQuarterDataTestData
-    
-    # BD IVR retorna datos fake
-    mock_ivr_cursor_quarterly.fetchall.return_value = [
-        {'year': 2025, 'quarter': 1, 'total_calls': 10000}
-    ]
-    
-    data = CompleteQuarterDataTestData.create_quarter(year=2025, quarter=1)
-    return data
 
 
 @pytest.fixture

@@ -4,8 +4,10 @@ Database Router - IACT Call Center System.
 CNST-003: Enforce READ-ONLY access to IVR Legacy database.
 
 Routing rules:
-- Models de apps.core (CallRecord, etc) -> 'default' (PostgreSQL)
-- Models de apps.ivr (legacy) -> 'ivr' (MariaDB READ-ONLY)
+- Todos los modelos ORM -> 'default' (PostgreSQL)
+- MariaDB (ivr) se accede exclusivamente via connections['ivr'].cursor()
+  (raw SQL). El ORM Django no gestiona modelos en esa base de datos.
+  Ninguna migration de Django se ejecuta en MariaDB.
 
 Compliance: CNST-003
 """
@@ -14,98 +16,57 @@ Compliance: CNST-003
 class DatabaseRouter:
     """
     Database router para dual-database setup.
-    
-    - default (PostgreSQL): Analytics DB (READ + WRITE)
-    - ivr (MariaDB): IVR Legacy DB (READ-ONLY)
+
+    - default (PostgreSQL): Analytics DB (READ + WRITE, ORM + migrations)
+    - ivr (MariaDB): IVR Legacy DB (READ-ONLY, solo raw SQL via cursor)
+
+    No existen modelos ORM con app_label que apunte a la base ivr.
+    El acceso a MariaDB es exclusivamente via connections['ivr'].cursor().
     """
-    
-    # Apps que usan ivr (READ-ONLY)
-    ivr_apps = {'ivr'}  # Se agrega en Sprint 1
-    
-    # Apps que usan default (READ + WRITE)
-    default_apps = {'core', 'authentication', 'users', 'reports'}
-    
+
     def db_for_read(self, model, **hints):
         """
-        Determinar database para READ.
-        
-        Args:
-            model: Model class
-        
+        Todos los modelos ORM leen de PostgreSQL.
+
         Returns:
-            str: 'default' o 'ivr'
+            str: 'default'
         """
-        app_label = model._meta.app_label
-        
-        if app_label in self.ivr_apps:
-            return 'ivr'
-        
-        if app_label in self.default_apps:
-            return 'default'
-        
-        return None
-    
+        return 'default'
+
     def db_for_write(self, model, **hints):
         """
-        Determinar database para WRITE.
-        
-        CNST-003: ivr_legacy es READ-ONLY
-        
-        Args:
-            model: Model class
-        
+        Todos los modelos ORM escriben a PostgreSQL.
+
+        CNST-003: Los writes a ivr_legacy están bloqueados a nivel de
+        usuario de BD (ivr_readonly) y de DatabaseRouter.
+
         Returns:
-            str: 'default' o None (prohibido write a ivr_legacy)
+            str: 'default'
         """
-        app_label = model._meta.app_label
-        
-        # CNST-003: NO permitir writes a ivr_legacy
-        if app_label in self.ivr_apps:
-            return None  # Bloquear writes
-        
-        if app_label in self.default_apps:
-            return 'default'
-        
-        return None
-    
+        return 'default'
+
     def allow_relation(self, obj1, obj2, **hints):
         """
-        Permitir relaciones entre models.
-        
-        Args:
-            obj1: Model instance
-            obj2: Model instance
-        
+        Permitir relaciones entre modelos de la misma base de datos.
+
         Returns:
-            bool: True si misma DB
+            bool | None
         """
-        db_set = {'default', 'ivr'}
-        
-        if obj1._state.db in db_set and obj2._state.db in db_set:
+        if obj1._state.db == obj2._state.db:
             return True
-        
         return None
-    
+
     def allow_migrate(self, db, app_label, model_name=None, **hints):
         """
-        Determinar si migrations permitidas.
-        
-        CNST-003: NO migrations en ivr_legacy (legacy read-only)
-        
-        Args:
-            db: Database alias
-            app_label: App label
-        
+        Todas las migrations Django van a PostgreSQL (default).
+
+        CNST-003: MariaDB (ivr) no gestiona migrations Django.
+        El schema de ivr_legacy es responsabilidad exclusiva de
+        los scripts de IACT-db (provisioners/mariadb/).
+
         Returns:
-            bool: True si permitir migrations
+            bool: True solo si db == 'default'
         """
-        # IVR apps: NO migrations (legacy database)
-        if app_label in self.ivr_apps:
-            return db == 'ivr'  # False para default
-        
-        # Default apps y framework apps (contenttypes, auth, sessions, etc.):
-        # migrations solo en default. ANTES retornaba None, causando que
-        # Django corriera migrations en ivr (BUG B-20).
         return db == 'default'
 
 
@@ -114,36 +75,31 @@ class DatabaseRouter:
 # ==============================================================================
 
 def test_router_read():
-    """Test routing READ operations."""
+    """Test routing READ operations — todos van a default."""
     from django.contrib.auth.models import User
-    
+
     router = DatabaseRouter()
-    
-    # User debe ir a default
+
     assert router.db_for_read(User) == 'default'
 
 
-def test_router_write_readonly():
-    """Test WRITE prohibido a ivr_legacy (CNST-003)."""
+def test_router_write():
+    """Test routing WRITE operations — todos van a default."""
+    from django.contrib.auth.models import User
+
     router = DatabaseRouter()
-    
-    # Mock model de ivr app
-    class MockIVRModel:
-        class _meta:
-            app_label = 'ivr'
-    
-    # Write debe retornar None (prohibido)
-    assert router.db_for_write(MockIVRModel) is None
+
+    assert router.db_for_write(User) == 'default'
 
 
-def test_router_migrations_readonly():
-    """Test migrations prohibidas en ivr_legacy (CNST-003)."""
+def test_router_migrations_only_on_default():
+    """Test migrations solo permitidas en PostgreSQL (CNST-003)."""
     router = DatabaseRouter()
-    
-    # Migrations de app ivr solo permitidas en ivr_legacy
-    assert router.allow_migrate('default', 'ivr') is False
-    assert router.allow_migrate('ivr', 'ivr') is True
-    
-    # Migrations de app core solo permitidas en default
-    assert router.allow_migrate('default', 'core') is True
-    assert router.allow_migrate('ivr', 'core') is False
+
+    # Todas las apps migran solo a default
+    for app in ('auth', 'users', 'pipeline', 'access', 'core'):
+        assert router.allow_migrate('default', app) is True
+        assert router.allow_migrate('ivr', app) is False
+
+    # Ninguna app migra a MariaDB — protección CNST-003
+    assert router.allow_migrate('ivr', 'any_app') is False

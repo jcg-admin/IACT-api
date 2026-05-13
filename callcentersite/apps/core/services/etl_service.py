@@ -12,19 +12,9 @@ import logging
 from datetime import date
 from typing import List, Dict
 
-# =============================================================================
-# DEUDA TÉCNICA — PENDIENTE
-# =============================================================================
-# Fecha de eliminación: 2026-03-21
-# Motivo: IVRAdapter desactivado. Además, el import original apuntaba a
-#         'apps.ivr_legacy.adapters' que no existe (debería ser 'apps.ivr').
-#         Reactivar cuando:
-#           1. La tabla call_logs exista en ivr_legacy
-#           2. IVRAdapter sea reactivado en apps/ivr/adapters.py
-# Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
-# =============================================================================
-# from apps.ivr_legacy.adapters import IVRAdapter   # import incorrecto (B-02)
-# from apps.ivr.adapters import IVRAdapter           # import correcto (desactivado)
+# Nota: este servicio ETL (Extract→Transform→Load sobre CallRecord PostgreSQL)
+# está fuera del scope del proyecto y será eliminado en FASE 3.
+# El ETL real opera sobre MariaDB via sp_etl_maestro (IACT-db).
 
 from apps.pipeline.models import CallRecord  # CallRecord vive en apps.pipeline (no apps.core)
 
@@ -41,7 +31,6 @@ class ETLService:
     
     def __init__(self):
         """Initialize ETL service."""
-        # DEUDA TÉCNICA: self.adapter = IVRAdapter() — desactivado 2026-03-21
         self.adapter = None
     
     def extract(
@@ -62,10 +51,6 @@ class ETLService:
             List[Dict]: Datos raw de IVR legacy
         """
         logger.info(f"ETL Extract: {fecha_inicio} a {fecha_fin}")
-        
-        # DEUDA TÉCNICA: IVRAdapter desactivado — retorna vacío hasta reactivar
-        # Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
-        logger.warning("ETL Extract: IVRAdapter desactivado (deuda técnica) — retornando []")
         return []
     
     def transform(self, raw_data: List[Dict]) -> List[Dict]:

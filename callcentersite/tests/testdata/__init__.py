@@ -97,12 +97,6 @@ from .audit_test_data import (
 )
 
 
-# ============================================================================
-# IVR FACTORIES (apps/ivr_legacy/)
-# DEUDA TÉCNICA 2026-03-21: Modelos IVR no implementados.
-# Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
-# ============================================================================
-# (Importaciones deshabilitadas — ivr_factories.py sin clases activas)
 
 
 # ============================================================================
@@ -233,24 +227,6 @@ __all__ = [
     'AuditTrailTestData',
     'SessionHistoryTestData',
     
-    # IVR (17)
-    'QuarterlyReportTestData',
-    'Q1ReportTestData',
-    'Q2ReportTestData',
-    'Q3ReportTestData',
-    'Q4ReportTestData',
-    'TransferReportTestData',
-    'AbandonedReportTestData',
-    'ClientReportTestData',
-    'CallRecordQ1TestData',
-    'CallRecordQ2TestData',
-    'CallRecordQ3TestData',
-    'CallRecordQ4TestData',
-    'MonthlyStatsTestData',
-    'HourlyStatsTestData',
-    'DIDReportTestData',
-    'CompleteQuarterDataTestData',
-    'YearDataTestData',
     
     # Pipeline (16)
     'ETLJobTestData',

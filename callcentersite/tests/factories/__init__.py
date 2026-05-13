@@ -94,12 +94,6 @@ from .audit_factories import (
 )
 
 
-# ============================================================================
-# IVR FACTORIES (apps/ivr_legacy/)
-# DEUDA TÉCNICA 2026-03-21: Modelos IVR no implementados.
-# Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
-# ============================================================================
-# (Importaciones deshabilitadas — ivr_factories.py sin clases activas)
 
 
 # ============================================================================

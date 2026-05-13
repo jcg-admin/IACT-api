@@ -70,7 +70,6 @@ INSTALLED_APPS = [
     
     # Local apps
     'apps.core',
-    'apps.ivr',
     'apps.authentication',
     'apps.users',  # <- Debe estar ANTES de apps.access (User model)
     'apps.access',
