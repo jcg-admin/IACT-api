@@ -75,7 +75,7 @@ def _get_pipeline_runs(limit: int = 20) -> list[dict]:
         return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
 
-def _build_resumen_salud(runs: list[dict]) -> dict:
+def _build_pipeline_health_summary(runs: list[dict]) -> dict:
     """
     Construye ResumenSalud segun la logica del UC_PIP_01:
       ok        — ultima exitosa dentro de 14h
@@ -233,7 +233,7 @@ def etl_status(request):
             'message': 'No hay ejecuciones ETL registradas.'
         })
 
-    resumen = _build_resumen_salud(runs)
+    resumen = _build_pipeline_health_summary(runs)
 
     return Response({
         'resumen': {

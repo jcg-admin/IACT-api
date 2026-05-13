@@ -10,13 +10,13 @@ from .views import (
     RealtimeMetricsView,
 )
 from .ivr_views import (
-    MenuRedirigidosView, MenuCentroView,
-    ClientesReportView,
-    CentrosTransferenciaView,
-    LlamadasAbandonadasView,
+    RedirectedMenusView, CenterMenuView,
+    ClientsReportView,
+    TransferCentersView,
+    AbandonedCallsView,
     CMENUErrorView,
-    CentrosXSegmentoView,
-    MenusIVRView,
+    CentersBySegmentView,
+    IvrMenusView,
     AbandonmentSummaryView,
 )
 
@@ -35,13 +35,13 @@ urlpatterns = [
     path('realtime/', RealtimeMetricsView.as_view(), name='realtime-metrics'),
 
     # B-01: Reportes IVR (UC_RPT_12..17) — leen de MariaDB via SPs
-    path('ivr/clients/',            ClientesReportView.as_view(),        name='ivr-clients'),
-    path('ivr/transfer-centers/',   CentrosTransferenciaView.as_view(),  name='ivr-transfer-centers'),
-    path('ivr/abandoned/',          LlamadasAbandonadasView.as_view(),   name='ivr-abandoned'),
+    path('ivr/clients/',            ClientsReportView.as_view(),        name='ivr-clients'),
+    path('ivr/transfer-centers/',   TransferCentersView.as_view(),  name='ivr-transfer-centers'),
+    path('ivr/abandoned/',          AbandonedCallsView.as_view(),   name='ivr-abandoned'),
     path('ivr/menu-errors/',        CMENUErrorView.as_view(),            name='ivr-menu-errors'),
-    path('ivr/centers-by-segment/', CentrosXSegmentoView.as_view(),      name='ivr-centers-by-segment'),
-    path('ivr/menu-redirigidos/', MenuRedirigidosView.as_view(),  name='ivr-menu-redirigidos'),
-    path('ivr/menu-centro/',      MenuCentroView.as_view(),       name='ivr-menu-centro'),
-    path('ivr/menus/',              MenusIVRView.as_view(),              name='ivr-menus'),
+    path('ivr/centers-by-segment/', CentersBySegmentView.as_view(),      name='ivr-centers-by-segment'),
+    path('ivr/menu-redirigidos/', RedirectedMenusView.as_view(),  name='ivr-menu-redirigidos'),
+    path('ivr/menu-centro/',      CenterMenuView.as_view(),       name='ivr-menu-centro'),
+    path('ivr/menus/',              IvrMenusView.as_view(),              name='ivr-menus'),
     path('ivr/abandonment-summary/', AbandonmentSummaryView.as_view(),  name='ivr-abandonment-summary'),
 ]

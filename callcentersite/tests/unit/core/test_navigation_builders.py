@@ -7,13 +7,13 @@ Cobertura:
 - validate_menu_structure: campos requeridos y consistencia ID/nivel
 - validate_icon_path: existencia de archivo de icono
 
-TestMenuBuilder, TestMenuSerializer, TestMenuBuilderIntegration eliminados:
+TestNavigationMenuAssembler, TestMenuSerializer, TestNavigationMenuAssemblerIntegration eliminados:
 pertenecen a T-102 (MenuItem) — se crearán cuando la funcionalidad esté implementada.
 """
 
 import pytest
 from unittest.mock import patch
-from apps.core.navigation.builders import MenuValidator, MenuBuilder
+from apps.core.navigation.builders import MenuValidator, NavigationMenuAssembler
 
 
 # ============================================================================
@@ -130,5 +130,5 @@ class TestMenuValidator:
 
 
 # ============================================================================
-# TESTS MenuBuilder
+# TESTS NavigationMenuAssembler
 # ============================================================================

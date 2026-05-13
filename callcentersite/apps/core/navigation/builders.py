@@ -96,7 +96,7 @@ class MenuValidator:
         return Path(path).exists()
 
 
-class MenuBuilder:
+class NavigationMenuAssembler:
     """Construye la estructura de navegacion a partir de los modulos."""
 
     def __init__(self):

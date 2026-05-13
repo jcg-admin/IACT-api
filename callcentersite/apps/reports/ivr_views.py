@@ -75,7 +75,7 @@ def _ivr_response(fn, *args, extra=None):
                503: OpenApiResponse(description="MariaDB no disponible")},
     tags=["Reportes de Llamadas"]
 )
-class ClientesReportView(APIView):
+class ClientsReportView(APIView):
     """
     UC_RPT_17 — Clientes unicos por segment.
     GET /api/reports/ivr/clients/?quarter=Q01_25
@@ -99,7 +99,7 @@ class ClientesReportView(APIView):
                503: OpenApiResponse(description="MariaDB no disponible")},
     tags=["Reportes de Llamadas"]
 )
-class CentrosTransferenciaView(APIView):
+class TransferCentersView(APIView):
     """
     UC_RPT_12 — Detalle centros de transferencia.
     GET /api/reports/ivr/transfer-centers/?quarter=Q01_25&segment=todas
@@ -124,7 +124,7 @@ class CentrosTransferenciaView(APIView):
                503: OpenApiResponse(description="MariaDB no disponible")},
     tags=["Reportes de Llamadas"]
 )
-class LlamadasAbandonadasView(APIView):
+class AbandonedCallsView(APIView):
     """
     UC_RPT_13 — Llamadas abandonadas.
     GET /api/reports/ivr/abandoned/?quarter=Q01_25&segment=todas
@@ -175,7 +175,7 @@ class CMENUErrorView(APIView):
                503: OpenApiResponse(description="MariaDB no disponible")},
     tags=["Reportes de Llamadas"]
 )
-class CentrosXSegmentoView(APIView):
+class CentersBySegmentView(APIView):
     """
     UC_RPT_15 — KPIs SLA por centro y segment.
     GET /api/reports/ivr/centers-by-segment/?quarter=Q01_25
@@ -205,7 +205,7 @@ class CentrosXSegmentoView(APIView):
                503: OpenApiResponse(description="MariaDB no disponible")},
     tags=["Reportes de Llamadas"]
 )
-class MenusIVRView(APIView):
+class IvrMenusView(APIView):
     """
     UC_RPT_16 — Menus IVR (redirigidos o menu_centro).
     GET /api/reports/ivr/menus/?quarter=Q01_25&vista=redirigidos&segment=todas
@@ -229,7 +229,7 @@ class MenusIVRView(APIView):
                               extra={'quarter': quarter, 'vista': vista, 'segment': segment})
 
 
-class MenuRedirigidosView(APIView):
+class RedirectedMenusView(APIView):
     """
     GET /api/reports/ivr/menu-redirigidos/
     Distribución de opciones elegidas por el llamante en cada menú IVR.
@@ -253,7 +253,7 @@ class MenuRedirigidosView(APIView):
         return _ivr_response(svc.get_redirected_menus, quarter, segment)
 
 
-class MenuCentroView(APIView):
+class CenterMenuView(APIView):
     """
     GET /api/reports/ivr/menu-centro/
     Distribución de centros de transferencia por menú IVR.

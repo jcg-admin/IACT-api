@@ -5,7 +5,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
-from .builders import MenuBuilder
+from .builders import NavigationMenuAssembler
 
 
 @api_view(['GET'])
@@ -17,7 +17,7 @@ def navigation_menu_view(request):
     try:
         from apps.access.models import Module
         modules = Module.objects.filter(is_active=True).select_related('parent')
-        builder = MenuBuilder()
+        builder = NavigationMenuAssembler()
         menu = builder.build_from_modules(modules, user=request.user)
         return Response({'menu': menu})
     except Exception as exc:
@@ -33,7 +33,7 @@ def navigation_modules_view(request):
     try:
         from apps.access.models import Module
         modules = Module.objects.filter(is_active=True).order_by('order')
-        builder = MenuBuilder()
+        builder = NavigationMenuAssembler()
         flat = builder.build_flat(modules)
         return Response({'modules': flat})
     except Exception as exc:

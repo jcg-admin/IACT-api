@@ -67,7 +67,7 @@ class TestUserMenuView:
         
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
     
-    @patch('apps.core.navigation.views.MenuBuilder')
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
     def test_menu_endpoint_returns_user_menu(
         self, 
         mock_builder_class, 
@@ -76,7 +76,7 @@ class TestUserMenuView:
         sample_menu
     ):
         """Test que endpoint retorna menu del usuario."""
-        # Mock del MenuBuilder
+        # Mock del NavigationMenuAssembler
         mock_builder = Mock()
         mock_builder.build_user_menu.return_value = sample_menu
         mock_builder_class.return_value = mock_builder
@@ -104,7 +104,7 @@ class TestUserMenuView:
         assert user_data['username'] == 'testuser'
         assert user_data['full_name'] == 'Test User'
     
-    @patch('apps.core.navigation.views.MenuBuilder')
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
     def test_menu_endpoint_empty_menu(
         self, 
         mock_builder_class, 
@@ -129,14 +129,14 @@ class TestUserMenuView:
         assert response.data['menu'] == []
         assert 'user' in response.data
     
-    @patch('apps.core.navigation.views.MenuBuilder')
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
     def test_menu_endpoint_handles_builder_error(
         self, 
         mock_builder_class, 
         api_client, 
         authenticated_user
     ):
-        """Test manejo de error en MenuBuilder."""
+        """Test manejo de error en NavigationMenuAssembler."""
         # Mock lanza excepcion
         mock_builder = Mock()
         mock_builder.build_user_menu.side_effect = Exception('Error interno')
@@ -153,7 +153,7 @@ class TestUserMenuView:
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data
     
-    @patch('apps.core.navigation.views.MenuBuilder')
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
     @patch('apps.core.navigation.views.MenuSerializer')
     def test_menu_endpoint_serializes_menu(
         self, 
@@ -164,7 +164,7 @@ class TestUserMenuView:
         sample_menu
     ):
         """Test que endpoint serializa menu correctamente."""
-        # Mock MenuBuilder
+        # Mock NavigationMenuAssembler
         mock_builder = Mock()
         mock_builder.build_user_menu.return_value = sample_menu
         mock_builder_class.return_value = mock_builder
@@ -190,7 +190,7 @@ class TestUserMenuView:
         url = reverse('navigation:user-menu')
         assert url == '/api/v1/navigation/menu/'
     
-    @patch('apps.core.navigation.views.MenuBuilder')
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
     def test_menu_endpoint_returns_json(
         self, 
         mock_builder_class, 
@@ -211,7 +211,7 @@ class TestUserMenuView:
         assert response.status_code == status.HTTP_200_OK
         assert response['Content-Type'] == 'application/json'
     
-    @patch('apps.core.navigation.views.MenuBuilder')
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
     def test_menu_endpoint_with_complex_user_name(
         self, 
         mock_builder_class, 
