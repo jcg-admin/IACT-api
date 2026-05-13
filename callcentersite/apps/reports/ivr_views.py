@@ -81,7 +81,7 @@ class ClientsReportView(APIView):
     GET /api/reports/ivr/clients/?quarter=Q01_25
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
@@ -105,7 +105,7 @@ class TransferCentersView(APIView):
     GET /api/reports/ivr/transfer-centers/?quarter=Q01_25&segment=todas
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
@@ -130,7 +130,7 @@ class AbandonedCallsView(APIView):
     GET /api/reports/ivr/abandoned/?quarter=Q01_25&segment=todas
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
@@ -156,7 +156,7 @@ class CMENUErrorView(APIView):
     GET /api/reports/ivr/menu-errors/?quarter=Q01_25&segment=todas
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
@@ -181,7 +181,7 @@ class CentersBySegmentView(APIView):
     GET /api/reports/ivr/centers-by-segment/?quarter=Q01_25
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
@@ -211,7 +211,7 @@ class IvrMenusView(APIView):
     GET /api/reports/ivr/menus/?quarter=Q01_25&vista=redirigidos&segment=todas
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         quarter  = request.query_params.get('quarter',  'Q01_25')
@@ -252,7 +252,7 @@ class RedirectedMenusView(APIView):
     Grain: menu × opcion. Fuente: sp_rpt_menu_redirigidos.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
@@ -287,7 +287,7 @@ class CenterMenuView(APIView):
     Grain: menu × centro_transferencia. Fuente: sp_rpt_menu_centro.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')
@@ -325,7 +325,7 @@ class AbandonmentSummaryView(APIView):
     Columnas de respuesta: segmento, menu, abandonadas, pct_del_quarter.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         quarter = request.query_params.get('quarter', 'Q01_25')

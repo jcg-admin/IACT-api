@@ -119,3 +119,23 @@ class User(AbstractUser):
             # If the function doesn't exist in DB, deny
             return False
         return fn.code in self.get_functions()
+    def has_function_by_code(self, function_code: str) -> bool:
+        """
+        Verifica si el usuario tiene la función por código canónico v5.4.0.
+
+        ADR-BACK-006: verificación por Function.code (ej: 'RPT-001').
+        CNST-033: código en formato MOD-NNN.
+
+        A diferencia de has_function() que usa permission_django (legacy),
+        este método usa el campo code canónico.
+
+        Args:
+            function_code: Código canónico v5.4.0 (ej: 'RPT-001').
+
+        Returns:
+            bool: True si el usuario tiene la función, False si no.
+        """
+        if self.is_superuser:
+            return True
+        return function_code in self.get_functions()
+

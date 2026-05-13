@@ -202,8 +202,8 @@ class AccessGroupViewSet(viewsets.ModelViewSet):
     queryset = AccessGroup.objects.all()
     permission_classes = [IsAuthenticated, RequiresFunctionPermission]
     function_map = {
-        'list':           'access.view_groups',
-        'retrieve':       'access.view_groups',
+        'list':           'ACC-003',
+        'retrieve':       'ACC-003',
         'create':         'access.manage_groups',
         'update':         'access.manage_groups',
         'partial_update': 'access.manage_groups',
@@ -258,9 +258,9 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
     queryset = UserAccessGroup.objects.select_related('user', 'access_group').all()
     permission_classes = [IsAuthenticated, RequiresFunctionPermission]
     function_map = {
-        'list': 'access.view_groups',
-        'create': 'access.assign_functions',
-        'destroy': 'access.assign_functions',
+        'list': 'ACC-003',
+        'create': 'ACC-001',
+        'destroy': 'ACC-001',
     }
 
     serializer_class = UserAccessGroupSerializer
@@ -340,13 +340,13 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
     queryset = SeparationRule.objects.select_related('function_a', 'function_b').all()
     permission_classes = [IsAuthenticated, RequiresFunctionPermission]
     function_map = {
-        'list': 'access.view_separation_rules',
-        'retrieve': 'access.view_separation_rules',
+        'list': 'ACC-005',
+        'retrieve': 'ACC-005',
         'create': 'access.manage_separation_rules',
         'update': 'access.manage_separation_rules',
         'partial_update': 'access.manage_separation_rules',
         'destroy': 'access.manage_separation_rules',
-        'check_conflict': 'access.view_separation_rules',
+        'check_conflict': 'ACC-005',
     }
 
     serializer_class = SeparationRuleSerializer
@@ -465,7 +465,7 @@ class EffectivePermissionsView(APIView):
     Menos cualquier funcion que viole una SeparationRule activa.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'access.view_permissions'
+    required_function  = 'ACC-003'
 
     def get(self, request, user_id):
         from apps.access.services import get_user_function_codes
@@ -529,7 +529,7 @@ class FunctionListView(APIView):
       [{ id, code, name, description, category, permission_django, is_active }]
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'access.view_permissions'
+    required_function  = 'ACC-003'
 
     def get(self, request):
         qs = Function.objects.filter(
@@ -559,7 +559,7 @@ class UserEffectivePermissionsAliasView(APIView):
       { user_id, functions: [...codes], sources: {...} }
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'access.view_permissions'
+    required_function  = 'ACC-003'
 
     def get(self, request, user_id):
         from django.contrib.auth import get_user_model
@@ -628,7 +628,7 @@ class FunctionAssignView(APIView):
     Retorna: { newFunction: { id, code, name }, user_id }
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'access.assign_functions'
+    required_function  = 'ACC-001'
 
     def post(self, request):
         from django.contrib.auth import get_user_model
@@ -707,7 +707,7 @@ class FunctionRevokeView(APIView):
     Body: { userId, functionId }
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'access.assign_functions'
+    required_function  = 'ACC-001'
 
     def post(self, request):
         from django.contrib.auth import get_user_model
@@ -763,7 +763,7 @@ class SeparationRuleValidateView(APIView):
       { conflicts: [{ rule, ruleDesc, setA, setB, message }] }
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'access.view_separation_rules'
+    required_function  = 'ACC-005'
 
     def post(self, request):
         from django.contrib.auth import get_user_model
@@ -821,7 +821,7 @@ class GrouperListView(APIView):
     Alias de /api/access/groups/ para compatibilidad con frontend.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'access.view_groups'
+    required_function  = 'ACC-003'
 
     def get(self, request):
         qs = AccessGroup.objects.filter(is_active=True).order_by('name')
@@ -851,7 +851,7 @@ class GrouperAssignView(APIView):
     Body: { userId, grouperId }
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'access.assign_functions'
+    required_function  = 'ACC-001'
 
     def post(self, request):
         from django.contrib.auth import get_user_model

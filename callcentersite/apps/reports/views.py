@@ -225,7 +225,7 @@ class ExportJobViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = ExportJob.objects.all()
     serializer_class = ExportJobSerializer
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.export'
+    required_function  = 'RPT-004'
     filter_backends = [DjangoFilterBackend, OrderingFilter]
     filterset_fields = ['status', 'format']
     ordering_fields = ['created_at']
@@ -287,7 +287,7 @@ class ScheduledReportViewSet(viewsets.ModelViewSet):
     """
     serializer_class   = ScheduledReportSerializer
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.schedule'
+    required_function  = 'RPT-009'
 
     def get_queryset(self):
         return ScheduledReport.objects.filter(
@@ -329,7 +329,7 @@ class SavedViewViewSet(viewsets.ModelViewSet):
     """
     serializer_class   = SavedViewSerializer
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view'
+    required_function  = 'RPT-001'
 
     def get_queryset(self):
         return SavedView.objects.filter(
@@ -369,7 +369,7 @@ class RealtimeMetricsView(APIView):
     CNST-004: SSE/WebSocket not available in sync Django.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view'
+    required_function  = 'RPT-001'
 
     def get(self, request):
         from django.db import connections, OperationalError
