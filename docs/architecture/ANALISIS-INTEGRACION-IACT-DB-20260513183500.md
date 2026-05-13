@@ -1,307 +1,499 @@
-# Análisis Minucioso — Integración IACT-db con IACT-api
+# Análisis — Flujo de Conexión IACT-api → IACT-db, drf-spectacular y Opciones de Despliegue
 
 **Versión:** 1.0.0
 **Fecha:** 2026-05-13
-**Repositorios:** `/tmp/references/IACT-db` (MariaDB) y `/tmp/references/IACT-api` (Django)
-**Método:** Lectura completa del código fuente de ambos repositorios.
-Sin inferencias — solo lo que el código contiene.
+**Repositorios:** `IACT-api` (Django 5.0, DRF, drf-spectacular 0.27.0, mysqlclient 2.2.1)
+y `IACT-db` (MariaDB 10.11.14, ivr_legacy)
 
 ---
 
-## Resumen ejecutivo
+## Parte 1 — drf-spectacular: estado real de los endpoints que tocan MariaDB
 
-La integración funciona para los 7 SPs de reporte existentes. Hay
-**1 bug que provoca un NameError en producción**, **2 nuevos objetos de IACT-db
-sin endpoint en IACT-api**, y **1 gap de observabilidad** donde
-`pipeline_event_log` no está expuesto a Django. Ninguno de los cambios de
-FASE 1-4 rompió funcionalidad existente.
+### Arquitectura del schema OpenAPI
 
----
+```
+base.py → SPECTACULAR_SETTINGS
+    POSTPROCESSING_HOOKS:
+        1. drf_spectacular.hooks.postprocess_schema_enums
+        2. config.spectacular_hooks.collect_app_tags    ← hook OCP propio
 
-## Mapa de integración — qué llama a qué
-
-### Desde Django → MariaDB (vía `connections['ivr']`)
-
-| Capa Django | Método | SP / tabla MariaDB | Estado |
-|---|---|---|---|
-| `ivr_services.get_clients()` | `callproc` | `sp_rpt_clientes` | OK |
-| `ivr_services.get_transfer_centers()` | `callproc` | `sp_rpt_centros_transferencia` | OK |
-| `ivr_services.get_abandoned_calls()` | `callproc` | `sp_rpt_llamadas_abandonadas` | OK |
-| `ivr_services.get_cmenu_errors()` | `callproc` | `sp_rpt_cMENU_ERROR` | OK |
-| `ivr_services.get_centers_by_segment()` | `callproc` | `sp_rpt_centros_xsegmento` | OK |
-| `ivr_services.get_redirected_menus()` | `callproc` | `sp_rpt_menu_redirigidos` | OK |
-| `ivr_services.get_center_menus()` | `callproc` | `sp_rpt_menu_centro` | OK |
-| `ivr_services.get_available_quarters()` | `execute` | `base_ivr_detalle` (DISTINCT) | OK |
-| `pipeline/views.etl_status` | `execute` | `job_execution_log` | OK |
-| `pipeline/views.etl_errors` | `execute` | `job_execution_log WHERE FAILED` | OK |
-| `pipeline/views.etl_data_availability` | `execute` | `job_execution_log WHERE SUCCESS` | **BUG** |
-| `pipeline/views.etl_retry` | `callproc` | `sp_etl_historico` | OK |
-| `pipeline/views.ivr_health` | `execute` | `SELECT VERSION()` | OK |
-| `run_etl.py Command` | `callproc` | `sp_etl_maestro` | OK |
-| `run_etl.py Command` | `execute` | `etl_runs` (INSERT/UPDATE) | OK |
-| `logs/views.ETLLogTailView` | `execute` | `job_execution_log` | OK |
-| `logs/views.LogMetricsView` | `execute` | `job_execution_log` | OK |
-
-### Objetos de IACT-db SIN endpoint en IACT-api
-
-| Objeto IACT-db | Tipo | Implementado | Endpoint en IACT-api |
-|---|---|---|---|
-| `sp_rpt_resumen_abandono_rollup` | SP nuevo (T3.2) | Sí | **NO — falta** |
-| `v_etl_rendimiento` | Vista nueva (T3.1) | Sí | **NO — falta** |
-| `pipeline_event_log` | Tabla (T1.1) | Sí | **NO — falta** |
-
----
-
-## BUG-01 — `NameError: trimestre` en `etl_data_availability`
-
-**Severidad:** CRÍTICA — el endpoint falla con `NameError` cuando no hay
-datos para el quarter solicitado.  
-**Archivo:** `apps/pipeline/views.py`, función `etl_data_availability`, línea ~398.
-
-### Descripción
-
-Cuando `job_execution_log` no tiene registros SUCCESS para el quarter
-pedido (`row` es `None`), la rama de respuesta usa la variable `trimestre`
-que nunca fue definida en el scope de la función:
-
-```python
-# CÓDIGO ACTUAL (bug):
-if not row:
-    return Response({
-        'trimestre':             trimestre,    # ← NameError: 'trimestre' no existe
-        'status_frescura':       'sin_datos',
-        ...
-    })
-
-quarter_name, ultima_carga, registros = row  # ← esto solo corre si row no es None
+collect_app_tags():
+    por cada app en INSTALLED_APPS que empiece con 'apps.':
+        importa app.schema
+        lee SPECTACULAR_TAGS = [{'name': ..., 'description': ...}]
+        los agrega al schema si el nombre no existe aún
 ```
 
-`trimestre` no existe — debería ser el parámetro `quarter` de la función.
+El principio que impone el hook es Open/Closed: agregar una app nueva nunca
+requiere tocar `base.py` — solo crear su `schema.py` con `SPECTACULAR_TAGS`.
 
-### Corrección
+### Cobertura `@extend_schema` por endpoint
 
-```python
-if not row:
-    return Response({
-        'trimestre':             quarter,      # ← variable correcta
-        'status_frescura':       'sin_datos',
-        'ultima_carga':          None,
-        'registros_disponibles': 0,
-        'minutos_desde_etl':     None,
-    })
+Todos los endpoints que tocan MariaDB usan `@extend_schema`, pero con
+diferente nivel de completitud:
+
+**Completamente documentados (6 de 8 endpoints IVR de reporte):**
+```
+GET /api/reports/ivr/clients/            → @extend_schema, tags, params, 200/400/503
+GET /api/reports/ivr/transfer-centers/  → @extend_schema, tags, params, 200/503
+GET /api/reports/ivr/abandoned/         → @extend_schema, tags, params, 200/503
+GET /api/reports/ivr/menu-errors/       → @extend_schema, tags, params, 200/503
+GET /api/reports/ivr/centers-by-segment/→ @extend_schema, tags, params, 200/503
+GET /api/reports/ivr/menus/             → @extend_schema, tags, 3 params, 200/503
 ```
 
-### Impacto
+**Parcialmente documentados (2 de 8 endpoints IVR de reporte):**
+```
+GET /api/reports/ivr/menu-redirigidos/  → @extend_schema ✓, tags AUSENTE ✗
+GET /api/reports/ivr/menu-centro/       → @extend_schema ✓, tags AUSENTE ✗
+```
+Estas dos views tienen el decorador pero sin `tags=`. En Swagger/Redoc
+aparecerán bajo "default" — separadas del resto de los reportes IVR.
 
-Este endpoint se activa con cualquier quarter que aún no tenga datos de
-producción. En el entorno de desarrollo actual (donde `Q01_25` sí tiene
-datos) el bug no se dispara, lo que explica por qué no ha sido detectado.
-En un nuevo entorno o con un quarter sin ETL completado → `NameError 500`.
+**Pipeline ETL (5 endpoints):**
+```
+GET  /api/pipeline/status/            → @extend_schema, tags="Estado del Pipeline"
+GET  /api/pipeline/errors/            → @extend_schema, tags="Estado del Pipeline"
+GET  /api/pipeline/data-availability/ → @extend_schema, tags="Estado del Pipeline"
+POST /api/pipeline/retry/             → @extend_schema, tags="Estado del Pipeline"
+GET  /api/pipeline/ivr-health/        → @extend_schema, tags="Estado del Pipeline"
+```
+
+**Logs (5 endpoints que tocan MariaDB):**
+```
+GET /api/logs/etl/tail/   → @extend_schema, tags="Registros del Sistema"
+GET /api/logs/metrics/    → @extend_schema, tags="Registros del Sistema"
+GET /api/logs/health/     → @extend_schema, tags="Registros del Sistema"
+GET /api/logs/search/     → @extend_schema, tags="Registros del Sistema" (lee log Django)
+GET /api/logs/export/     → @extend_schema, tags="Registros del Sistema"
+```
+Problema: `apps/logs/schema.py` **no existe**. El hook `collect_app_tags`
+no puede agregar la descripción del tag `Registros del Sistema` — el tag
+aparece en Swagger pero sin descripción.
+
+### Gaps estructurales en el schema OpenAPI
+
+**GAP-SPEC-01: `MenuRedirigidosView` y `MenuCentroView` sin tag**
+
+```python
+# Estado actual (ivr_views.py):
+class MenuRedirigidosView(APIView):
+    @extend_schema(
+        parameters=[...],
+        responses={200: OpenApiTypes.OBJECT, 503: ...},
+        # ← FALTA: tags=["Reportes de Llamadas"]
+    )
+
+# Corrección:
+    @extend_schema(
+        parameters=[...],
+        responses={200: OpenApiTypes.OBJECT, 503: ...},
+        tags=["Reportes de Llamadas"],
+    )
+```
+
+**GAP-SPEC-02: Cuerpos de respuesta sin schema tipado**
+
+Todos los endpoints IVR usan `OpenApiResponse(description="...")` sin
+serializer. En Swagger el body de respuesta aparece como `{}`. Esto es
+un trade-off consciente: las columnas de los SPs son dinámicas —
+`dict(zip(cols, row))` incluye automáticamente columnas nuevas. El precio
+es que el schema OpenAPI no puede autogenerar tipos para el frontend.
+
+Opciones para tipar las respuestas sin perder la aditividad:
+- `inline_serializer` por SP (estático, requiere actualización manual al cambiar el SP)
+- Documento externo de referencia de columnas (no afecta al schema)
+- OpenAPI `additionalProperties: true` explícito
+
+**GAP-SPEC-03: `apps/logs/schema.py` no existe**
+
+```python
+# Crear: apps/logs/schema.py
+SPECTACULAR_TAGS = [
+    {
+        'name': 'Registros del Sistema',
+        'description': (
+            'Logs del sistema: tail de Django log, entradas del pipeline ETL, '
+            'búsqueda, exportación y métricas. UC_LOG_01..07.'
+        ),
+    },
+]
+```
+
+**GAP-SPEC-04: Tres objetos IACT-db sin endpoint ni presencia en OpenAPI**
+
+`sp_rpt_resumen_abandono_rollup`, `v_etl_rendimiento` y `pipeline_event_log`
+no tienen endpoint en IACT-api → no aparecen en el schema OpenAPI. Ver
+ANALISIS-INTEGRACION-IACT-DB para el código de los endpoints faltantes.
 
 ---
 
-## GAP-01 — `sp_rpt_resumen_abandono_rollup` sin endpoint
+## Parte 2 — Flujo de conexión en el ambiente actual (misma VPS)
 
-**Severidad:** MEDIA — funcionalidad nueva sin exposición  
-**Contexto:** El SP fue creado en T3.2. Retorna la jerarquía completa de
-abandono (detalle + subtotales + TOTAL) en una sola llamada — 13 filas.
+### Stack completo capa por capa
 
-### Situación actual
-
-`ivr_services.py` tiene 7 funciones, una por SP de reporte existente.
-El nuevo SP `sp_rpt_resumen_abandono_rollup` **no tiene función** en
-`ivr_services.py` ni view en `ivr_views.py` ni URL en `reports/urls.py`.
-
-### Lo que falta en IACT-api
-
-**En `ivr_services.py`:**
-```python
-def get_abandonment_summary(quarter: str) -> list[dict]:
-    """
-    Resumen ejecutivo de abandono con jerarquía completa.
-    Llama: sp_rpt_resumen_abandono_rollup(p_quarter)
-    Retorna: 13 filas (3 segs × 3 menus + 3 subtotales + 1 TOTAL).
-    """
-    return _call_sp('sp_rpt_resumen_abandono_rollup', [quarter])
+```
+REQUEST:
+  Cliente HTTP
+      │ HTTPS / HTTP
+      ▼
+  Nginx (reverse proxy, opcional)
+      │ HTTP (localhost)
+      ▼
+  Gunicorn  (WSGI workers)
+      │ Python → mysqlclient 2.2.1 (C extension sobre libmysqlclient)
+      │ alias connections['ivr']
+      │
+      │  IPC: Unix Domain Socket
+      │  /run/mysqld/mysqld.sock
+      ▼
+  MariaDB 10.11.14
+      └── ivr_legacy
+          ├── base_ivr_detalle
+          ├── base_ivr_clientes
+          ├── job_execution_log
+          ├── etl_runs
+          ├── pipeline_event_log     ← nuevo FASE 1
+          ├── v_etl_rendimiento      ← nuevo FASE 3 (T3.1)
+          └── sp_rpt_*, sp_etl_*
 ```
 
-**En `ivr_views.py`:**
-```python
-class AbandonmentSummaryView(APIView):
-    permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'reports.view_ivr'
+### Resolución del mecanismo de conexión
 
-    def get(self, request):
-        quarter = request.query_params.get('quarter', 'Q01_25')
-        errors = _validate(quarter=quarter)
-        if errors:
-            return Response({'errors': errors}, status=400)
-        return _ivr_response(svc.get_abandonment_summary, quarter,
-                             extra={'quarter': quarter})
+`base.py` tiene esta lógica:
+
+```python
+'ivr': {
+    'ENGINE': 'django.db.backends.mysql',
+    'NAME':   config('IVR_DB_NAME',     default='ivr_legacy'),
+    'USER':   config('IVR_DB_USER',     default='django_user'),
+    'PASSWORD': config('IVR_DB_PASSWORD', default='django_pass'),
+    'HOST':   config('IVR_DB_HOST',     default='localhost'),
+    'PORT':   config('IVR_DB_PORT',     default='3306'),
+    'OPTIONS': {
+        'charset': 'utf8mb4',
+        'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+        'unix_socket': config('IVR_DB_SOCKET', default='/run/mysqld/mysqld.sock'),
+    },
+}
 ```
 
-**En `reports/urls.py`:**
-```python
-path('ivr/abandonment-summary/', AbandonmentSummaryView.as_view(),
-     name='ivr-abandonment-summary'),
+Regla del driver `mysqlclient`:
+- Si `OPTIONS['unix_socket']` tiene valor → **usa socket Unix, ignora HOST y PORT**
+- Si `OPTIONS['unix_socket']` está vacío o ausente → usa **TCP hacia HOST:PORT**
+
+Estado actual del `.env`:
+```bash
+IVR_DB_SOCKET=/run/mysqld/mysqld.sock   ← activo → socket Unix
+IVR_DB_HOST=localhost                   ← ignorado
 ```
 
-### Columnas nuevas en SPs existentes que Django ya consume
+### Ciclo de vida de una llamada a SP
 
-Los SPs modificados en FASE 2 y FASE 4 retornan columnas nuevas que Django
-recibirá automáticamente. El patrón `dict(zip(cols, row))` en `_call_sp`
-construye el diccionario a partir de `cursor.description` — cualquier columna
-nueva que el SP retorne aparece en el JSON de respuesta sin cambios en Django.
+```
+1. GET /api/reports/ivr/clients/?quarter=Q01_25
 
-| SP | Columnas nuevas | Impacto en IACT-api |
-|---|---|---|
-| `sp_rpt_centros_xsegmento` | `percentil_actividad`, `pct_del_lider` | Aparecen en `/ivr/centers-by-segment/` automáticamente ✓ |
-| `sp_rpt_centros_transferencia` | `cuartil_centro` | Aparece en `/ivr/transfer-centers/` automáticamente ✓ |
-| `sp_rpt_menu_redirigidos` | Sin columnas nuevas (solo refactoring interno) | Sin impacto ✓ |
-| `sp_rpt_cMENU_ERROR` | Sin columnas nuevas | Sin impacto ✓ |
-| `sp_rpt_menu_centro` | Sin columnas nuevas | Sin impacto ✓ |
-| `sp_rpt_clientes` | Sin columnas nuevas | Sin impacto ✓ |
+2. ClientesReportView.get(request)
+     quarter = request.query_params.get('quarter', 'Q01_25')
+     errors  = _validate(quarter=quarter)
+         → svc.get_available_quarters()
+             → connections['ivr'].cursor()
+             → cursor.execute("SELECT DISTINCT trimestre FROM base_ivr_detalle")
+             → retorna set de quarters disponibles
+     if quarter not in available → Response({'errors': [...]}, 400)
+
+3. _ivr_response(svc.get_clients, quarter, ...)
+
+4. svc.get_clients('Q01_25')
+     → _call_sp('sp_rpt_clientes', ['Q01_25'])
+
+5. _call_sp:
+   a. connections['ivr'].cursor()
+      → mysqlclient abre socket /run/mysqld/mysqld.sock
+      → autenticación: django_user / django_pass
+      → MariaDB ejecuta init_command:
+           SET sql_mode='STRICT_TRANS_TABLES'
+   b. cursor.execute("SET SESSION MAX_STATEMENT_TIME=30")
+      → timeout por query en MariaDB
+   c. cursor.callproc('sp_rpt_clientes', ['Q01_25'])
+      → MariaDB ejecuta el SP en ivr_legacy
+      → retorna result set
+   d. cursor.description → columnas
+   e. cursor.fetchall() → filas
+   f. [dict(zip(cols, row)) for row in rows]
+
+6. Response({'total_rows': 3, 'data': [...]})
+   → JSON al cliente
+   → conexión se cierra (CONN_MAX_AGE=0 default)
+```
+
+### Gestión de conexiones en Django
+
+Django **no tiene connection pooling nativo**. Con `CONN_MAX_AGE=0` (default):
+- Cada request abre una conexión al primer `cursor()`
+- La conexión se cierra al terminar el request
+- Con Unix socket, abrir/cerrar una conexión es casi gratuito (microsegundos)
+
+Con `CONN_MAX_AGE=N` segundos (no configurado actualmente):
+- Django reutiliza la conexión durante N segundos por worker
+- Seguro con Unix socket (misma máquina)
+- Con TCP requiere que MariaDB tenga `wait_timeout` > N
+- Evita el overhead de reconexión en cargas altas
+
+### Garantías que provee el Unix socket
+
+- **Sin red**: el tráfico nunca sale de la máquina, no puede ser interceptado
+- **Autenticación OS**: el socket verifica el UID del proceso que conecta
+- **Latencia cero**: IPC en kernel, sin TCP handshake, sin DNS
+- **Sin firewall**: no hay puerto expuesto
 
 ---
 
-## GAP-02 — `v_etl_rendimiento` sin endpoint
+## Parte 3 — Qué cambia con servidores separados
 
-**Severidad:** BAJA — la vista es de observabilidad interna  
-**Contexto:** La vista fue creada en T3.1. Expone `duracion_seg`,
-`duracion_anterior_seg` y `delta_seg` para detectar regresiones del ETL.
+### El único cambio de código: una variable de entorno
 
-### Situación actual
+```bash
+# Misma VPS (actual):
+IVR_DB_SOCKET=/run/mysqld/mysqld.sock
 
-Ningún archivo en IACT-api referencia `v_etl_rendimiento`.
-
-### Lo que falta en IACT-api (opcional)
-
-Podría agregarse como nuevo endpoint en `pipeline/views.py`:
-
-```python
-@api_view(['GET'])
-@permission_classes([IsAuthenticated, HasFunction])
-def etl_performance(request):
-    """
-    GET /api/pipeline/performance/
-    Lee v_etl_rendimiento: duracion, anterior y delta por step.
-    """
-    sql = """
-        SELECT job_name, step_name, start_time,
-               duracion_seg, duracion_anterior_seg, delta_seg
-        FROM v_etl_rendimiento
-        ORDER BY step_name, start_time DESC
-        LIMIT 50
-    """
-    with connections['ivr'].cursor() as cursor:
-        cursor.execute(sql)
-        cols = [c[0] for c in cursor.description]
-        return Response([dict(zip(cols, row)) for row in cursor.fetchall()])
+# Servidores separados (TCP):
+IVR_DB_SOCKET=              ← vacío → activa TCP
+IVR_DB_HOST=10.0.1.15      ← IP privada del servidor MariaDB
+IVR_DB_PORT=3306
 ```
 
-Este endpoint es opcional — `v_etl_rendimiento` es principalmente una
-herramienta de diagnóstico para el equipo, no un dato de negocio para
-el frontend. La prioridad de implementación es baja.
+Nada más cambia en el código Python. El ciclo de vida de la query es idéntico.
 
----
+### Implicaciones en MariaDB al separar servidores
 
-## GAP-03 — `pipeline_event_log` sin endpoint
+**`bind-address`** — por defecto MariaDB escucha solo en `127.0.0.1`:
+```ini
+# /etc/mysql/mariadb.conf.d/50-server.cnf en IACT-db
+bind-address = 10.0.1.15   # IP de la interfaz de red interna
+# O para escuchar en todas: bind-address = 0.0.0.0
+# (controlar acceso con firewall, no con bind-address)
+```
 
-**Severidad:** MEDIA — tabla de auditoría central sin acceso desde la API  
-**Contexto:** La tabla `pipeline_event_log` recibe eventos de todos los SPs
-de IACT-db desde FASE 1. Es la tabla de auditoría centralizada. Django no
-tiene ningún endpoint que la lea.
+**Grants** — el provisioner ya crea `django_user@'%'`:
+```sql
+-- Verificado en la sesión anterior:
+GRANT SELECT ON `ivr_legacy`.* TO `django_user`@`%`
+GRANT EXECUTE ON PROCEDURE `ivr_legacy`.`sp_rpt_clientes` TO `django_user`@`%`
+-- ... (17 routines × 2 hosts = 34 grants)
+```
+El `%` cubre cualquier IP remota. No se necesita cambiar los grants.
 
-### Situación actual
-
-`logs/views.py` expone `job_execution_log` (UC_LOG_02, UC_LOG_07) pero
-no expone `pipeline_event_log`. El operador que quiera saber "¿qué parámetros
-inválidos ha enviado el frontend?" o "¿qué fases del ETL han fallado?" no
-tiene acceso via API.
-
-### Lo que falta en IACT-api
-
-En `logs/views.py`, un nuevo endpoint:
-
-```python
-class PipelineEventLogView(APIView):
-    """
-    UC_LOG_08 — Eventos del pipeline analítico.
-    GET /api/logs/pipeline-events/
-    Fuente: pipeline_event_log en MariaDB ivr_legacy.
-    """
-    permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'logs.view'
-
-    def get(self, request):
-        quarter    = request.query_params.get('quarter')
-        error_type = request.query_params.get('error_type')
-        hours      = min(168, int(request.query_params.get('hours', 48)))
-        page_size  = min(100, int(request.query_params.get('page_size', 20)))
-
-        conditions = ["ts >= DATE_SUB(NOW(), INTERVAL %s HOUR)"]
-        params = [hours]
-        if quarter:
-            conditions.append("p_quarter = %s"); params.append(quarter)
-        if error_type:
-            conditions.append("error_type = %s"); params.append(error_type)
-
-        where = ' AND '.join(conditions)
-        sql = f"""
-            SELECT id, ts, error_type, severity, sp_nombre,
-                   sql_state, p_quarter, p_segmento,
-                   LEFT(error_message, 200) AS error_message,
-                   job_log_id, ejecutado_por
-            FROM pipeline_event_log
-            WHERE {where}
-            ORDER BY ts DESC LIMIT %s
-        """
-        with connections['ivr'].cursor() as cursor:
-            cursor.execute(sql, params + [page_size])
-            cols = [c[0] for c in cursor.description]
-            events = [dict(zip(cols, row)) for row in cursor.fetchall()]
-        return Response({'total': len(events), 'events': events})
+**Firewall en el servidor MariaDB:**
+```bash
+# Permitir solo el servidor Django (IP: 10.0.1.10)
+ufw allow from 10.0.1.10 to any port 3306 proto tcp
+ufw deny 3306
 ```
 
 ---
 
-## Verificación: cambios de IACT-db que SÍ son compatibles con IACT-api
+## Parte 4 — Opciones de despliegue
 
-### Renombre ivr_error_log → pipeline_event_log
+### Opción A — Misma VPS / Unix socket (ambiente actual)
 
-IACT-api **nunca referenció** `ivr_error_log`. La búsqueda en todos los
-archivos `.py` de IACT-api devuelve 0 resultados. El renombre no rompe nada.
+```
+┌──────────────────────────────────────────────┐
+│  VPS Ubuntu 24.04                            │
+│                                              │
+│  ┌─────────────┐  unix_socket  ┌──────────┐ │
+│  │  IACT-api   │◄─────────────►│  IACT-db │ │
+│  │  Django     │ mysqld.sock   │  MariaDB │ │
+│  └─────────────┘               └──────────┘ │
+│  ┌──────────────────────────┐               │
+│  │  PostgreSQL              │               │
+│  └──────────────────────────┘               │
+└──────────────────────────────────────────────┘
+```
 
-### SIGNAL ahora inserta en pipeline_event_log antes de propagar
+**`.env`:**
+```bash
+IVR_DB_SOCKET=/run/mysqld/mysqld.sock
+```
 
-Cuando Django llama a un SP con parámetros inválidos (ej: quarter='INVALIDO'):
-1. El SP inserta en `pipeline_event_log` (nuevo comportamiento FASE 1)
-2. El SP lanza `SIGNAL SQLSTATE '22023'` (igual que antes)
-3. Django captura `OperationalError` o `ProgrammingError` vía `_ivr_response`
+**Ventajas:** latencia cero, sin red, sin firewall entre servicios, setup mínimo.
 
-El comportamiento observable desde Django no cambia. El 400/503 sigue
-propagando igual. El INSERT a `pipeline_event_log` es transparente.
+**Desventajas:** recursos compartidos (RAM/CPU), un fallo de la VPS baja todo,
+escalar uno requiere escalar la VPS completa.
 
-### Nuevas columnas en SPs de reporte existentes
-
-El patrón `dict(zip(cols, row))` en `_call_sp` construye dicts dinámicamente
-desde `cursor.description`. Nuevas columnas aparecen en el JSON sin cambios
-en Django — aditividad estricta, sin breaking changes.
-
-### sp_etl_maestro v2.5.0 — INSERTs a pipeline_event_log en handlers
-
-`run_etl.py` llama `callproc("sp_etl_maestro", [])`. Cuando el SP falla,
-Django recibe el error via `OperationalError` y lo maneja correctamente.
-El nuevo INSERT a `pipeline_event_log` dentro del handler es interno al SP
-y transparente para Django.
+**Cuándo usar:** pruebas, staging, proyectos con volumen bajo donde la
+simplicidad operacional supera la resiliencia.
 
 ---
 
-## Resumen de hallazgos
+### Opción B — Servidores separados, red privada LAN/VPC (producción estándar)
 
-| ID | Tipo | Descripción | Archivo IACT-api | Prioridad |
-|---|---|---|---|---|
-| BUG-01 | Bug — NameError | `trimestre` sin definir en rama `if not row` | `apps/pipeline/views.py:398` | CRÍTICA |
-| GAP-01 | Feature faltante | Sin endpoint para `sp_rpt_resumen_abandono_rollup` | `apps/reports/ivr_services.py` | MEDIA |
-| GAP-02 | Feature faltante | Sin endpoint para `v_etl_rendimiento` | `apps/pipeline/views.py` | BAJA |
-| GAP-03 | Feature faltante | Sin endpoint para `pipeline_event_log` | `apps/logs/views.py` | MEDIA |
+```
+┌──────────────────────┐        Red privada       ┌──────────────────────┐
+│  Servidor A           │        10.0.0.0/24        │  Servidor B           │
+│  Ubuntu 24.04         │                           │  Ubuntu 24.04         │
+│                      │                           │                      │
+│  IACT-api            │◄──────── TCP 3306 ───────►│  IACT-db             │
+│  Django + Gunicorn    │        (sin SSL)          │  MariaDB 10.11        │
+│  PostgreSQL           │                           │  ivr_legacy           │
+└──────────────────────┘                           └──────────────────────┘
+```
+
+**`.env` en Servidor A:**
+```bash
+IVR_DB_SOCKET=
+IVR_DB_HOST=10.0.1.15
+IVR_DB_PORT=3306
+```
+
+**`/etc/mysql/mariadb.conf.d/50-server.cnf` en Servidor B:**
+```ini
+bind-address = 10.0.1.15
+```
+
+**Ventajas:** recursos independientes, escalar Django sin tocar MariaDB,
+latencia despreciable en la misma LAN (~0.1-1 ms).
+
+**Desventajas:** requiere configurar firewall y `bind-address`, tráfico sin
+cifrar dentro de la red privada (aceptable en VPC del mismo proveedor).
+
+**Cuándo usar:** producción estándar en el mismo datacenter o en la misma
+VPC de un proveedor cloud (AWS, GCP, Hetzner, DigitalOcean).
+
+---
+
+### Opción C — Servidores separados con TLS (red semi-pública o compliance)
+
+Idéntica a B pero con cifrado mutual entre IACT-api y IACT-db.
+
+**`.env` en Servidor A:**
+```bash
+IVR_DB_SOCKET=
+IVR_DB_HOST=10.0.1.15
+IVR_DB_PORT=3306
+```
+
+**`base.py` `OPTIONS` ampliado:**
+```python
+'OPTIONS': {
+    'charset': 'utf8mb4',
+    'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+    # IVR_DB_SOCKET vacío → usa TCP
+    # Sin ssl_ca aquí: agregar en .env o settings_production.py:
+    'ssl': {
+        'ca':   '/etc/ssl/mariadb/ca-cert.pem',   # CA que firmó el cert del server
+        'cert': '/etc/ssl/mariadb/client-cert.pem', # cert del cliente Django
+        'key':  '/etc/ssl/mariadb/client-key.pem',  # clave privada del cliente
+    },
+},
+```
+
+**MariaDB con TLS:**
+```ini
+# 50-server.cnf
+ssl-ca   = /etc/mysql/ssl/ca-cert.pem
+ssl-cert = /etc/mysql/ssl/server-cert.pem
+ssl-key  = /etc/mysql/ssl/server-key.pem
+require-secure-transport = ON
+```
+
+**Ventajas:** tráfico cifrado punto a punto, autenticación mutua con
+certificados, requerido para PCI-DSS/HIPAA.
+
+**Desventajas:** overhead de cifrado (5-10% CPU en handshake), gestión de
+certificados (renovación anual con Let's Encrypt o CA interna).
+
+**Cuándo usar:** cuando la red entre servidores no está garantizada como
+privada, o cuando hay requisitos de compliance.
+
+---
+
+### Opción D — SSH Tunnel (desarrollo remoto o mantenimiento puntual)
+
+No es arquitectura de producción. Es la forma de que un desarrollador
+acceda desde su máquina local a la MariaDB remota.
+
+```bash
+# Abrir túnel: puerto local 3307 → puerto 3306 del servidor remoto
+ssh -L 3307:localhost:3306 usuario@servidor-iact-db -N &
+
+# .env local
+IVR_DB_SOCKET=
+IVR_DB_HOST=127.0.0.1
+IVR_DB_PORT=3307
+```
+
+**Cuándo usar:** debugging, migraciones manuales, acceso con DBeaver o
+la CLI de MariaDB desde la máquina del desarrollador.
+
+---
+
+### Opción E — ProxySQL como middleware (alta disponibilidad)
+
+Añade un proxy entre Django y MariaDB para connection pooling, routing
+y failover. Útil cuando el número de workers de Gunicorn supera el
+`max_connections` de MariaDB o cuando se necesitan réplicas de lectura.
+
+```
+IACT-api                ProxySQL              MariaDB
+Gunicorn workers         (mismo servidor       ┌─────────────┐
+    │                    o servidor propio)    │  Primary    │
+    └─── TCP 6033 ───►  ┌──────────┐ ────────►│  ivr_legacy │
+                        │ ProxySQL │           └─────────────┘
+                        │ pool 100 │ ────────►┌─────────────┐
+                        └──────────┘          │  Replica    │
+                                              └─────────────┘
+```
+
+**`.env` en IACT-api:**
+```bash
+IVR_DB_SOCKET=
+IVR_DB_HOST=127.0.0.1    # ProxySQL en el mismo servidor que Django
+IVR_DB_PORT=6033          # puerto estándar de ProxySQL
+```
+
+**Ventajas:**
+- Pool de conexiones real (Django con `CONN_MAX_AGE=0` crea N conexiones
+  para N workers; ProxySQL las multiplexa en un pool menor hacia MariaDB)
+- Read/write splitting: queries hacia réplica, escrituras hacia primary
+- Failover automático: si primary cae, ProxySQL promueve réplica
+- Query mirroring: ejecutar en primary y réplica simultáneamente para pruebas
+
+**Desventajas:**
+- Componente adicional para operar y monitorear
+- ProxySQL necesita conocer los SPs para rutearlos correctamente
+- Añade ~0.1-0.5 ms de latencia por query
+- Si ProxySQL cae, toda la integración cae
+
+**Cuándo usar:** producción de alta disponibilidad con más de 50 workers
+de Gunicorn o cuando se necesita réplica de lectura para los reportes pesados.
+
+---
+
+## Parte 5 — Tabla de decisión: qué opción usar
+
+| Criterio | Opción A | Opción B | Opción C | Opción D | Opción E |
+|---|---|---|---|---|---|
+| Mismo servidor | ✓ obligatorio | ✗ | ✗ | ✗ | ✗ |
+| Red privada LAN/VPC | — | ✓ ideal | ✓ | — | ✓ |
+| Cifrado TLS | no | no | ✓ | SSH cifra | no (ProxySQL↔MariaDB opcional) |
+| Compliance PCI/HIPAA | no | no | ✓ | no | condicional |
+| Connection pooling | no | no | no | no | ✓ |
+| Alta disponibilidad | no | no | no | no | ✓ |
+| Complejidad operacional | mínima | baja | media | nula | alta |
+| Latencia | ~0 µs | ~0.1-1 ms | ~0.5-2 ms | variable | ~0.1-0.5 ms extra |
+| Cuándo usar | pruebas / staging | producción estándar | compliance | dev remoto | HA / escala |
+
+---
+
+## Parte 6 — Resumen de variables de entorno por opción
+
+| Variable | Opción A | Opción B | Opción C | Opción D | Opción E |
+|---|---|---|---|---|---|
+| `IVR_DB_SOCKET` | `/run/mysqld/mysqld.sock` | `""` | `""` | `""` | `""` |
+| `IVR_DB_HOST` | `localhost` (ignorado) | IP privada MariaDB | IP privada MariaDB | `127.0.0.1` | `127.0.0.1` |
+| `IVR_DB_PORT` | `3306` (ignorado) | `3306` | `3306` | `3307` (túnel) | `6033` (ProxySQL) |
+| `IVR_DB_USER` | `django_user` | `django_user` | `django_user` | `django_user` | `django_user` |
+| `IVR_DB_PASSWORD` | dev | fuerte | fuerte | fuerte | fuerte |
+| SSL en OPTIONS | no | no | sí (`ssl: {ca, cert, key}`) | no | no |
+| `IVR_QUERY_TIMEOUT_SEC` | `30` | `30` | `30` | `30` | `30` |
