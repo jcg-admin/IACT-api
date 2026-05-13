@@ -139,3 +139,67 @@ class AuditLog(models.Model):
             result=result,
             **kwargs
         )
+
+
+# ===========================================================================
+# EVENT TYPE CATALOG — FASE 0 (F0-T5)
+# ===========================================================================
+# Fuente: modelo-dominio-iact.rst § 4.7 (EventType enum), UC_PERM_09 CA-03
+
+VALID_EVENT_TYPES = frozenset({
+    # Auth (UC_AUTH_01..05)
+    'LOGIN',
+    'LOGOUT',
+    'SESSION_CLOSED',
+    'LOGIN_NO_PERMISSIONS',
+    'BLOCKED_LOGIN_ATTEMPT',
+    'PASSWORD_CHANGED',
+    'PASSWORD_RESET',
+    # Access assignments (UC_ACC_01..04)
+    'FUNCTIONS_ASSIGNED',
+    'FUNCTIONS_REVOKED',
+    'AGR_ASSIGNED',
+    'AGR_ASSIGN_NOOP',
+    'AGR_REVOKED',
+    # Access management (UC_ACC_05, UC_PERM_03..06)
+    'SOD_RULE_CREATED',
+    'SOD_RULE_UPDATED',
+    'SOD_RULE_DISABLED',
+    'EXCEPTIONAL_GRANTED',
+    'EXCEPTIONAL_REVOKED',
+    # Users (UC_USR_01..04)
+    'USER_CREATED',
+    'USER_MODIFIED',
+    'USER_DEACTIVATED',
+    'USER_BLOCKED',
+    'USER_UNBLOCKED',
+    'USER_REACTIVATED',
+    # Pipeline (UC_PIP_04)
+    'PIPELINE_RETRY_REQUESTED',
+    # Reports (UC_RPT_04, UC_RPT_11)
+    'EXPORT_REQUESTED',
+    'REPORT_SHARED',
+    # Alerts (UC_ALR_03)
+    'ALERT_ACKNOWLEDGED',
+    # Audit (UC_AUD_01..04) — meta-audit
+    'GENERAL_AUDIT_QUERIED',
+    'AUDIT_EXPORTED',
+    'COMPLIANCE_REPORT_GENERATED',
+    # System
+    'ACCESS_DENIED',
+    'CONFIG_CHANGED',
+})
+
+
+class AuditValidationError(Exception):
+    """UC_PERM_09 CA-03: event_type desconocido → AuditValidationError."""
+    pass
+
+
+# PII fields que NUNCA deben aparecer en el payload de AuditEvent
+# CNST-026: Sin PII directa en payload audit
+_PII_FIELDS = frozenset({
+    'password', 'passwd', 'password_hash', 'token', 'access_token',
+    'refresh_token', 'secret', 'api_key', 'credit_card', 'cvv',
+    'ssn', 'pin',
+})

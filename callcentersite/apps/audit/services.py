@@ -311,3 +311,111 @@ class AuditLogService:
             resource=resource,
             details=details or {},
         )
+
+
+# ===========================================================================
+# emit() — FASE 0 (F0-T5)
+# ===========================================================================
+# Fuente: UC_PERM_09 CA-01..03, BR-008, BR-010, CNST-025, CNST-026
+# modelo-dominio-iact.rst § 4.7 (AuditEvent.record())
+
+    @classmethod
+    def emit(
+        cls,
+        event_type: str,
+        actor_user_id: int,
+        payload: dict | None = None,
+        *,
+        target_entity_type: str = '',
+        target_entity_id: str = '',
+        ip_address: str | None = None,
+        user_agent: str = '',
+    ) -> 'AuditLog':
+        """
+        Emite un AuditEvent inmutable — punto de entrada canónico (FASE 1+).
+
+        UC_PERM_09 CA-01: emit básico → AuditEvent persistido + id.
+        UC_PERM_09 CA-02: inmutable — save() rechaza UPDATE.
+        UC_PERM_09 CA-03: event_type desconocido → AuditValidationError.
+        CNST-025: append-only.
+        CNST-026: PII eliminado del payload antes de persistir.
+
+        Args:
+            event_type: Código canónico del evento (ver VALID_EVENT_TYPES).
+            actor_user_id: ID del usuario que actúa.
+            payload: Dict con contexto del evento (sin PII).
+            target_entity_type: Tipo de entidad afectada (ej: 'User').
+            target_entity_id: ID de entidad afectada (ej: '42').
+            ip_address: IP del request, si aplica.
+            user_agent: User-Agent del request, si aplica.
+
+        Returns:
+            AuditLog: Evento persistido con pk asignado.
+
+        Raises:
+            AuditValidationError: Si event_type no está en VALID_EVENT_TYPES.
+        """
+        from apps.audit.models import VALID_EVENT_TYPES, AuditValidationError, _PII_FIELDS, AuditLog
+        from django.contrib.auth import get_user_model
+
+        # UC_PERM_09 CA-03: validar event_type
+        if event_type not in VALID_EVENT_TYPES:
+            raise AuditValidationError(
+                f"event_type desconocido: {event_type!r}. "
+                f"Valores válidos: {sorted(VALID_EVENT_TYPES)}"
+            )
+
+        # CNST-026: eliminar PII del payload
+        clean_payload = cls._strip_pii(payload or {})
+
+        # Resolver User (puede ser None si el ID no existe — FK nullable)
+        User = get_user_model()
+        try:
+            user = User.objects.get(pk=actor_user_id)
+        except User.DoesNotExist:
+            user = None
+
+        # resource = "EntityType:EntityId" — formato canónico
+        resource = (
+            f"{target_entity_type}:{target_entity_id}"
+            if target_entity_type else f"actor:{actor_user_id}"
+        )
+
+        return AuditLog.objects.create(
+            user=user,
+            action=event_type,       # Campo 'action' existente ← mapea a event_type
+            resource=resource,
+            result='SUCCESS',
+            ip_address=ip_address,
+            user_agent=user_agent or '',
+            details=clean_payload,
+        )
+
+    @staticmethod
+    def _strip_pii(payload: dict) -> dict:
+        """
+        CNST-026: Elimina campos PII del payload antes de persistir.
+
+        Elimina recursivamente cualquier clave en _PII_FIELDS.
+        Las claves se normalizan a minúsculas para la comparación.
+
+        Args:
+            payload: Dict original con potencial PII.
+
+        Returns:
+            Dict limpio sin campos PII. PII reemplazado por '[REDACTED]'.
+        """
+        from apps.audit.models import _PII_FIELDS
+
+        if not isinstance(payload, dict):
+            return payload
+
+        clean = {}
+        for key, value in payload.items():
+            if key.lower() in _PII_FIELDS:
+                clean[key] = '[REDACTED]'
+            elif isinstance(value, dict):
+                clean[key] = AuditLogService._strip_pii(value)
+            else:
+                clean[key] = value
+        return clean
