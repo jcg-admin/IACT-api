@@ -209,73 +209,134 @@ class UserAccessGroup(models.Model):
         return f'{self.user} -> {self.access_group.code}'
 
 
-class SeparationRule(SoftDeleteModel):
+class SeparationRule(models.Model):
     """
-    Regla de Separacion de Deberes / Separation of Duties
-    (UC_ACC_05, UC_ADM_01).
+    Regla de Separacion de Deberes — Separation of Duties (SoD).
 
-    Una SeparationRule define que dos funciones son incompatibles:
-    un usuario no puede tener ambas asignadas simultaneamente.
+    UC_ACC_05 (ACC-005/011/012), BR-007, CNST-030.
 
-    Ejemplo: 'aprobar_reporte' y 'crear_reporte' pueden ser
-    incompatibles para evitar que alguien cree y apruebe sus
-    propios reportes.
+    Modela conflictos GRUPALES entre conjuntos de funciones:
+    - functions_set_a: primer conjunto de funciones en conflicto
+    - functions_set_b: segundo conjunto de funciones en conflicto
+    Un usuario NO puede tener funciones de AMBOS conjuntos simultaneamente.
+
+    Diseño canónico (FASE 0 — modelo-rbac-iact.rst v5.4.0):
+      SOD-001 pipeline_audit_separation   (PIP-* vs AUD-*)
+      SOD-002 user_management_audit_separation (USR-* vs AUD-*)
+      SOD-003 access_management_audit_separation (ACC-* vs AUD-*)
+
+    Estado: ENABLED / DISABLED (BR-009 — baja lógica, no DELETE).
+
+    Hallazgo F0-H-003: el modelo anterior usaba FKs binarios (function_a,
+    function_b) que solo permiten pares de funciones. Los SoD del v5.4.0
+    son grupales (múltiples funciones por lado). Se reestructura a M2M.
     """
-    ESTADO_CHOICES = [
-        ('active',    'Active'),
-        ('suspended', 'Suspended'),
-        ('deleted',   'Deleted'),
+
+    STATE_ENABLED  = 'ENABLED'
+    STATE_DISABLED = 'DISABLED'
+
+    STATE_CHOICES = [
+        (STATE_ENABLED,  'Enabled'),   # BR-009: ENABLED por defecto
+        (STATE_DISABLED, 'Disabled'),  # BR-009: desactivar, no eliminar
     ]
 
+    code = models.CharField(
+        max_length=20,
+        unique=True,
+        verbose_name=_('Codigo'),
+        help_text='Identificador canónico. Ej: SOD-001. '
+                  'Fuente: modelo-rbac-iact.rst v5.4.0.',
+    )
     name = models.CharField(
         max_length=200,
-        verbose_name=_('Nombre de la regla'),
+        verbose_name=_('Nombre'),
+        help_text='Nombre legible. Ej: pipeline_audit_separation.',
     )
-    function_a = models.ForeignKey(
+    description = models.TextField(
+        blank=True,
+        verbose_name=_('Descripcion'),
+        help_text='Razon de negocio por la que estos conjuntos son incompatibles.',
+    )
+    functions_set_a = models.ManyToManyField(
         Function,
-        on_delete=models.CASCADE,
-        related_name='separation_rules_as_a',
-        verbose_name=_('Funcion A'),
+        blank=True,
+        related_name='sod_rules_as_set_a',
+        verbose_name=_('Conjunto A'),
+        help_text='Funciones del primer conjunto en conflicto (ej: Pipeline).',
     )
-    function_b = models.ForeignKey(
+    functions_set_b = models.ManyToManyField(
         Function,
-        on_delete=models.CASCADE,
-        related_name='separation_rules_as_b',
-        verbose_name=_('Funcion B'),
+        blank=True,
+        related_name='sod_rules_as_set_b',
+        verbose_name=_('Conjunto B'),
+        help_text='Funciones del segundo conjunto en conflicto (ej: Auditoria).',
     )
-    justification = models.TextField(
-        verbose_name=_('Justificacion'),
-        help_text='Razon de negocio por la que estas funciones son incompatibles.',
-    )
-    status = models.CharField(
-        max_length=20,
-        choices=ESTADO_CHOICES,
-        default='active',
+    state = models.CharField(
+        max_length=10,
+        choices=STATE_CHOICES,
+        default=STATE_ENABLED,
         verbose_name=_('Estado'),
+        help_text='ENABLED | DISABLED. BR-009: nunca DELETE.',
     )
     created_by = models.ForeignKey(
         'users.User',
         on_delete=models.SET_NULL,
         null=True,
+        blank=True,
         related_name='separation_rules_created',
         verbose_name=_('Creado por'),
     )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('Creado'))
+    updated_at = models.DateTimeField(auto_now=True, verbose_name=_('Actualizado'))
 
     class Meta:
-        verbose_name = _('Regla de separacion')
-        verbose_name_plural = _('Reglas de separacion')
-        ordering = ['name']
+        verbose_name = _('Regla SoD')
+        verbose_name_plural = _('Reglas SoD')
+        ordering = ['code']
         db_table = 'access_separation_rule'
-        constraints = [
-            models.UniqueConstraint(
-                fields=['function_a', 'function_b'],
-                condition=models.Q(is_active=True),
-                name='unique_separation_pair_active',
-            )
-        ]
 
-    def __str__(self):
-        return f'SepRule: {self.function_a.code} ⊕ {self.function_b.code}'
+    def __str__(self) -> str:
+        return f'SoD {self.code}: {self.name} [{self.state}]'
+
+    def is_violated_by(self, function_codes: set[str]) -> bool:
+        """
+        Verifica si un conjunto de códigos de función viola esta regla SoD.
+
+        FR-010-02: validar SoD antes de asignar (BR-007).
+        La regla se viola cuando el conjunto contiene funciones de AMBOS grupos.
+
+        Args:
+            function_codes: set de strings con los códigos de función del usuario.
+
+        Returns:
+            True si hay violación (usuario tiene fns de ambos sets), False si no.
+        """
+        if self.state == self.STATE_DISABLED:
+            return False
+
+        codes_a = set(self.functions_set_a.values_list('code', flat=True))
+        codes_b = set(self.functions_set_b.values_list('code', flat=True))
+
+        has_a = bool(function_codes & codes_a)
+        has_b = bool(function_codes & codes_b)
+
+        return has_a and has_b
+
+    def find_conflict(self, function_codes: set[str]) -> tuple[str, str] | None:
+        """
+        Retorna el primer par en conflicto o None si no hay violación.
+
+        Patrón Specification (patrones-diseno.rst UC_ACC_01).
+        """
+        if not self.is_violated_by(function_codes):
+            return None
+
+        codes_a = set(self.functions_set_a.values_list('code', flat=True))
+        codes_b = set(self.functions_set_b.values_list('code', flat=True))
+
+        fn_a = next(iter(function_codes & codes_a))
+        fn_b = next(iter(function_codes & codes_b))
+        return (fn_a, fn_b)
 
 
 class ExceptionalPermission(models.Model):
@@ -411,15 +472,33 @@ class UserModuleAccess(models.Model):
 
 class UserFunctionAssignment(models.Model):
     """
-    Asignacion de una funcion especifica a un usuario (RBAC granular).
+    Asignacion de funcion RBAC a usuario — fuente de verdad para FASE 1+.
 
-    Modelo completo con soporte de soft-delete (is_active),
-    trazabilidad (assigned_by, reason) y auditoria.
+    UC_ACC_01 (assign_functions), UC_ACC_02 (revoke_functions).
+    Fuente: modelo-dominio-iact.rst § 4.2, Assignment class.
 
-    Coexiste con UserPermission (modelo simplificado) durante la
-    transicion. UserFunctionAssignment es la fuente de verdad para
-    la asignacion de funciones con historial completo.
+    Estado canónico (BR-009 — baja lógica siempre):
+    - ACTIVE: asignación vigente
+    - EXPIRED: caducó por expires_at < now
+    - REVOKED: revocada explícitamente por UC_ACC_02
+
+    Hallazgo F0-H-004 (FASE 0): el modelo anterior solo tenía is_active
+    boolean. Sin state enum, expires_at, revoked_at ni revoke_reason, los
+    UCs UC_ACC_02 y UC_PERM_07 no pueden implementarse correctamente.
+
+    Se mantiene is_active como campo de conveniencia (sincronizado con state).
     """
+
+    STATE_ACTIVE  = 'ACTIVE'
+    STATE_EXPIRED = 'EXPIRED'
+    STATE_REVOKED = 'REVOKED'
+
+    STATE_CHOICES = [
+        (STATE_ACTIVE,  'Active'),   # Asignación vigente
+        (STATE_EXPIRED, 'Expired'),  # Caducó por expires_at
+        (STATE_REVOKED, 'Revoked'),  # Revocada explícitamente — BR-009
+    ]
+
     user = models.ForeignKey(
         'users.User',
         on_delete=models.CASCADE,
@@ -432,16 +511,21 @@ class UserFunctionAssignment(models.Model):
         related_name='user_assignments',
         verbose_name=_('Funcion'),
     )
-    reason = models.CharField(
-        max_length=255,
-        blank=True,
-        verbose_name=_('Motivo'),
-        help_text='Razon de la asignacion (opcional).',
+    state = models.CharField(
+        max_length=10,
+        choices=STATE_CHOICES,
+        default=STATE_ACTIVE,
+        verbose_name=_('Estado'),
+        help_text='ACTIVE | EXPIRED | REVOKED. BR-009: nunca DELETE.',
+        db_index=True,
     )
+    # Compatibilidad con código existente — sincronizado con state
     is_active = models.BooleanField(
         default=True,
         verbose_name=_('Activa'),
+        help_text='True cuando state=ACTIVE. Sincronizado automáticamente.',
     )
+    # Trazabilidad de asignación (UC_ACC_01)
     assigned_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name=_('Asignada en'),
@@ -454,16 +538,85 @@ class UserFunctionAssignment(models.Model):
         related_name='function_assignments_granted',
         verbose_name=_('Asignada por'),
     )
+    reason = models.CharField(
+        max_length=255,
+        blank=True,
+        verbose_name=_('Motivo de asignacion'),
+        help_text='Razón de la asignación (opcional).',
+    )
+    # Expiración temporal (UC_ACC_01 CA-02, UC_PERM_07 CA-06/07/17)
+    expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Expira en'),
+        help_text='Nullable: si es None la asignación no expira. '
+                  'UC_PERM_07 CA-06: expired assignment no cuenta.',
+        db_index=True,
+    )
+    # Trazabilidad de revocación (UC_ACC_02)
+    revoked_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_('Revocada en'),
+    )
+    revoked_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='function_assignments_revoked',
+        verbose_name=_('Revocada por'),
+    )
+    revoke_reason = models.CharField(
+        max_length=500,
+        blank=True,
+        verbose_name=_('Motivo de revocacion'),
+        help_text='UC_ACC_02: revoke_reason obligatorio al revocar.',
+    )
 
     class Meta:
         verbose_name = _('Asignacion de funcion')
         verbose_name_plural = _('Asignaciones de funcion')
         unique_together = [('user', 'function')]
         db_table = 'access_user_function_assignment'
+        indexes = [
+            models.Index(fields=['user', 'state'], name='idx_ufassign_user_state'),
+            models.Index(fields=['state', 'expires_at'], name='idx_ufassign_state_expires'),
+        ]
 
-    def __str__(self):
-        status = 'active' if self.is_active else 'revoked'
-        return f'{self.user} -> {self.function.code} [{status}]'
+    def __str__(self) -> str:
+        return f'{self.user} -> {self.function.code} [{self.state}]'
+
+    def revoke(self, revoked_by, reason: str) -> None:
+        """
+        UC_ACC_02: revocar asignación (baja lógica, BR-009).
+
+        Args:
+            revoked_by: User que revoca.
+            reason: Razón de revocación (requerida).
+        """
+        from django.utils import timezone
+        self.state = self.STATE_REVOKED
+        self.is_active = False
+        self.revoked_at = timezone.now()
+        self.revoked_by = revoked_by
+        self.revoke_reason = reason
+        self.save(update_fields=[
+            'state', 'is_active', 'revoked_at', 'revoked_by', 'revoke_reason'
+        ])
+
+    @property
+    def is_currently_valid(self) -> bool:
+        """
+        UC_PERM_07 CA-06: asignación expirada no cuenta.
+        True si state=ACTIVE y no ha expirado.
+        """
+        from django.utils import timezone
+        if self.state != self.STATE_ACTIVE:
+            return False
+        if self.expires_at and self.expires_at < timezone.now():
+            return False
+        return True
 
 
 class MenuItem(models.Model):

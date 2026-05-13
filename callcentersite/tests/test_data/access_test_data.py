@@ -62,7 +62,7 @@ class FunctionTestData(DjangoModelFactory):
 
     module            = factory.SubFactory(ModuleTestData)
     name              = factory.Sequence(lambda n: f'Function {n}')
-    code              = factory.Sequence(lambda n: f'fn_{n:04d}')
+    code              = factory.Sequence(lambda n: f'TST-{n:03d}')  # v5.4.0 format: MOD-NNN
     permission_django = factory.Sequence(lambda n: f'module.action_{n}')
     description       = factory.Faker('sentence', nb_words=8)
     is_active         = True
