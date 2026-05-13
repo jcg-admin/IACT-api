@@ -395,7 +395,7 @@ def etl_data_availability(request):
 
     if not row:
         return Response({
-            'trimestre':             trimestre,
+            'trimestre':             quarter,       # H-F1-001: era 'trimestre' (NameError)
             'status_frescura':       'sin_datos',
             'ultima_carga':          None,
             'registros_disponibles': 0,
