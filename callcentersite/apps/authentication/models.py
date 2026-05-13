@@ -597,3 +597,145 @@ class LoginLockout(TimeStampedModel):
 # 
 # Total líneas eliminadas: ~40 líneas
 # ============================================================================
+
+
+# ===========================================================================
+# SESSION — FASE 1 (UC_AUTH_01)
+# ===========================================================================
+# Fuente: modelo-dominio-iact.rst § 4.1, UC_AUTH_01 CAs 01-03
+# BR-005: sesión única por usuario.
+# CNST-002: timeout de sesión configurable (default 15min).
+# CNST-003: sesión persistida en BD.
+#
+# Hallazgo F1-H-002: SessionLog tenía estructura incorrecta (is_active boolean,
+# sin state enum, sin close_reason, sin client_info, sin session_id UUID).
+# Se crea Session canónica separada.
+
+import uuid as _uuid
+
+
+class Session(models.Model):
+    """
+    Sesión activa de un usuario.
+
+    UC_AUTH_01: Se crea al hacer login exitoso.
+    UC_AUTH_02: Transita ACTIVE → CLOSED con close_reason='USER_LOGOUT'.
+    BR-005: Un usuario solo puede tener una Session ACTIVE a la vez.
+    CNST-002: expires_at = started_at + SESSION_TIMEOUT_MINUTES.
+    BR-009: No DELETE físico — state CLOSED o EXPIRED.
+    """
+
+    STATE_ACTIVE  = 'ACTIVE'
+    STATE_CLOSED  = 'CLOSED'
+    STATE_EXPIRED = 'EXPIRED'
+
+    STATE_CHOICES = [
+        (STATE_ACTIVE,  'Activa'),
+        (STATE_CLOSED,  'Cerrada'),
+        (STATE_EXPIRED, 'Expirada'),
+    ]
+
+    CLOSE_REASON_USER_LOGOUT   = 'USER_LOGOUT'
+    CLOSE_REASON_SUPERSEDED    = 'SUPERSEDED'
+    CLOSE_REASON_ADMIN_CLOSE   = 'ADMIN_CLOSE'
+    CLOSE_REASON_EXPIRED       = 'EXPIRED'
+    CLOSE_REASON_USER_ELIMINATED = 'USER_ELIMINATED'
+
+    session_id = models.UUIDField(
+        primary_key=True,
+        default=_uuid.uuid4,
+        editable=False,
+        verbose_name='Session ID',
+        help_text='UUID de la sesión. Expuesto en el response de login.',
+    )
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='sessions',
+        verbose_name='Usuario',
+    )
+    state = models.CharField(
+        max_length=10,
+        choices=STATE_CHOICES,
+        default=STATE_ACTIVE,
+        verbose_name='Estado',
+        db_index=True,
+        help_text='ACTIVE | CLOSED | EXPIRED. BR-009: nunca DELETE.',
+    )
+    started_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Iniciada',
+    )
+    last_activity_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Última actividad',
+        help_text='Se actualiza en cada request autenticado (CNST-002).',
+    )
+    expires_at = models.DateTimeField(
+        verbose_name='Expira',
+        help_text='started_at + 15 min (CNST-002). Se extiende con actividad.',
+        db_index=True,
+    )
+    client_info = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name='Info cliente',
+        help_text='Dispositivo, plataforma, etc. UC_AUTH_01 FA-03.',
+    )
+    close_reason = models.CharField(
+        max_length=30,
+        blank=True,
+        default='',
+        verbose_name='Razón de cierre',
+        help_text='USER_LOGOUT | SUPERSEDED | ADMIN_CLOSE | EXPIRED | USER_ELIMINATED',
+    )
+    closed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Cerrada en',
+    )
+    ip_address = models.GenericIPAddressField(
+        null=True,
+        blank=True,
+        verbose_name='IP',
+    )
+    # scope reducido para FA-01 (first_login)
+    scope = models.CharField(
+        max_length=20,
+        default='full',
+        verbose_name='Scope',
+        help_text="'full' normal | 'restricted' solo UC_AUTH_04+02 (FA-01).",
+    )
+
+    class Meta:
+        db_table = 'authentication_session'
+        verbose_name = 'Sesión'
+        verbose_name_plural = 'Sesiones'
+        ordering = ['-started_at']
+        indexes = [
+            models.Index(fields=['user', 'state'], name='idx_session_user_state'),
+            models.Index(fields=['state', 'expires_at'], name='idx_session_state_exp'),
+        ]
+
+    def __str__(self) -> str:
+        return f'Session({self.user.username}, {self.state})'
+
+    def close(self, reason: str) -> None:
+        """
+        Cierra la sesión (baja lógica — BR-009).
+
+        UC_AUTH_01 CA-02: reason='SUPERSEDED' al ser reemplazada.
+        UC_AUTH_02 CA-01: reason='USER_LOGOUT' al hacer logout.
+
+        Args:
+            reason: CLOSE_REASON_* constant.
+        """
+        self.state = self.STATE_CLOSED
+        self.close_reason = reason
+        self.closed_at = timezone.now()
+        self.save(update_fields=['state', 'close_reason', 'closed_at'])
+
+    @property
+    def is_active(self) -> bool:
+        """True si state=ACTIVE y no ha expirado (CA-06 UC_PERM_07)."""
+        return self.state == self.STATE_ACTIVE and self.expires_at > timezone.now()
