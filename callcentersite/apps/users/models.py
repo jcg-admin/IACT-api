@@ -34,6 +34,37 @@ class User(AbstractUser):
         verbose_name='Telefono',
     )
     is_active = models.BooleanField(default=True, verbose_name='Activo')
+    state = models.CharField(
+        max_length=10,
+        choices=[
+            ('ACTIVE',   'Activo'),
+            ('INACTIVE', 'Inactivo'),   # BR-009: baja lógica
+            ('BLOCKED',  'Bloqueado'),  # BR-015: 5 intentos fallidos
+        ],
+        default='ACTIVE',
+        verbose_name='Estado',
+        db_index=True,
+        help_text='Estado canónico del usuario. Fuente: modelo-dominio-iact.rst § 4.1.',
+    )
+    first_login = models.BooleanField(
+        default=True,
+        verbose_name='Primer login',
+        help_text='True al crear la cuenta. UC_AUTH_01 FA-01: fuerza cambio de contraseña.',
+    )
+    password_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Contraseña expira',
+        help_text='UC_AUTH_01 FA-02: aviso cuando password_expires_at - now() < ventana.',
+    )
+    last_login_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Último login',
+        help_text='UC_AUTH_01 paso 14: actualizado en cada login exitoso.',
+        db_index=True,
+    )
+
 
     class Meta:
         verbose_name = 'Usuario'
