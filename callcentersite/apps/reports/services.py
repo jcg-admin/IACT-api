@@ -174,38 +174,12 @@ class ExportService:
     def _get_calls_data(self, filters: Dict) -> List[Dict]:
         """
         Obtener datos de llamadas.
-        
-        Args:
-            filters: Filtros aplicados
-            
-        Returns:
-            List[Dict]: Datos de llamadas
+
+        CallRecord eliminado en FASE 3 (UC_OPR/UC_SUP/UC_CLI fuera de scope).
+        Los datos de llamadas se obtienen desde MariaDB via sp_rpt_* (ivr_services.py).
         """
-        from apps.pipeline.models import CallRecord
-        
-        queryset = CallRecord.objects.all()
-        
-        # Aplicar filtros
-        if 'fecha_desde' in filters:
-            queryset = queryset.filter(fecha__gte=filters['fecha_desde'])
-        if 'fecha_hasta' in filters:
-            queryset = queryset.filter(fecha__lte=filters['fecha_hasta'])
-        if 'servicio_800' in filters:
-            queryset = queryset.filter(servicio_800=filters['servicio_800'])
-        
-        # Limitar CNST-007
-        queryset = queryset[:self.MAX_EXPORT_SIZE]
-        
-        # Convertir a dict
-        return list(queryset.values(
-            'fecha',
-            'telefono',
-            'servicio_800',
-            'total_llamadas',
-            'llamadas_contestadas',
-            'llamadas_abandonadas',
-        ))
-    
+        return []
+
     def _get_users_data(self, filters: Dict) -> List[Dict]:
         """
         Obtener datos de usuarios.
@@ -319,20 +293,13 @@ class ReportService:
     
     @staticmethod
     def _count_calls(filters: Dict) -> int:
-        """Contar llamadas según filtros."""
-        from apps.pipeline.models import CallRecord
-        
-        queryset = CallRecord.objects.all()
-        
-        if 'fecha_desde' in filters:
-            queryset = queryset.filter(fecha__gte=filters['fecha_desde'])
-        if 'fecha_hasta' in filters:
-            queryset = queryset.filter(fecha__lte=filters['fecha_hasta'])
-        if 'servicio_800' in filters:
-            queryset = queryset.filter(servicio_800=filters['servicio_800'])
-        
-        return queryset.count()
-    
+        """
+        Contar llamadas según filtros.
+
+        CallRecord eliminado en FASE 3 (UC_OPR/UC_SUP/UC_CLI fuera de scope).
+        """
+        return 0
+
     @staticmethod
     def _count_users(filters: Dict) -> int:
         """Contar usuarios según filtros."""

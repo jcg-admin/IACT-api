@@ -2,7 +2,7 @@
 FilterService - Servicio para aplicación de filtros.
 
 Proporciona métodos para:
-- Aplicar filtros a querysets de CallRecord
+- Aplicar filtros a querysets (CallRecord eliminado en FASE 3)
 - Validar configuraciones de filtros
 - Parsear rangos de fechas
 
@@ -27,10 +27,10 @@ class FilterService:
     @staticmethod
     def apply_filter_to_queryset(queryset, filter_config):
         """
-        Aplicar filter_config a queryset de CallRecord.
+        Aplicar filter_config a queryset.
         
         Args:
-            queryset: QuerySet de CallRecord
+            queryset: QuerySet
             filter_config: Dict con configuración de filtros
                 {
                     "date_from": "2025-01-01",

@@ -157,58 +157,6 @@ class Command(BaseCommand):
             },
             
             # ============================================================
-            # PIPELINE - CallRecord (Modelo Granular)
-            # ============================================================
-            {
-                'permission_django': 'pipeline.callrecord.view',
-                'code': 'PIPELINE_CALLREC_VIEW',
-                'module': 'MOD_Pipeline',
-                'name': 'Ver Registros de Llamadas',
-                'description': 'Permite ver registros procesados de llamadas (CallRecord)',
-                'status': 'activo',
-            },
-            {
-                'permission_django': 'pipeline.callrecord.create',
-                'code': 'PIPELINE_CALLREC_CREATE',
-                'module': 'MOD_Pipeline',
-                'name': 'Crear Registros de Llamadas',
-                'description': 'Permite crear registros de llamadas',
-                'status': 'activo',
-            },
-            {
-                'permission_django': 'pipeline.callrecord.edit',
-                'code': 'PIPELINE_CALLREC_EDIT',
-                'module': 'MOD_Pipeline',
-                'name': 'Editar Registros de Llamadas',
-                'description': 'Permite modificar registros de llamadas',
-                'status': 'activo',
-            },
-            {
-                'permission_django': 'pipeline.callrecord.delete',
-                'code': 'PIPELINE_CALLREC_DELETE',
-                'module': 'MOD_Pipeline',
-                'name': 'Eliminar Registros de Llamadas',
-                'description': 'Permite eliminar registros de llamadas (soft delete)',
-                'status': 'activo',
-            },
-            {
-                'permission_django': 'pipeline.callrecord.stats',
-                'code': 'PIPELINE_CALLREC_STATS',
-                'module': 'MOD_Pipeline',
-                'name': 'Ver Estadísticas de Llamadas',
-                'description': 'Permite ver estadísticas de llamadas procesadas',
-                'status': 'activo',
-            },
-            {
-                'permission_django': 'pipeline.callrecord.export',
-                'code': 'PIPELINE_CALLREC_EXPORT',
-                'module': 'MOD_Pipeline',
-                'name': 'Exportar Llamadas',
-                'description': 'Permite exportar datos de llamadas a CSV/Excel',
-                'status': 'activo',
-            },
-            
-            # ============================================================
             # REPORTS - Reportes del Sistema
             # ============================================================
             {
@@ -379,27 +327,7 @@ class Command(BaseCommand):
                 'description': 'Permite configurar sistema de notificaciones',
                 'status': 'planificado',
             },
-            
-            # ============================================================
-            # IVR - Logs Legacy (Modelo Granular)
-            # ============================================================
-            {
-                'permission_django': 'ivr.calllog.view',
-                'code': 'IVR_CALLLOG_VIEW',
-                'module': 'MOD_IVR',
-                'name': 'Ver Logs de IVR',
-                'description': 'Permite ver logs legacy de llamadas (READ-ONLY)',
-                'status': 'activo',
-            },
-            {
-                'permission_django': 'ivr.calllog.stats',
-                'code': 'IVR_CALLLOG_STATS',
-                'module': 'MOD_IVR',
-                'name': 'Ver Estadísticas IVR',
-                'description': 'Permite ver estadísticas de logs legacy',
-                'status': 'activo',
-            },
-        ]
+                    ]
     
     @transaction.atomic
     def _create_functions(self, functions_data, dry_run):

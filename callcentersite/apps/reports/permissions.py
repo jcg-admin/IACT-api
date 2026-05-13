@@ -101,7 +101,7 @@ class CanAccessCallRecordData(BasePermission):
     """
     Permiso para acceder a datos de CallRecord.
     
-    Requiere función 'pipeline.callrecord.view' (PIPELINE_CALLREC_VIEW).
+    Requiere función 'reports.view_ivr'.
     
     MODELO GRANULAR: Para crear reportes de llamadas, el usuario
     necesita permiso explícito para ver datos de CallRecord.
@@ -117,4 +117,4 @@ class CanAccessCallRecordData(BasePermission):
             return True
         
         # Verificar función RBAC
-        return request.user.has_function('pipeline.callrecord.view')
+        return request.user.has_function('reports.view_ivr')

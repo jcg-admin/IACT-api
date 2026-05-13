@@ -21,12 +21,12 @@ FASE 2: Implementación de services.
 
 from datetime import datetime, timedelta
 from django.core.cache import cache
-from django.db.models import Sum, Avg, Count, F, Q
-from django.db.models.functions import ExtractHour
 
 from apps.dashboard.models import WidgetConfig
 from apps.dashboard.services.filter_service import FilterService
-from apps.pipeline.models import CallRecord
+
+# CallRecord eliminado en FASE 3 (UC_OPR/UC_SUP/UC_CLI fuera de scope analítico).
+# Los widgets de llamadas deben reimplementarse usando MariaDB via ivr_services.py.
 
 
 class WidgetService:
@@ -133,58 +133,9 @@ class WidgetService:
                     ]
                 }
         """
-        # Obtener queryset base
-        queryset = CallRecord.objects.filter(deleted_at__isnull=True)
-        
-        # Aplicar filtros de fecha
-        if date_range:
-            queryset = queryset.filter(
-                fecha__gte=date_range[0],
-                fecha__lte=date_range[1]
-            )
-        else:
-            # Por defecto: últimos 7 días
-            date_from = datetime.now().date() - timedelta(days=7)
-            queryset = queryset.filter(fecha__gte=date_from)
-        
-        # Aplicar filtros adicionales de config_data
-        if 'filters' in config_data:
-            queryset = FilterService.apply_filter_to_queryset(
-                queryset,
-                config_data['filters']
-            )
-        
-        # Agrupar por fecha y agregar
-        data = queryset.values('fecha').annotate(
-            total=Sum('total_llamadas'),
-            contestadas=Sum('llamadas_contestadas'),
-            abandonadas=Sum('llamadas_abandonadas')
-        ).order_by('fecha')
-        
-        # Formatear datos para el gráfico
-        labels = [item['fecha'].strftime('%Y-%m-%d') for item in data]
-        
-        datasets = [
-            {
-                'label': 'Total',
-                'data': [item['total'] or 0 for item in data]
-            },
-            {
-                'label': 'Contestadas',
-                'data': [item['contestadas'] or 0 for item in data]
-            },
-            {
-                'label': 'Abandonadas',
-                'data': [item['abandonadas'] or 0 for item in data]
-            }
-        ]
-        
-        return {
-            'labels': labels,
-            'datasets': datasets,
-            'chart_type': config_data.get('chart_type', 'line')
-        }
-    
+        # CallRecord eliminado en FASE 3 — reimplementar con MariaDB (ivr_services.py)
+        return {}
+
     @staticmethod
     def calculate_transfers_chart_data(config_data, date_range=None):
         """
@@ -197,48 +148,9 @@ class WidgetService:
         Returns:
             Dict con datos del gráfico
         """
-        # Obtener queryset base (solo transferencias)
-        queryset = CallRecord.objects.filter(
-            deleted_at__isnull=True,
-            call_type='transfer'
-        )
-        
-        # Aplicar filtros de fecha
-        if date_range:
-            queryset = queryset.filter(
-                fecha__gte=date_range[0],
-                fecha__lte=date_range[1]
-            )
-        else:
-            date_from = datetime.now().date() - timedelta(days=7)
-            queryset = queryset.filter(fecha__gte=date_from)
-        
-        # Aplicar filtros adicionales
-        if 'filters' in config_data:
-            queryset = FilterService.apply_filter_to_queryset(
-                queryset,
-                config_data['filters']
-            )
-        
-        # Agrupar por fecha
-        data = queryset.values('fecha').annotate(
-            total=Sum('total_llamadas')
-        ).order_by('fecha')
-        
-        labels = [item['fecha'].strftime('%Y-%m-%d') for item in data]
-        values = [item['total'] or 0 for item in data]
-        
-        return {
-            'labels': labels,
-            'datasets': [
-                {
-                    'label': 'Transferencias',
-                    'data': values
-                }
-            ],
-            'chart_type': config_data.get('chart_type', 'bar')
-        }
-    
+        # CallRecord eliminado en FASE 3 — reimplementar con MariaDB (ivr_services.py)
+        return {}
+
     @staticmethod
     def calculate_abandonments_chart_data(config_data, date_range=None):
         """
@@ -251,65 +163,9 @@ class WidgetService:
         Returns:
             Dict con datos del gráfico y tasa de abandono
         """
-        queryset = CallRecord.objects.filter(deleted_at__isnull=True)
-        
-        if date_range:
-            queryset = queryset.filter(
-                fecha__gte=date_range[0],
-                fecha__lte=date_range[1]
-            )
-        else:
-            date_from = datetime.now().date() - timedelta(days=7)
-            queryset = queryset.filter(fecha__gte=date_from)
-        
-        if 'filters' in config_data:
-            queryset = FilterService.apply_filter_to_queryset(
-                queryset,
-                config_data['filters']
-            )
-        
-        # Agrupar por fecha y calcular tasa de abandono
-        data = queryset.values('fecha').annotate(
-            total=Sum('total_llamadas'),
-            abandonadas=Sum('llamadas_abandonadas')
-        ).order_by('fecha')
-        
-        labels = []
-        abandoned_values = []
-        abandonment_rate = []
-        
-        for item in data:
-            labels.append(item['fecha'].strftime('%Y-%m-%d'))
-            abandoned_values.append(item['abandonadas'] or 0)
-            
-            # Calcular tasa de abandono
-            if item['total'] and item['total'] > 0:
-                rate = (item['abandonadas'] or 0) / item['total'] * 100
-            else:
-                rate = 0
-            abandonment_rate.append(round(rate, 2))
-        
-        datasets = [
-            {
-                'label': 'Llamadas Abandonadas',
-                'data': abandoned_values
-            }
-        ]
-        
-        # Si config incluye show_rate, agregar dataset de tasa
-        if config_data.get('show_rate', True):
-            datasets.append({
-                'label': 'Tasa de Abandono (%)',
-                'data': abandonment_rate
-            })
-        
-        return {
-            'labels': labels,
-            'datasets': datasets,
-            'chart_type': config_data.get('chart_type', 'line'),
-            'threshold': config_data.get('threshold', 0.15)  # 15% threshold
-        }
-    
+        # CallRecord eliminado en FASE 3 — reimplementar con MariaDB (ivr_services.py)
+        return {}
+
     @staticmethod
     def calculate_top_clients_data(config_data, date_range=None):
         """
@@ -322,49 +178,9 @@ class WidgetService:
         Returns:
             Dict con top clientes ordenados por total de llamadas
         """
-        queryset = CallRecord.objects.filter(deleted_at__isnull=True)
-        
-        if date_range:
-            queryset = queryset.filter(
-                fecha__gte=date_range[0],
-                fecha__lte=date_range[1]
-            )
-        else:
-            date_from = datetime.now().date() - timedelta(days=30)
-            queryset = queryset.filter(fecha__gte=date_from)
-        
-        if 'filters' in config_data:
-            queryset = FilterService.apply_filter_to_queryset(
-                queryset,
-                config_data['filters']
-            )
-        
-        # Límite de resultados
-        limit = config_data.get('limit', 5)
-        
-        # Agrupar por teléfono y agregar
-        data = queryset.values('telefono').annotate(
-            total_llamadas=Sum('total_llamadas'),
-            llamadas_contestadas=Sum('llamadas_contestadas'),
-            duracion_promedio=Avg('duracion_total_segundos')
-        ).order_by('-total_llamadas')[:limit]
-        
-        # Formatear datos
-        clients = []
-        for item in data:
-            clients.append({
-                'phone': item['telefono'],
-                'total_calls': item['total_llamadas'] or 0,
-                'answered_calls': item['llamadas_contestadas'] or 0,
-                'avg_duration': round(item['duracion_promedio'] or 0, 2)
-            })
-        
-        return {
-            'clients': clients,
-            'limit': limit,
-            'sort_by': config_data.get('sort_by', 'total_calls')
-        }
-    
+        # CallRecord eliminado en FASE 3 — reimplementar con MariaDB (ivr_services.py)
+        return {}
+
     @staticmethod
     def calculate_metrics_summary_data(config_data, date_range=None):
         """
@@ -377,68 +193,9 @@ class WidgetService:
         Returns:
             Dict con métricas resumen
         """
-        queryset = CallRecord.objects.filter(deleted_at__isnull=True)
-        
-        if date_range:
-            queryset = queryset.filter(
-                fecha__gte=date_range[0],
-                fecha__lte=date_range[1]
-            )
-        else:
-            date_from = datetime.now().date() - timedelta(days=30)
-            queryset = queryset.filter(fecha__gte=date_from)
-        
-        if 'filters' in config_data:
-            queryset = FilterService.apply_filter_to_queryset(
-                queryset,
-                config_data['filters']
-            )
-        
-        # Calcular métricas agregadas
-        aggregates = queryset.aggregate(
-            total_calls=Sum('total_llamadas'),
-            answered_calls=Sum('llamadas_contestadas'),
-            abandoned_calls=Sum('llamadas_abandonadas'),
-            avg_duration=Avg('duracion_total_segundos'),
-            unique_clients=Count('telefono', distinct=True)
-        )
-        
-        # Calcular tasa de abandono
-        total = aggregates['total_calls'] or 0
-        abandoned = aggregates['abandoned_calls'] or 0
-        abandonment_rate = (abandoned / total * 100) if total > 0 else 0
-        
-        # Calcular tasa de respuesta
-        answered = aggregates['answered_calls'] or 0
-        answer_rate = (answered / total * 100) if total > 0 else 0
-        
-        # Construir métricas
-        metrics = {
-            'total_calls': total,
-            'answered_calls': answered,
-            'abandoned_calls': abandoned,
-            'abandonment_rate': round(abandonment_rate, 2),
-            'answer_rate': round(answer_rate, 2),
-            'avg_duration': round(aggregates['avg_duration'] or 0, 2),
-            'unique_clients': aggregates['unique_clients'] or 0
-        }
-        
-        # Filtrar métricas según config
-        if 'metrics' in config_data:
-            requested_metrics = config_data['metrics']
-            metrics = {
-                key: value for key, value in metrics.items()
-                if key in requested_metrics
-            }
-        
-        return {
-            'metrics': metrics,
-            'date_range': {
-                'from': date_range[0].strftime('%Y-%m-%d') if date_range else None,
-                'to': date_range[1].strftime('%Y-%m-%d') if date_range else None
-            }
-        }
-    
+        # CallRecord eliminado en FASE 3 — reimplementar con MariaDB (ivr_services.py)
+        return {}
+
     @staticmethod
     def calculate_hourly_stats_data(config_data, date_range=None):
         """
@@ -451,40 +208,9 @@ class WidgetService:
         Returns:
             Dict con estadísticas por hora del día (0-23)
         """
-        queryset = CallRecord.objects.filter(deleted_at__isnull=True)
-        
-        if date_range:
-            queryset = queryset.filter(
-                fecha__gte=date_range[0],
-                fecha__lte=date_range[1]
-            )
-        else:
-            date_from = datetime.now().date() - timedelta(days=7)
-            queryset = queryset.filter(fecha__gte=date_from)
-        
-        if 'filters' in config_data:
-            queryset = FilterService.apply_filter_to_queryset(
-                queryset,
-                config_data['filters']
-            )
-        
-        # Nota: Asumimos que CallRecord tiene un campo created_at con hora
-        # Si no, este widget necesitaría un campo de hora en el modelo
-        # Por ahora, agrupamos por fecha solamente
-        
-        # Crear matriz de 24 horas inicializada en 0
-        hourly_data = {hour: 0 for hour in range(24)}
-        
-        # Si queryset tiene created_at, extraer hora
-        # Como CallRecord no tiene hora explícita, retornamos estructura vacía
-        # Este widget requeriría datos adicionales en el modelo
-        
-        return {
-            'hourly_distribution': hourly_data,
-            'labels': [f'{hour:02d}:00' for hour in range(24)],
-            'note': 'Widget requiere datos de hora en CallRecord'
-        }
-    
+        # CallRecord eliminado en FASE 3 — reimplementar con MariaDB (ivr_services.py)
+        return {}
+
     @staticmethod
     def calculate_agent_performance_data(config_data, date_range=None):
         """
@@ -497,65 +223,9 @@ class WidgetService:
         Returns:
             Dict con rendimiento de agentes ordenado
         """
-        queryset = CallRecord.objects.filter(
-            deleted_at__isnull=True,
-            agent__isnull=False  # Solo llamadas con agente asignado
-        )
-        
-        if date_range:
-            queryset = queryset.filter(
-                fecha__gte=date_range[0],
-                fecha__lte=date_range[1]
-            )
-        else:
-            date_from = datetime.now().date() - timedelta(days=30)
-            queryset = queryset.filter(fecha__gte=date_from)
-        
-        if 'filters' in config_data:
-            queryset = FilterService.apply_filter_to_queryset(
-                queryset,
-                config_data['filters']
-            )
-        
-        # Límite de resultados
-        limit = config_data.get('limit', 10)
-        
-        # Agrupar por agente y agregar
-        data = queryset.values('agent', 'agent__username').annotate(
-            total_calls=Sum('total_llamadas'),
-            answered_calls=Sum('llamadas_contestadas'),
-            abandoned_calls=Sum('llamadas_abandonadas'),
-            avg_duration=Avg('duracion_total_segundos')
-        ).order_by('-total_calls')[:limit]
-        
-        # Formatear datos
-        agents = []
-        for item in data:
-            total = item['total_calls'] or 0
-            answered = item['answered_calls'] or 0
-            abandoned = item['abandoned_calls'] or 0
-            
-            # Calcular tasas
-            answer_rate = (answered / total * 100) if total > 0 else 0
-            abandonment_rate = (abandoned / total * 100) if total > 0 else 0
-            
-            agents.append({
-                'agent_id': item['agent'],
-                'agent_name': item['agent__username'] or 'Unknown',
-                'total_calls': total,
-                'answered_calls': answered,
-                'abandoned_calls': abandoned,
-                'answer_rate': round(answer_rate, 2),
-                'abandonment_rate': round(abandonment_rate, 2),
-                'avg_duration': round(item['avg_duration'] or 0, 2)
-            })
-        
-        return {
-            'agents': agents,
-            'limit': limit,
-            'sort_by': config_data.get('sort_by', 'total_calls')
-        }
-    
+        # CallRecord eliminado en FASE 3 — reimplementar con MariaDB (ivr_services.py)
+        return {}
+
     @staticmethod
     def calculate_sla_monitor_data(config_data, date_range=None):
         """
@@ -568,58 +238,9 @@ class WidgetService:
         Returns:
             Dict con métricas de SLA
         """
-        queryset = CallRecord.objects.filter(deleted_at__isnull=True)
-        
-        if date_range:
-            queryset = queryset.filter(
-                fecha__gte=date_range[0],
-                fecha__lte=date_range[1]
-            )
-        else:
-            date_from = datetime.now().date() - timedelta(days=1)
-            queryset = queryset.filter(fecha__gte=date_from)
-        
-        if 'filters' in config_data:
-            queryset = FilterService.apply_filter_to_queryset(
-                queryset,
-                config_data['filters']
-            )
-        
-        # Configuración de SLA
-        sla_threshold = config_data.get('sla_threshold', 0.80)  # 80% default
-        max_abandonment_rate = config_data.get('max_abandonment_rate', 0.15)  # 15% default
-        
-        # Calcular métricas
-        aggregates = queryset.aggregate(
-            total_calls=Sum('total_llamadas'),
-            answered_calls=Sum('llamadas_contestadas'),
-            abandoned_calls=Sum('llamadas_abandonadas')
-        )
-        
-        total = aggregates['total_calls'] or 0
-        answered = aggregates['answered_calls'] or 0
-        abandoned = aggregates['abandoned_calls'] or 0
-        
-        # Calcular tasas
-        answer_rate = (answered / total) if total > 0 else 0
-        abandonment_rate = (abandoned / total) if total > 0 else 0
-        
-        # Determinar cumplimiento de SLA
-        sla_met = answer_rate >= sla_threshold and abandonment_rate <= max_abandonment_rate
-        
-        return {
-            'sla_met': sla_met,
-            'answer_rate': round(answer_rate * 100, 2),
-            'abandonment_rate': round(abandonment_rate * 100, 2),
-            'total_calls': total,
-            'answered_calls': answered,
-            'abandoned_calls': abandoned,
-            'thresholds': {
-                'sla_threshold': sla_threshold * 100,
-                'max_abandonment_rate': max_abandonment_rate * 100
-            }
-        }
-    
+        # CallRecord eliminado en FASE 3 — reimplementar con MariaDB (ivr_services.py)
+        return {}
+
     @staticmethod
     def refresh_widget_cache(widget_id):
         """

@@ -118,51 +118,19 @@ class AlertService:
     
     @staticmethod
     def _get_metric_value(metric, start_time, end_time):
-        """Obtiene valor actual de una métrica"""
-        try:
-            if metric == 'call_volume':
-                # Importar aquí para evitar circular imports
-                from apps.pipeline.models import CallRecord
-                return CallRecord.objects.filter(
-                    created_at__gte=start_time,
-                    created_at__lte=end_time
-                ).count()
-            
-            elif metric == 'avg_wait_time':
-                from apps.pipeline.models import CallRecord
-                from django.db.models import Avg
-                result = CallRecord.objects.filter(
-                    created_at__gte=start_time,
-                    created_at__lte=end_time
-                ).aggregate(Avg('wait_time'))
-                return result['wait_time__avg'] or 0
-            
-            elif metric == 'sla_percentage':
-                from apps.pipeline.models import CallRecord
-                total = CallRecord.objects.filter(
-                    created_at__gte=start_time,
-                    created_at__lte=end_time
-                ).count()
-                
-                if total == 0:
-                    return 100.0
-                
-                within_sla = CallRecord.objects.filter(
-                    created_at__gte=start_time,
-                    created_at__lte=end_time,
-                    wait_time__lte=300  # 5 minutos SLA
-                ).count()
-                
-                return (within_sla / total) * 100
-            
-            else:
-                logger.warning(f"Métrica desconocida: {metric}")
-                return None
-                
-        except Exception as e:
-            logger.error(f"Error obteniendo métrica {metric}: {e}")
-            return None
-    
+        """
+        Obtiene valor actual de una métrica.
+
+        Las métricas call_volume, avg_wait_time y sla_percentage dependían de
+        CallRecord (PostgreSQL ORM), eliminado en FASE 3. Esas métricas deben
+        reimplementarse usando MariaDB via ivr_services.py cuando corresponda.
+        """
+        logger.warning(
+            f"_get_metric_value: métrica '{metric}' no disponible — "
+            f"CallRecord eliminado en FASE 3 (UC_OPR/UC_SUP/UC_CLI fuera de scope)"
+        )
+        return None
+
     
     @staticmethod
     def _evaluate_operator(current_value, operator, threshold):

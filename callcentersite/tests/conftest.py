@@ -145,35 +145,6 @@ def sample_admin(db):
 
 
 # ============================================================================
-# CORE MODEL FIXTURES (Legacy - mantenidas para compatibilidad)
-# ============================================================================
-
-@pytest.fixture
-def sample_center(db):
-    """
-    Centro de ejemplo.
-    
-    LEGACY: Mantenido para compatibilidad.
-    NUEVO: Usar CenterTestData directamente.
-    """
-    from tests.test_data import CenterTestData
-    return CenterTestData(codigo='CT01', nombre='Centro Test')
-
-
-@pytest.fixture
-def sample_service(db):
-    """
-    Servicio de ejemplo.
-    
-    LEGACY: Mantenido para compatibilidad.
-    NUEVO: Usar ServiceTestData directamente.
-    """
-    from tests.test_data import ServiceTestData
-    return ServiceTestData(
-        numero_800='800-123-4567',
-        nombre='Servicio Test'
-    )
-
 
 # ============================================================================
 # HYBRID FIXTURES (Factory + Mock)

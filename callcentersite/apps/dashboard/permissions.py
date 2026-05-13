@@ -467,28 +467,4 @@ class CanCreateWidget(BasePermission):
         return request.user.has_function('dashboard.widget.create')
 
 
-class CanAccessCallRecordDataForWidget(BasePermission):
-    """
-    Permiso para acceder a datos de CallRecord en widgets.
-    
-    Requiere función 'pipeline.callrecord.view' (PIPELINE_CALLREC_VIEW).
-    
-    MODELO GRANULAR: Para crear widgets de llamadas, el usuario
-    necesita permiso explícito para ver datos de CallRecord.
-    
-    Uso: Validación en creación de widgets tipo CALLS_*.
-    """
-    
-    def has_permission(self, request, view):
-        """Verificar si usuario puede acceder a datos de llamadas."""
-        if not request.user or not request.user.is_authenticated:
-            return False
-        
-        # Superuser siempre puede
-        if request.user.is_superuser:
-            return True
-        
-        # Verificar función RBAC
-        return request.user.has_function('pipeline.callrecord.view')
-
 

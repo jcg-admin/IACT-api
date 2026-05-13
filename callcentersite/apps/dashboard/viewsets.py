@@ -44,7 +44,6 @@ from apps.dashboard.permissions import (
     # RBAC Permissions (Modelo Granular)
     CanCreateDashboard,
     CanCreateWidget,
-    CanAccessCallRecordDataForWidget,
 )
 from apps.dashboard.services import (
     DashboardService,
@@ -366,11 +365,6 @@ class WidgetConfigViewSet(viewsets.ModelViewSet):
                 IsAuthenticated(),
                 CanCreateWidget(),
             ]
-            
-            # Permisos adicionales según tipo de datos
-            # Widgets de llamadas (CALLS_*)
-            if widget_type.startswith('CALLS_'):
-                permissions.append(CanAccessCallRecordDataForWidget())
             
             # TODO: Agregar validaciones para otros tipos de widgets
             # elif widget_type.startswith('USERS_'):
