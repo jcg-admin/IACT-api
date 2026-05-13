@@ -1095,3 +1095,91 @@ class MenuItemTransitionView(APIView):
             'status': item.status,
             'allowed_next': MenuLifecycleService.get_allowed_transitions(item),
         })
+
+
+# ===========================================================================
+# UC_PERM_07 — Verificar Permiso (endpoint administrativo)
+# ===========================================================================
+
+@extend_schema(
+    summary='UC_PERM_07 — Verificar permiso de usuario',
+    description=(
+        'Verifica si un usuario tiene una función RBAC activa, aplicando '
+        'la regla de precedencia:\n\n'
+        '1. ExceptionalPermission REVOKE activo → denegado (siempre gana).\n'
+        '2. ExceptionalPermission GRANT activo → autorizado.\n'
+        '3. AccessGroup ACTIVE con la función → autorizado.\n'
+        '4. Ningún match → denegado.\n\n'
+        'El resultado se cachea durante 60 s (DatabaseCache, CNST-010).\n\n'
+        '**CA-14**: Requiere ACC-003 `view_assignments`.'
+    ),
+    parameters=[
+        OpenApiParameter('user_id', int, location='query', required=True,
+                         description='ID del usuario a verificar.'),
+        OpenApiParameter('function_code', str, location='query', required=True,
+                         description='Código canónico de la función (ej: RPT-001).'),
+    ],
+    responses={
+        200: OpenApiResponse(description=(
+            'Resultado de verificación: allowed, origin, via_agr_codes, cache.'
+        )),
+        400: OpenApiResponse(description='function_code no existe en catálogo (CA-12).'),
+        403: OpenApiResponse(description='Sin permiso view_assignments (CA-14).'),
+        404: OpenApiResponse(description='Usuario no encontrado o inactivo (CA-13).'),
+    },
+    tags=['Control de Acceso'],
+)
+class PermissionVerifyView(APIView):
+    """
+    GET /api/access/permissions/verify/?user_id=N&function_code=XYZ
+
+    UC_PERM_07 — verificación de permiso con cache.
+    Requiere ACC-003 (view_assignments).
+    CNST-010: permission_classes explícito.
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function = 'ACC-003'
+
+    def get(self, request):
+        from apps.access.services.permission_service import PermissionService
+
+        user_id_raw = request.query_params.get('user_id')
+        function_code = request.query_params.get('function_code', '').strip()
+
+        if not user_id_raw or not function_code:
+            return Response(
+                {'error': {'code': 'VALIDATION_ERROR',
+                           'message': 'user_id y function_code son requeridos.'}},
+                status=400,
+            )
+
+        try:
+            user_id = int(user_id_raw)
+        except ValueError:
+            return Response(
+                {'error': {'code': 'VALIDATION_ERROR', 'message': 'user_id debe ser entero.'}},
+                status=400,
+            )
+
+        try:
+            result = PermissionService.check(user_id, function_code)
+        except ValueError as exc:
+            return Response(
+                {'error': {'code': 'FUNCTION_NOT_FOUND', 'message': str(exc)}},
+                status=400,
+            )
+        except LookupError as exc:
+            return Response(
+                {'error': {'code': 'USER_NOT_FOUND', 'message': str(exc)}},
+                status=404,
+            )
+
+        return Response({
+            'user_id': user_id,
+            'function_code': function_code,
+            'allowed': result.allowed,
+            'origin': result.origin,
+            'via_agr_codes': result.via_agr_codes,
+            'valid_until': result.valid_until,
+            'cache': result.cache,
+        })

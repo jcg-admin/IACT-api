@@ -26,6 +26,8 @@ from .views import (
     MenuItemViewSet,
     # v3.1.0 — T-104
     MenuItemTransitionView,
+    # FASE 1 UC_PERM_07 — verificación de permiso con cache
+    PermissionVerifyView,
 )
 
 router = DefaultRouter()
@@ -88,4 +90,5 @@ urlpatterns = [
          UserFunctionAssignView.as_view(), name='user-function-assign'),
     path('users/<int:user_id>/functions/<int:function_id>/',
          UserFunctionRevokeView.as_view(), name='user-function-revoke'),
+    path('permissions/verify/', PermissionVerifyView.as_view(), name='permission-verify'),
 ]
