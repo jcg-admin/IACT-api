@@ -208,55 +208,31 @@ def authenticated_client_with_rbac(db, mock_access_service):
 def report_with_export_mocks(db, mock_report_generator_service, mock_excel_exporter):
     """
     Reporte con generación y export mockeados.
-    
+
     Combina:
-        - QuarterlyReportReportTestData
+        - QuarterlyReportTestData
         - mock_report_generator_service
         - mock_excel_exporter
-    
+
     Uso:
         def test_report_generation(report_with_export_mocks):
             report = report_with_export_mocks
             assert report.file_url is not None
     """
-    from tests.test_data import QuarterlyReportReportTestData
-    
+    from tests.test_data import QuarterlyReportTestData
+
     # Mock generación
     mock_report_generator_service.generate_quarterly_report.return_value = {
         'report_id': 123,
         'file_url': '/fake/report.xlsx',
         'status': 'SUCCESS'
     }
-    
+
     # Mock export
     mock_excel_exporter.export.return_value = '/fake/report.xlsx'
-    
-    report = QuarterlyReportReportTestData()
+
+    report = QuarterlyReportTestData()
     return report
-
-
-@pytest.fixture
-def scheduled_job_with_mocks(db, mock_apscheduler, mock_cleanup_sessions_job):
-    """
-    Scheduled job con APScheduler mockeado.
-    
-    Combina:
-        - DailyJobConfigTestData
-        - mock_apscheduler
-        - mock_cleanup_sessions_job
-    
-    Uso:
-        def test_scheduled_job(scheduled_job_with_mocks):
-            config = scheduled_job_with_mocks
-            assert config.is_active is True
-    """
-    from tests.test_data import DailyJobConfigTestData
-    
-    # Mock job en scheduler
-    mock_apscheduler.get_job.return_value = mock_cleanup_sessions_job
-    
-    config = DailyJobConfigTestData(job_name='cleanup_sessions')
-    return config
 
 
 @pytest.fixture
