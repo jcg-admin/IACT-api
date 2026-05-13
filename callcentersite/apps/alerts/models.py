@@ -265,3 +265,161 @@ class AlertSubscription(SoftDeleteMixin, models.Model):
     def __str__(self):
         status = "[OK]" if self.is_active else "[FAIL]"
         return f"{status} {self.user.username} -> {self.alert_configuration.name}"
+
+
+# ===========================================================================
+# INTERNAL MAILBOX — FASE 0 (F0-T4)
+# ===========================================================================
+# Fuente: modelo-dominio-iact.rst § 4.1 (BC Auth), CNST-001, BR-004
+# Hallazgo F0-H-005: InternalMailbox no existía. Se crea en FASE 0 porque
+# es prerequisito de UC_USR_01 (CA-01: "1 InternalMessage en buzón del
+# nuevo User"), UC_AUTH_01 (FA-01: notify), UC_AUTH_03, UC_ALR_05.
+
+class InternalMailbox(models.Model):
+    """
+    Buzón de mensajes interno de un usuario (1:1 con User).
+
+    CNST-001: PROHIBIDO email/SMS/webhooks externos. Toda comunicación
+    relevante del sistema se entrega aquí. BR-004: no canales externos.
+
+    El buzón se crea automáticamente al crear un User (señal post_save).
+    El servicio MailboxService.deliver() es el único punto de entrada.
+
+    Modelo: modelo-dominio-iact.rst § 4.1
+    """
+
+    owner = models.OneToOneField(
+        User,
+        on_delete=models.CASCADE,
+        related_name='mailbox',
+        verbose_name='Propietario',
+        help_text='Usuario dueño del buzón (1:1).',
+    )
+    last_read_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Última lectura',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+
+    class Meta:
+        db_table = 'alerts_internal_mailbox'
+        verbose_name = 'Buzón interno'
+        verbose_name_plural = 'Buzones internos'
+
+    def __str__(self) -> str:
+        return f'Mailbox({self.owner.username})'
+
+    def deliver_message(
+        self,
+        subject: str,
+        body: str,
+        priority: str = 'info',
+        sender: 'User | None' = None,
+    ) -> 'MailboxMessage':
+        """
+        Entrega un mensaje al buzón. NUNCA envía email externo (CNST-001).
+
+        Args:
+            subject: Asunto del mensaje.
+            body: Cuerpo del mensaje.
+            priority: 'info' | 'warning' | 'error' | 'critical'
+            sender: Usuario remitente (None = sistema).
+
+        Returns:
+            MailboxMessage: Mensaje creado en BD.
+        """
+        return MailboxMessage.objects.create(
+            mailbox=self,
+            subject=subject,
+            body=body,
+            priority=priority,
+            sender=sender,
+        )
+
+    def get_unread_count(self) -> int:
+        """Retorna el número de mensajes no leídos."""
+        return self.messages.filter(read_at__isnull=True).count()
+
+
+class MailboxMessage(models.Model):
+    """
+    Mensaje en un InternalMailbox. Append-only (BR-009: no DELETE).
+
+    No usa email externo (CNST-001). CNST-026: sin PII en subject/body
+    más allá del identificador opaco del usuario.
+    """
+
+    PRIORITY_CHOICES = [
+        ('info',     'Informativo'),
+        ('warning',  'Advertencia'),
+        ('error',    'Error'),
+        ('critical', 'Crítico'),
+    ]
+
+    STATE_UNREAD   = 'UNREAD'
+    STATE_READ     = 'READ'
+    STATE_DELETED  = 'DELETED'   # BR-009: baja lógica
+
+    STATE_CHOICES = [
+        (STATE_UNREAD,  'Sin leer'),
+        (STATE_READ,    'Leído'),
+        (STATE_DELETED, 'Eliminado'),  # BR-009
+    ]
+
+    mailbox = models.ForeignKey(
+        InternalMailbox,
+        on_delete=models.CASCADE,
+        related_name='messages',
+        verbose_name='Buzón',
+    )
+    subject = models.CharField(max_length=200, verbose_name='Asunto')
+    body = models.TextField(verbose_name='Contenido')
+    priority = models.CharField(
+        max_length=10,
+        choices=PRIORITY_CHOICES,
+        default='info',
+        verbose_name='Prioridad',
+    )
+    sender = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name='mailbox_messages_sent',
+        verbose_name='Remitente',
+        help_text='None = mensaje del sistema.',
+    )
+    state = models.CharField(
+        max_length=10,
+        choices=STATE_CHOICES,
+        default=STATE_UNREAD,
+        verbose_name='Estado',
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    read_at = models.DateTimeField(null=True, blank=True, verbose_name='Leído en')
+
+    class Meta:
+        db_table = 'alerts_mailbox_message'
+        ordering = ['-created_at']
+        verbose_name = 'Mensaje de buzón'
+        verbose_name_plural = 'Mensajes de buzón'
+        indexes = [
+            models.Index(fields=['mailbox', 'state'], name='idx_mbmsg_mailbox_state'),
+            models.Index(fields=['-created_at'], name='idx_mbmsg_created'),
+        ]
+
+    def __str__(self) -> str:
+        return f'[{self.priority}] {self.subject} → {self.mailbox.owner.username}'
+
+    def delete(self, *args, **kwargs):
+        """BR-009: baja lógica. No elimina físicamente."""
+        self.state = self.STATE_DELETED
+        self.save(update_fields=['state'])
+
+    def mark_read(self):
+        """Marcar como leído."""
+        from django.utils import timezone
+        self.state = self.STATE_READ
+        self.read_at = timezone.now()
+        self.save(update_fields=['state', 'read_at'])
