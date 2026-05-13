@@ -1,11 +1,13 @@
 """
-Tests para API de navegacion (user_menu_view).
+Tests para API de navegación.
 
 Cobertura:
-- GET /api/v1/navigation/menu/
-- Autenticacion requerida
-- Respuesta JSON con menu personalizado
-- Manejo de errores
+- GET /api/navigation/menu/    → navigation_menu_view
+- GET /api/navigation/modules/ → navigation_modules_view
+- Autenticación requerida en ambos endpoints
+- Respuesta JSON desde NavigationMenuAssembler.build_from_modules / build_flat
+- El usuario autenticado se pasa a build_from_modules
+- Manejo de excepciones del assembler → HTTP 500
 """
 
 import pytest
@@ -15,242 +17,222 @@ from rest_framework.test import APIClient
 from unittest.mock import patch, Mock
 
 
+# ============================================================================
+# TestNavigationMenuView — GET /api/navigation/menu/
+# ============================================================================
+
 @pytest.mark.django_db
-class TestUserMenuView:
-    """Tests para endpoint GET /api/v1/navigation/menu/"""
-    
+class TestNavigationMenuView:
+    """Tests para navigation_menu_view."""
+
     @pytest.fixture
     def api_client(self):
-        """Cliente API de DRF."""
         return APIClient()
-    
+
     @pytest.fixture
     def authenticated_user(self, django_user_model):
-        """Usuario autenticado."""
-        user = django_user_model.objects.create_user(
+        return django_user_model.objects.create_user(
             username='testuser',
             password='testpass123',
-            first_name='Test',
-            last_name='User'
         )
-        return user
-    
+
     @pytest.fixture
     def sample_menu(self):
-        """Menu de ejemplo."""
+        """Estructura que retorna build_from_modules (campos de _serialize_module)."""
         return [
             {
-                'id_menu': 5,
-                'des_name': 'Reportes',
-                'icon': '/static/icons/menu/reports.png',
-                'nivel': 1,
-                'orden': 50,
-                'submenus': [
-                    {
-                        'id_menu': 501,
-                        'des_name': 'Dashboard',
-                        'nivel': 2,
-                        'orden': 1,
-                        'endpoint': {
-                            'url': '/api/v1/reports/dashboard/',
-                            'method': 'GET'
-                        }
-                    }
-                ]
+                'code': 'MOD_REPORTS',
+                'name': 'Reportes',
+                'url_path': '/reports/',
+                'icon': None,
+                'order': 1,
+                'is_active': True,
+                'children': [],
             }
         ]
-    
-    def test_menu_endpoint_requires_authentication(self, api_client):
-        """Test que endpoint requiere autenticacion."""
-        url = reverse('navigation:user-menu')
-        response = api_client.get(url)
-        
+
+    def test_requires_authentication(self, api_client):
+        """Endpoint requiere autenticación — 401 sin credenciales."""
+        response = api_client.get(reverse('navigation:menu'))
         assert response.status_code == status.HTTP_401_UNAUTHORIZED
-    
+
     @patch('apps.core.navigation.views.NavigationMenuAssembler')
-    def test_menu_endpoint_returns_user_menu(
-        self, 
-        mock_builder_class, 
-        api_client, 
-        authenticated_user,
-        sample_menu
+    def test_returns_menu_from_build_from_modules(
+        self, mock_assembler_class, api_client, authenticated_user, sample_menu
     ):
-        """Test que endpoint retorna menu del usuario."""
-        # Mock del NavigationMenuAssembler
-        mock_builder = Mock()
-        mock_builder.build_user_menu.return_value = sample_menu
-        mock_builder_class.return_value = mock_builder
-        
-        # Autenticar
+        """Response contiene la clave 'menu' con el valor de build_from_modules."""
+        mock_assembler = Mock()
+        mock_assembler.build_from_modules.return_value = sample_menu
+        mock_assembler_class.return_value = mock_assembler
+
         api_client.force_authenticate(user=authenticated_user)
-        
-        # Request
-        url = reverse('navigation:user-menu')
-        response = api_client.get(url)
-        
-        # Assertions
+        response = api_client.get(reverse('navigation:menu'))
+
         assert response.status_code == status.HTTP_200_OK
         assert 'menu' in response.data
-        assert 'user' in response.data
-        
-        # Verificar menu
-        menu_data = response.data['menu']
-        assert len(menu_data) == 1
-        assert menu_data[0]['id_menu'] == 5
-        assert menu_data[0]['des_name'] == 'Reportes'
-        
-        # Verificar user info
-        user_data = response.data['user']
-        assert user_data['username'] == 'testuser'
-        assert user_data['full_name'] == 'Test User'
-    
+        assert response.data['menu'] == sample_menu
+        mock_assembler.build_from_modules.assert_called_once()
+
     @patch('apps.core.navigation.views.NavigationMenuAssembler')
-    def test_menu_endpoint_empty_menu(
-        self, 
-        mock_builder_class, 
-        api_client, 
-        authenticated_user
+    def test_passes_user_to_build_from_modules(
+        self, mock_assembler_class, api_client, authenticated_user
     ):
-        """Test endpoint con menu vacio (sin permisos)."""
-        # Mock retorna menu vacio
-        mock_builder = Mock()
-        mock_builder.build_user_menu.return_value = []
-        mock_builder_class.return_value = mock_builder
-        
-        # Autenticar
+        """build_from_modules recibe el usuario autenticado como kwarg 'user'."""
+        mock_assembler = Mock()
+        mock_assembler.build_from_modules.return_value = []
+        mock_assembler_class.return_value = mock_assembler
+
         api_client.force_authenticate(user=authenticated_user)
-        
-        # Request
-        url = reverse('navigation:user-menu')
-        response = api_client.get(url)
-        
-        # Assertions
+        api_client.get(reverse('navigation:menu'))
+
+        call_args = mock_assembler.build_from_modules.call_args
+        assert call_args is not None
+        assert call_args.kwargs.get('user') == authenticated_user
+
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
+    def test_returns_empty_menu(
+        self, mock_assembler_class, api_client, authenticated_user
+    ):
+        """Menú vacío retorna HTTP 200 con lista vacía."""
+        mock_assembler = Mock()
+        mock_assembler.build_from_modules.return_value = []
+        mock_assembler_class.return_value = mock_assembler
+
+        api_client.force_authenticate(user=authenticated_user)
+        response = api_client.get(reverse('navigation:menu'))
+
         assert response.status_code == status.HTTP_200_OK
         assert response.data['menu'] == []
-        assert 'user' in response.data
-    
+
     @patch('apps.core.navigation.views.NavigationMenuAssembler')
-    def test_menu_endpoint_handles_builder_error(
-        self, 
-        mock_builder_class, 
-        api_client, 
-        authenticated_user
+    def test_handles_assembler_exception(
+        self, mock_assembler_class, api_client, authenticated_user
     ):
-        """Test manejo de error en NavigationMenuAssembler."""
-        # Mock lanza excepcion
-        mock_builder = Mock()
-        mock_builder.build_user_menu.side_effect = Exception('Error interno')
-        mock_builder_class.return_value = mock_builder
-        
-        # Autenticar
+        """Excepción en build_from_modules → HTTP 500 con clave 'error'."""
+        mock_assembler = Mock()
+        mock_assembler.build_from_modules.side_effect = Exception('Error interno')
+        mock_assembler_class.return_value = mock_assembler
+
         api_client.force_authenticate(user=authenticated_user)
-        
-        # Request
-        url = reverse('navigation:user-menu')
-        response = api_client.get(url)
-        
-        # Debe retornar error 500
+        response = api_client.get(reverse('navigation:menu'))
+
         assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
         assert 'error' in response.data
-    
-    @patch('apps.core.navigation.views.NavigationMenuAssembler')
-    @patch('apps.core.navigation.views.MenuSerializer')
-    def test_menu_endpoint_serializes_menu(
-        self, 
-        mock_serializer_class,
-        mock_builder_class, 
-        api_client, 
-        authenticated_user,
-        sample_menu
-    ):
-        """Test que endpoint serializa menu correctamente."""
-        # Mock NavigationMenuAssembler
-        mock_builder = Mock()
-        mock_builder.build_user_menu.return_value = sample_menu
-        mock_builder_class.return_value = mock_builder
-        
-        # Mock MenuSerializer
-        mock_serializer = Mock()
-        mock_serializer.serialize_menu.return_value = sample_menu[0]
-        mock_serializer_class.return_value = mock_serializer
-        
-        # Autenticar
-        api_client.force_authenticate(user=authenticated_user)
-        
-        # Request
-        url = reverse('navigation:user-menu')
-        response = api_client.get(url)
-        
-        # Verificar que se llamo a serialize_menu
-        assert response.status_code == status.HTTP_200_OK
-        # MenuSerializer.serialize_menu deberia llamarse para cada item
-    
-    def test_menu_endpoint_url_pattern(self):
-        """Test que URL pattern es correcto."""
-        url = reverse('navigation:user-menu')
-        assert url == '/api/v1/navigation/menu/'
-    
-    @patch('apps.core.navigation.views.NavigationMenuAssembler')
-    def test_menu_endpoint_returns_json(
-        self, 
-        mock_builder_class, 
-        api_client, 
-        authenticated_user,
-        sample_menu
-    ):
-        """Test que respuesta es JSON."""
-        mock_builder = Mock()
-        mock_builder.build_user_menu.return_value = sample_menu
-        mock_builder_class.return_value = mock_builder
-        
-        api_client.force_authenticate(user=authenticated_user)
-        
-        url = reverse('navigation:user-menu')
-        response = api_client.get(url)
-        
-        assert response.status_code == status.HTTP_200_OK
-        assert response['Content-Type'] == 'application/json'
-    
-    @patch('apps.core.navigation.views.NavigationMenuAssembler')
-    def test_menu_endpoint_with_complex_user_name(
-        self, 
-        mock_builder_class, 
-        api_client, 
-        django_user_model,
-        sample_menu
-    ):
-        """Test con usuario sin first_name/last_name."""
-        # Usuario solo con username
-        user = django_user_model.objects.create_user(
-            username='admin',
-            password='pass123'
-        )
-        
-        mock_builder = Mock()
-        mock_builder.build_user_menu.return_value = sample_menu
-        mock_builder_class.return_value = mock_builder
-        
-        api_client.force_authenticate(user=user)
-        
-        url = reverse('navigation:user-menu')
-        response = api_client.get(url)
-        
-        assert response.status_code == status.HTTP_200_OK
-        # full_name deberia ser username si no hay first/last name
-        assert response.data['user']['full_name'] == 'admin'
 
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
+    def test_response_content_type_is_json(
+        self, mock_assembler_class, api_client, authenticated_user, sample_menu
+    ):
+        """Content-Type de la respuesta es application/json."""
+        mock_assembler = Mock()
+        mock_assembler.build_from_modules.return_value = sample_menu
+        mock_assembler_class.return_value = mock_assembler
+
+        api_client.force_authenticate(user=authenticated_user)
+        response = api_client.get(reverse('navigation:menu'))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'application/json' in response['Content-Type']
+
+
+# ============================================================================
+# TestNavigationModulesView — GET /api/navigation/modules/
+# ============================================================================
+
+@pytest.mark.django_db
+class TestNavigationModulesView:
+    """Tests para navigation_modules_view."""
+
+    @pytest.fixture
+    def api_client(self):
+        return APIClient()
+
+    @pytest.fixture
+    def authenticated_user(self, django_user_model):
+        return django_user_model.objects.create_user(
+            username='testuser_mod',
+            password='testpass123',
+        )
+
+    @pytest.fixture
+    def sample_flat(self):
+        """Lista plana que retorna build_flat."""
+        return [
+            {
+                'code': 'MOD_A',
+                'name': 'Módulo A',
+                'url_path': '/a/',
+                'icon': None,
+                'order': 1,
+                'is_active': True,
+            },
+            {
+                'code': 'MOD_B',
+                'name': 'Módulo B',
+                'url_path': '/b/',
+                'icon': None,
+                'order': 2,
+                'is_active': True,
+            },
+        ]
+
+    def test_requires_authentication(self, api_client):
+        """Endpoint requiere autenticación — 401 sin credenciales."""
+        response = api_client.get(reverse('navigation:modules'))
+        assert response.status_code == status.HTTP_401_UNAUTHORIZED
+
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
+    def test_returns_flat_module_list(
+        self, mock_assembler_class, api_client, authenticated_user, sample_flat
+    ):
+        """Response contiene la clave 'modules' con el valor de build_flat."""
+        mock_assembler = Mock()
+        mock_assembler.build_flat.return_value = sample_flat
+        mock_assembler_class.return_value = mock_assembler
+
+        api_client.force_authenticate(user=authenticated_user)
+        response = api_client.get(reverse('navigation:modules'))
+
+        assert response.status_code == status.HTTP_200_OK
+        assert 'modules' in response.data
+        assert response.data['modules'] == sample_flat
+        mock_assembler.build_flat.assert_called_once()
+
+    @patch('apps.core.navigation.views.NavigationMenuAssembler')
+    def test_handles_assembler_exception(
+        self, mock_assembler_class, api_client, authenticated_user
+    ):
+        """Excepción en build_flat → HTTP 500 con clave 'error'."""
+        mock_assembler = Mock()
+        mock_assembler.build_flat.side_effect = Exception('DB error')
+        mock_assembler_class.return_value = mock_assembler
+
+        api_client.force_authenticate(user=authenticated_user)
+        response = api_client.get(reverse('navigation:modules'))
+
+        assert response.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        assert 'error' in response.data
+
+
+# ============================================================================
+# TestNavigationURLs — resolución de URLs
+# ============================================================================
 
 @pytest.mark.django_db
 class TestNavigationURLs:
-    """Tests para URLs de navegacion."""
-    
+    """Tests para URLs del sistema de navegación."""
+
     def test_navigation_app_name(self):
-        """Test que app_name es 'navigation'."""
+        """app_name del módulo urls es 'navigation'."""
         from apps.core.navigation import urls
         assert urls.app_name == 'navigation'
-    
-    def test_menu_url_resolves(self):
-        """Test que URL de menu resuelve correctamente."""
-        url = reverse('navigation:user-menu')
-        assert url is not None
-        assert 'menu' in url
+
+    def test_menu_url_resolves_to_correct_path(self):
+        """navigation:menu resuelve a /api/navigation/menu/."""
+        url = reverse('navigation:menu')
+        assert url == '/api/navigation/menu/'
+
+    def test_modules_url_resolves_to_correct_path(self):
+        """navigation:modules resuelve a /api/navigation/modules/."""
+        url = reverse('navigation:modules')
+        assert url == '/api/navigation/modules/'
