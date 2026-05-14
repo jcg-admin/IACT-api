@@ -455,6 +455,17 @@ SPECTACULAR_SETTINGS = {
         'drf_spectacular.hooks.postprocess_schema_enums',
         'config.spectacular_hooks.collect_app_tags',
     ],
+
+    # F6-P0-T5: DT-SPECTACULAR-007 — evitar PriorityEa7Enum
+    # InternalMessage, AlertConfiguration y MailboxMessage comparten este set de choices.
+    'ENUM_NAME_OVERRIDES': {
+        'MessagePriorityEnum': [
+            ('info',     'Informativa'),
+            ('warning',  'Advertencia'),
+            ('error',    'Error'),
+            ('critical', 'Crítica'),
+        ],
+    },
 }
 
 

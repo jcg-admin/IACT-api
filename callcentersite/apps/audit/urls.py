@@ -1,4 +1,5 @@
 from apps.audit.audit_event_views import (
+    AuditLegacyExportView,
     AuditEventListView, AuditEventDetailView,
     AuditEventAggregateView, AuditEventExportView,
     AuditSearchView,
@@ -31,7 +32,7 @@ urlpatterns += [
     # UC_AUD_02 — Buscar auditoría
     path('search/',                         AuditSearchView.as_view(),         name='audit-search'),
     # UC_AUD_03 — Exportar auditoría (same view, different required_function)
-    path('export/',                         AuditEventExportView.as_view(),    name='audit-export'),
+    path('export/',                         AuditLegacyExportView.as_view(),   name='audit-export'),
     path('compliance-report/', ComplianceReportView.as_view(), name='compliance-report'),
     path('compliance-verify/', ComplianceVerifyView.as_view(), name='compliance-verify'),
     path('integrity/', AuditIntegrityView.as_view(), name='integrity'),

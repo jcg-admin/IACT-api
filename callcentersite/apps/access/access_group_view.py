@@ -15,7 +15,7 @@ Acciones:
 """
 from django.db import transaction, DatabaseError
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -68,6 +68,11 @@ class AccessGroupRetireSerializer(serializers.Serializer):
         409: OpenApiResponse(description='CODE_DUPLICATE.'),
     },
     tags=['Control de Acceso'],
+)
+@extend_schema_view(
+    get=extend_schema(operation_id='access_group_list',
+                      summary='UC_PERM_05 — Listar Access Groups',
+                      tags=['Control de Acceso']),
 )
 class AccessGroupListCreateView(APIView):
     """GET/POST /api/access/groups/"""

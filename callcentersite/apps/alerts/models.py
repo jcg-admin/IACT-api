@@ -380,11 +380,12 @@ class MailboxMessage(models.Model):
     más allá del identificador opaco del usuario.
     """
 
+    # F6-P0-T5: unificado con PRIORITY_CHOICES de módulo para evitar PriorityEa7Enum
     PRIORITY_CHOICES = [
-        ('info',     'Informativo'),
+        ('info',     'Informativa'),
         ('warning',  'Advertencia'),
         ('error',    'Error'),
-        ('critical', 'Crítico'),
+        ('critical', 'Crítica'),
     ]
 
     STATE_UNREAD   = 'UNREAD'

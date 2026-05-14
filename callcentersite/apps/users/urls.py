@@ -9,6 +9,7 @@ Hallazgo B-04 (FASE 2):
   UserDetailView que despacha PATCH → ModifyUserView y DELETE → EliminateUserView.
 """
 from django.urls import path, include
+from drf_spectacular.utils import extend_schema_view
 from rest_framework.routers import DefaultRouter
 
 from apps.users.viewsets import UserViewSet
@@ -40,6 +41,32 @@ class UserDetailDispatcher:
         patch_view  = ModifyUserView.as_view()
         delete_view = EliminateUserView.as_view()
 
+        from drf_spectacular.utils import extend_schema, OpenApiResponse
+
+        @extend_schema_view(
+            patch=extend_schema(
+                operation_id='user_modify',
+                summary='UC_USR_03 — Modificar usuario (PATCH parcial)',
+                tags=['Usuarios'],
+                responses={
+                    200: OpenApiResponse(description='Usuario modificado'),
+                    400: OpenApiResponse(description='SELF_STATE_CHANGE_FORBIDDEN | INVALID_STATE_TRANSITION'),
+                    403: OpenApiResponse(description='Sin USR-002 modify_users'),
+                    404: OpenApiResponse(description='USER_NOT_FOUND'),
+                },
+            ),
+            delete=extend_schema(
+                operation_id='user_eliminate',
+                summary='UC_USR_04 — Eliminar usuario (baja lógica BR-009)',
+                tags=['Usuarios'],
+                responses={
+                    200: OpenApiResponse(description='USER_ELIMINATED o USER_ELIMINATE_NOOP'),
+                    400: OpenApiResponse(description='SELF_ELIMINATION_FORBIDDEN'),
+                    403: OpenApiResponse(description='Sin USR-003 deactivate_users'),
+                    404: OpenApiResponse(description='USER_NOT_FOUND'),
+                },
+            ),
+        )
         class _Dispatcher(APIView):
             # No permission_classes aquí — cada view hija los tiene propios (CNST-010)
             permission_classes = [IsAuthenticated]

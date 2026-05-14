@@ -5,6 +5,7 @@ CLEAN_CODE v3.0.1: Nombres descriptivos.
 SOLID SRP: Cada viewset una responsabilidad.
 """
 
+from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -142,6 +143,13 @@ class AuthViewSet(viewsets.ViewSet):
                 'message': 'No hay sesión activa'
             }, status=status.HTTP_400_BAD_REQUEST)
     
+    @extend_schema(
+        operation_id='auth_viewset_change_password_legacy',
+        deprecated=True,
+        summary='[LEGACY] Cambio contraseña via ViewSet — usar POST /api/auth/change-password/',
+        description='Delegado a ChangePasswordView canónica. Fix DT-SPECTACULAR-003.',
+        tags=['Autenticación'],
+    )
     @action(
         detail=False,
         methods=['post'],

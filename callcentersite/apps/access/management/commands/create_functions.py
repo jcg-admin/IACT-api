@@ -131,6 +131,8 @@ FUNCTIONS_V540 = [
     ('AUD-002', 'search_audit_log',          'MOD_AUD', 'Buscar en log de auditoría (AUD-002)'),
     ('AUD-003', 'export_audit_log',          'MOD_AUD', 'Exportar log de auditoría (AUD-003)'),
     ('AUD-004', 'generate_compliance_report','MOD_AUD', 'Generar reporte de compliance (AUD-004)'),
+    # F6-P0-T7: AUD-005 para UC_AUD_01 (timeline general de auditoría cross-módulo)
+    ('AUD-005', 'view_general_audit',         'MOD_AUD', 'Ver timeline general de auditoría cross-módulo (UC_AUD_01).'),
 
     # =========================================
     # MOD_LOG — 7 funciones
@@ -273,7 +275,7 @@ class Command(BaseCommand):
         self.stdout.write(f'  Actualizadas:{updated}')
         if not dry_run:
             total = Function.objects.count()
-            self.stdout.write(f'  Total en BD: {total} (esperado: 73)')
+            self.stdout.write(f'  Total en BD: {total} (esperado: 74)')
             if total != 72:
                 self.stdout.write(self.style.ERROR(
                     f'ADVERTENCIA: se esperaban 72 funciones, hay {total}'

@@ -254,3 +254,36 @@ class AuditSearchView(APIView):
         )
 
         return Response({'results': results, 'total': len(results), 'capped': len(results) >= 1000})
+
+
+# ---------------------------------------------------------------------------
+# F6-P0-T1: AuditLegacyExportView — alias con operationId distinto
+# para resolver DT-SPECTACULAR-001 (colisión audit_event_export).
+# La URL /api/audit/export/ apunta a esta clase.
+# @extend_schema_view(post=...) overridea el @extend_schema_view heredado del padre.
+# ---------------------------------------------------------------------------
+
+@extend_schema_view(
+    post=extend_schema(
+        operation_id='audit_export_legacy',
+        summary='UC_AUD_03 — Exportar auditoría (ruta alias /api/audit/export/)',
+        description=(
+            'Alias de /api/audit/audit-events/export/.\n'
+            'Función: AUD-003 (export_audit_log).\n'
+            'Fix DT-SPECTACULAR-001: operationId propio para evitar colisión de schema.'
+        ),
+        responses={
+            202: OpenApiResponse(description='Job encolado — {job_id}'),
+            403: OpenApiResponse(description='Sin AUD-003 export_audit_log'),
+        },
+        deprecated=True,
+        tags=['Auditoría'],
+    ),
+)
+class AuditLegacyExportView(AuditEventExportView):
+    """
+    Ruta alias /api/audit/export/ — misma lógica que AuditEventExportView.
+    Existe únicamente para resolver DT-SPECTACULAR-001.
+    @extend_schema_view(post=...) overridea el schema del padre.
+    """
+    pass
