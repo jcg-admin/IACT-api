@@ -343,13 +343,13 @@ class SeparationRule(models.Model):
         if self.state == self.STATE_DISABLED:
             return False
 
-        codes_a = set(self.functions_set_a.values_list('code', flat=True))
-        codes_b = set(self.functions_set_b.values_list('code', flat=True))
+        codes_set_a    = set(self.functions_set_a.values_list('code', flat=True))
+        codes_set_b    = set(self.functions_set_b.values_list('code', flat=True))
 
-        has_a = bool(function_codes & codes_a)
-        has_b = bool(function_codes & codes_b)
+        user_has_set_a = bool(function_codes & codes_set_a)
+        user_has_set_b = bool(function_codes & codes_set_b)
 
-        return has_a and has_b
+        return user_has_set_a and user_has_set_b
 
     def find_conflict(self, function_codes: set[str]) -> tuple[str, str] | None:
         """
@@ -360,12 +360,12 @@ class SeparationRule(models.Model):
         if not self.is_violated_by(function_codes):
             return None
 
-        codes_a = set(self.functions_set_a.values_list('code', flat=True))
-        codes_b = set(self.functions_set_b.values_list('code', flat=True))
+        codes_set_a = set(self.functions_set_a.values_list('code', flat=True))
+        codes_set_b = set(self.functions_set_b.values_list('code', flat=True))
 
-        fn_a = next(iter(function_codes & codes_a))
-        fn_b = next(iter(function_codes & codes_b))
-        return (fn_a, fn_b)
+        conflict_from_set_a = next(iter(function_codes & codes_set_a))
+        conflict_from_set_b = next(iter(function_codes & codes_set_b))
+        return (conflict_from_set_a, conflict_from_set_b)
 
 
 class ExceptionalPermission(models.Model):

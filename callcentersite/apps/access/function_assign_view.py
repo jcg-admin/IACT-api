@@ -56,15 +56,15 @@ class DutySeparationValidator:
         all_codes = current_codes | set(new_function_codes)
 
         for rule in SeparationRule.objects.filter(state='ENABLED'):
-            codes_a = set(rule.functions_set_a.values_list('code', flat=True))
-            codes_b = set(rule.functions_set_b.values_list('code', flat=True))
-            has_a = bool(all_codes & codes_a)
-            has_b = bool(all_codes & codes_b)
-            if has_a and has_b:
+            codes_set_a    = set(rule.functions_set_a.values_list('code', flat=True))
+            codes_set_b    = set(rule.functions_set_b.values_list('code', flat=True))
+            user_has_set_a = bool(all_codes & codes_set_a)
+            user_has_set_b = bool(all_codes & codes_set_b)
+            if user_has_set_a and user_has_set_b:
                 violations.append({
-                    'rule_id':      rule.pk,
-                    'rule_code':    rule.code,
-                    'conflict_pair': [list(codes_a), list(codes_b)],
+                    'rule_id':       rule.pk,
+                    'rule_code':     rule.code,
+                    'conflict_pair': [list(codes_set_a), list(codes_set_b)],
                 })
         return violations
 

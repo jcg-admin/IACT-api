@@ -8,7 +8,6 @@ from .access_group_serializers import (
 )
 from .separation_rule_serializers import (
     SeparationRuleSerializer,
-    SeparationRuleCheckSerializer,
 )
 from .exceptional_permission_serializers import (
     ExceptionalPermissionSerializer,
@@ -20,7 +19,6 @@ __all__ = [
     'AccessGroupListSerializer',
     'UserAccessGroupSerializer',
     'SeparationRuleSerializer',
-    'SeparationRuleCheckSerializer',
     'ExceptionalPermissionSerializer',
     'FunctionSerializer',
 ]
