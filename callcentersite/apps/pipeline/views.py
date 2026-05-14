@@ -330,6 +330,10 @@ def etl_errors(request):
         return Response({'error': 'Could not connect to MariaDB.', 'detail': str(e)},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+    # UC_PIP_02 CA-03: sanitizar PII antes de retornar (CNST-026)
+    from apps.pipeline.pii_scanner import PIIScanner
+    errors = [PIIScanner.sanitize_error_row(row) for row in errors]
+
     return Response({
         'total':    total,
         'page':     page,

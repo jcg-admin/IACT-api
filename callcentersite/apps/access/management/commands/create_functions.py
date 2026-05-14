@@ -91,6 +91,11 @@ FUNCTIONS_V540 = [
     # asignado porque los 11 slots RPT-001..011 están ocupados.
     # Se usa el código RPT-012 para mantener coherencia MOD-NNN.
     ('RPT-012', 'view_realtime_metrics',  'MOD_RPT', 'Ver métricas en tiempo real vía SSE (UC_RPT_02). Requiere infraestructura ASGI.'),
+    # Hallazgo H-F3-GRP-A-001 (2026-05-13): funciones requeridas por GRUPO A de FASE 3 TDD
+    # ausentes del catálogo v5.4.0 inicial.
+    ('RPT-013', 'view_historical_reports', 'MOD_RPT', 'Ver reportes históricos con buckets y comparativo (UC_RPT_03).'),
+    ('ALR-011', 'view_active_alerts',      'MOD_ALR', 'Ver alertas activas/reconocidas del sistema (UC_ALR_02).'),
+    ('LOG-008', 'view_system_logs',        'MOD_LOG', 'Ver logs de aplicación del sistema (UC_LOG_01).'),
 
     # =========================================
     # MOD_ALR — 10 funciones
@@ -255,9 +260,9 @@ class Command(BaseCommand):
         self.stdout.write(f'  Actualizadas:{updated}')
         if not dry_run:
             total = Function.objects.count()
-            self.stdout.write(f'  Total en BD: {total} (esperado: 61)')
-            if total != 61:
+            self.stdout.write(f'  Total en BD: {total} (esperado: 65)')
+            if total != 65:
                 self.stdout.write(self.style.ERROR(
-                    f'ADVERTENCIA: se esperaban 61 funciones, hay {total}'
+                    f'ADVERTENCIA: se esperaban 65 funciones, hay {total}'
                 ))
         self.stdout.write('=' * 60)

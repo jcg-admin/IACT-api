@@ -8,8 +8,9 @@ from .views import (
     ReportViewSet, ExportJobViewSet,
     ScheduledReportViewSet, SavedViewViewSet,
 )
-from .realtime_view import RealtimeMetricsView
-from .dashboard_view import DashboardView
+from .realtime_view   import RealtimeMetricsView
+from .dashboard_view  import DashboardView
+from .historical_view import HistoricalReportView
 from .ivr_views import (
     RedirectedMenusView, CenterMenuView,
     ClientsReportView,
@@ -33,7 +34,8 @@ urlpatterns = [
     path('', include(router.urls)),
 
     # K-005: UC_RPT_02 — real-time metrics stub (CNST-004)
-    path('realtime/', RealtimeMetricsView.as_view(), name='realtime-metrics'),
+    path('realtime/',   RealtimeMetricsView.as_view(),  name='realtime-metrics'),
+    path('historical/', HistoricalReportView.as_view(), name='historical-report'),
 
     # B-01: Reportes IVR (UC_RPT_12..17) — leen de MariaDB via SPs
     # UC_RPT_01 — Dashboard principal de KPIs IVR

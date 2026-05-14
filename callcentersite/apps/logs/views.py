@@ -69,7 +69,12 @@ class DjangoLogTailView(APIView):
         except (ValueError, TypeError):
             lines = 100
 
-        log_lines = _read_log_tail(LOG_FILE, lines)
+        raw_lines = _read_log_tail(LOG_FILE, lines)
+        # UC_LOG_01 CA-05: sanitizar PII antes de retornar (CNST-026)
+        from apps.logs.log_validators import LogPIIScanner
+        log_lines = [
+            LogPIIScanner.sanitize_text(line) for line in raw_lines
+        ]
         return Response({
             'source':    'django',
             'lines':     len(log_lines),

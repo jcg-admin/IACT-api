@@ -182,6 +182,12 @@ VALID_EVENT_TYPES = frozenset({
     'REPORT_SHARED',
     # Alerts (UC_ALR_03)
     'ALERT_ACKNOWLEDGED',
+    # UC_ALR_01 — CRUD de reglas de alerta (FASE 3 TDD 2026-05-13)
+    'ALERT_RULE_CREATED',
+    'ALERT_RULE_UPDATED',
+    'ALERT_RULE_DELETED',
+    'ALERT_RULE_PAUSED',
+    'ALERT_RULE_RESUMED',
     # Audit (UC_AUD_01..04) — meta-audit
     'GENERAL_AUDIT_QUERIED',
     'AUDIT_EXPORTED',
