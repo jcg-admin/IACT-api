@@ -13,6 +13,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
 from apps.authentication.login_view import LoginView
+from apps.authentication.change_password_view import ChangePasswordView
 from apps.authentication.viewsets import AuthViewSet, SessionViewSet
 
 # Router para acciones secundarias (logout, change-password, security-questions…)
@@ -25,6 +26,8 @@ app_name = 'authentication'
 urlpatterns = [
     # UC_AUTH_01 — endpoint canónico con LoginView (drf-spectacular completo)
     path('auth/login/', LoginView.as_view(), name='login'),
+    # UC_AUTH_04 — cambio de contraseña (canónico, reemplaza AuthViewSet.change_password)
+    path('auth/change-password/', ChangePasswordView.as_view(), name='change-password'),
 
     # Resto de endpoints de autenticación vía router
     path('', include(router.urls)),
