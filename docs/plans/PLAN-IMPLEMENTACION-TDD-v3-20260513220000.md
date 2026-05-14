@@ -1,4 +1,27 @@
-# Plan de Implementación TDD — IACT-api v3.0.0
+# [DEPRECADO] Plan de Implementación TDD — IACT-api v3.0.0
+
+> **ESTADO: DEPRECADO** — 2026-05-13
+>
+> Reemplazado por `PLAN-IMPLEMENTACION-TDD-v4-20260513.md`.
+>
+> Razón: el ciclo de remediación STD-008 §3.3/§3.5 (5 fases, commits
+> `c9cfae7`, `4f19034` en IACT-api; `885290f` en IACT-ui; IACT-docs pendiente)
+> produjo cambios estructurales en nomenclatura, routing y documentación
+> normativa que este plan no contempla:
+> - `sod-rules/` → `separation-rules/` (routing canónico)
+> - `sod_rule_view.py` → `separation_rule_view.py` (archivo renombrado)
+> - `SoDRule*` → `SeparationRule*` (clases, serializers, event types)
+> - `validate-sod` → `separation-rules/validate` (endpoint canónico)
+> - `SeparationRuleViewSet` eliminado del router (drf-spectacular)
+> - 4 codenames en catalog.js (IACT-ui)
+> - CNST-030 v3.0.0, CNST-033 v2.0.0 (normativa)
+>
+> Las FASES 0, 1, 2 del plan TDD están implementadas pero la rama
+> `refactor/std008-sod-naming` (IACT-api) y `claude/project-analysis-N9IkV`
+> (IACT-ui) deben mergearse a `develop` antes de continuar con FASE 3.
+>
+> Ver: `PLAN-IMPLEMENTACION-TDD-v4-20260513.md`
+
 ## Fuente única: IACT-docs `source/requisitos/` y `source/arquitectura-tecnica/`
 
 **Versión:** 3.0.0
