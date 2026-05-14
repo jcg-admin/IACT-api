@@ -247,7 +247,7 @@ class IvrMenusView(APIView):
 class RedirectedMenusView(APIView):
     """
     UC_RPT_16 — Menús redirigidos.
-    GET /api/reports/ivr/menu-redirigidos/?quarter=Q01_25&segment=todas
+    GET /api/reports/ivr/menu-redirected/?quarter=Q01_25&segment=todas
     Distribución de opciones elegidas por el llamante en cada menú IVR.
     Grain: menu × opcion. Fuente: sp_rpt_menu_redirigidos.
     """
@@ -282,7 +282,7 @@ class RedirectedMenusView(APIView):
 class CenterMenuView(APIView):
     """
     UC_RPT_16 — Menú centro.
-    GET /api/reports/ivr/menu-centro/?quarter=Q01_25&segment=todas
+    GET /api/reports/ivr/menu-center/?quarter=Q01_25&segment=todas
     Distribución de centros de transferencia por menú IVR.
     Grain: menu × centro_transferencia. Fuente: sp_rpt_menu_centro.
     """

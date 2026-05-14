@@ -1,21 +1,25 @@
 """
-apps/access/management/commands/create_sod_rules.py
+apps/access/management/commands/create_separation_rules.py
 
-Las 3 reglas SoD predefinidas del catálogo RBAC v5.4.0.
+Las 3 reglas de separación predefinidas del catálogo RBAC v5.4.0.
 
 Fuente: arquitectura-tecnica/rbac/modelo-rbac-iact.rst v5.4.0
-BR-007: SoD obligatorio en asignación de funciones.
+BR-007: separación de funciones obligatoria en asignación.
 Prerequisito: python manage.py create_functions
 
 Uso:
-    python manage.py create_sod_rules
-    python manage.py create_sod_rules --dry-run
+    python manage.py create_separation_rules
+    python manage.py create_separation_rules --dry-run
+
+Historial:
+  STD_008 FASE 1 (2026-05-13): create_sod_rules.py → create_separation_rules.py
+    SOD_RULES_V540 → SEPARATION_RULES_V540
 """
 from django.core.management.base import BaseCommand
 from django.db import transaction
 
 
-SOD_RULES_V540 = [
+SEPARATION_RULES_V540 = [
     (
         'SOD-001',
         'pipeline_audit_separation',
@@ -53,7 +57,7 @@ SOD_RULES_V540 = [
 
 
 class Command(BaseCommand):
-    help = 'Carga las 3 reglas SoD predefinidas del catálogo RBAC v5.4.0'
+    help = 'Carga las 3 reglas de separación predefinidas del catálogo RBAC v5.4.0'
 
     def add_arguments(self, parser):
         parser.add_argument('--dry-run', action='store_true')
@@ -73,7 +77,7 @@ class Command(BaseCommand):
 
         created_count = updated_count = 0
 
-        for code, name, description, set_a_codes, set_b_codes in SOD_RULES_V540:
+        for code, name, description, set_a_codes, set_b_codes in SEPARATION_RULES_V540:
             if dry_run:
                 a_count = Function.objects.filter(code__in=set_a_codes).count()
                 b_count = Function.objects.filter(code__in=set_b_codes).count()

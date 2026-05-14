@@ -45,8 +45,8 @@ urlpatterns = [
     path('ivr/abandoned/',          AbandonedCallsView.as_view(),   name='ivr-abandoned'),
     path('ivr/menu-errors/',        CMENUErrorView.as_view(),            name='ivr-menu-errors'),
     path('ivr/centers-by-segment/', CentersBySegmentView.as_view(),      name='ivr-centers-by-segment'),
-    path('ivr/menu-redirigidos/', RedirectedMenusView.as_view(),  name='ivr-menu-redirigidos'),
-    path('ivr/menu-centro/',      CenterMenuView.as_view(),       name='ivr-menu-centro'),
+    path('ivr/menu-redirected/',  RedirectedMenusView.as_view(), name='ivr-menu-redirected'),
+    path('ivr/menu-center/',      CenterMenuView.as_view(),      name='ivr-menu-center'),
     path('ivr/menus/',              IvrMenusView.as_view(),              name='ivr-menus'),
     path('ivr/abandonment-summary/', AbandonmentSummaryView.as_view(),  name='ivr-abandonment-summary'),
 ]

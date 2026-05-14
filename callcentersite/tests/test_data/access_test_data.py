@@ -140,23 +140,36 @@ class UserAccessGroupTestData(DjangoModelFactory):
 
 class SeparationRuleTestData(DjangoModelFactory):
     """
-    Factory for SeparationRule (incompatible function pair).
+    Factory para SeparationRule (v5.4.0 — modelo M2M).
 
-    Usage:
+    El modelo actual usa ManyToManyField (functions_set_a, functions_set_b).
+    Los conjuntos se asignan con .set() después de crear la instancia,
+    no como kwargs del constructor.
+
+    Uso:
         rule = SeparationRuleTestData()
-        rule = SeparationRuleTestData(
-            function_a=fn_a, function_b=fn_b, status='active')
+
+        # Con funciones asignadas:
+        fa, fb = FunctionTestData(), FunctionTestData()
+        rule = SeparationRuleTestData()
+        rule.functions_set_a.set([fa])
+        rule.functions_set_b.set([fb])
+
+        # Desactivada:
+        rule = SeparationRuleTestData(state=SeparationRule.STATE_DISABLED)
+
+    Hallazgo FASE 1 (2026-05-13):
+      Los campos function_a, function_b, justification, status corresponden
+      al modelo v5.2.1 (FKs binarios). Eliminados — no existen en v5.4.0.
     """
 
-    name          = factory.Sequence(lambda n: f'Separation Rule {n}')
-    function_a    = factory.SubFactory(FunctionTestData)
-    function_b    = factory.SubFactory(FunctionTestData)
-    justification = factory.Faker('paragraph', nb_sentences=2)
-    status        = 'active'
-    created_by    = factory.SubFactory(UserTestData)
+    code  = factory.Sequence(lambda n: f'TST-SR-{n:03d}')
+    name  = factory.Sequence(lambda n: f'test_separation_{n}')
+    state = SeparationRule.STATE_ENABLED
 
     class Meta:
         model = SeparationRule
+        django_get_or_create = ('code',)
 
 
 # ---------------------------------------------------------------------------
