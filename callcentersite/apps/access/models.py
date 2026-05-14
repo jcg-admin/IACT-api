@@ -372,15 +372,30 @@ class ExceptionalPermission(models.Model):
     """
     Permiso temporal excepcional para un usuario (UC_ACC_08, UC_PERM_03..04).
 
-    Otorga una Function especifica a un usuario por un periodo limitado,
-    incluso si violaría una SeparationRule. Requiere justification y aprobacion.
+    Fuente: uc-acc-08/datos-involucrados.rst § 7.4.1
+    Otorga una Function específica a un usuario por un periodo limitado.
+    BR-009: no DELETE físico — baja lógica vía state=EXPIRED|REVOKED.
+
+    Ciclo de vida: ACTIVE → EXPIRED (cron) o REVOKED (UC_PERM_04).
     """
+
+    STATE_ACTIVE  = 'ACTIVE'
+    STATE_EXPIRED = 'EXPIRED'
+    STATE_REVOKED = 'REVOKED'
+
+    STATE_CHOICES = [
+        (STATE_ACTIVE,  'Activo'),
+        (STATE_EXPIRED, 'Expirado'),
+        (STATE_REVOKED, 'Revocado'),
+    ]
+
+    # --- Backward compat: choices legacy para registros anteriores a FASE 4 ---
     ESTADO_CHOICES = [
         ('pending',  'Pending approval'),
         ('approved', 'Approved'),
-        ('active',   'Active'),
-        ('expired',  'Expired'),
-        ('revoked',  'Revoked'),
+        ('active',   STATE_ACTIVE),
+        ('expired',  STATE_EXPIRED),
+        ('revoked',  STATE_REVOKED),
     ]
 
     user = models.ForeignKey(
@@ -397,19 +412,30 @@ class ExceptionalPermission(models.Model):
     )
     justification = models.TextField(
         verbose_name=_('Justificacion'),
-        help_text='Minimo 50 caracteres explicando la necesidad.',
+        help_text='Mínimo 20 caracteres explicando la necesidad (uc-acc-08 CA-02).',
+    )
+    ticket_reference = models.CharField(
+        max_length=100, blank=True, null=True,
+        verbose_name=_('Referencia de ticket'),
+        help_text='TKT-NNNNN — requerido si política REQUIRE_TICKET=true (CA-11).',
     )
     status = models.CharField(
         max_length=20,
         choices=ESTADO_CHOICES,
-        default='pending',
+        default=STATE_ACTIVE,
         verbose_name=_('Estado'),
+        db_index=True,
     )
-    valid_from = models.DateTimeField(
-        verbose_name=_('Valido desde'),
+    # Corpus: expires_at (no valid_until) + granted_at (no valid_from)
+    granted_at = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name=_('Otorgado en'),
+        help_text='NOW() en el momento del grant.',
     )
-    valid_until = models.DateTimeField(
-        verbose_name=_('Valido hasta'),
+    expires_at = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name=_('Expira en'),
+        help_text='Obligatorio (CA-04). Bounds: NOW()+1h ≤ x ≤ NOW()+30d (CA-03).',
     )
     granted_by = models.ForeignKey(
         'users.User',
@@ -419,6 +445,36 @@ class ExceptionalPermission(models.Model):
         related_name='exceptional_permissions_otorgados',
         verbose_name=_('Otorgado por'),
     )
+    # UC_PERM_04: campos de revocación
+    revoked_at = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name=_('Revocado en'),
+        help_text='Timestamp de revocación anticipada (UC_PERM_04 CA-02).',
+    )
+    revoked_by = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='exceptional_permissions_revocados',
+        verbose_name=_('Revocado por'),
+        help_text='Diferencia con EXPIRED: revoked_by != NULL (CA-02).',
+    )
+    revoke_reason = models.TextField(
+        blank=True,
+        verbose_name=_('Motivo de revocación'),
+        help_text='UC_PERM_04 CA-06: obligatorio ≥ 20 chars.',
+    )
+    # Backward compat: campos legacy
+    valid_from = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name=_('Valido desde (legacy)'),
+        help_text='Legacy: usar granted_at para UC_ACC_08.',
+    )
+    valid_until = models.DateTimeField(
+        null=True, blank=True,
+        verbose_name=_('Valido hasta (legacy)'),
+        help_text='Legacy: usar expires_at para UC_ACC_08.',
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -426,6 +482,10 @@ class ExceptionalPermission(models.Model):
         verbose_name_plural = _('Permisos excepcionales')
         ordering = ['-created_at']
         db_table = 'access_exceptional_permission'
+        indexes = [
+            models.Index(fields=['user', 'status'], name='idx_excperm_user_status'),
+            models.Index(fields=['expires_at', 'status'], name='idx_excperm_expires'),
+        ]
 
     def __str__(self):
         return f'Exc: {self.user} -> {self.function.code} [{self.status}]'

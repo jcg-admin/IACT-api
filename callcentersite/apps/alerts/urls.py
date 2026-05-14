@@ -17,6 +17,11 @@ from apps.alerts.alert_views import (
     AlertAcknowledgeView,
     AlertBulkAcknowledgeView,
 )
+# FASE 4
+from apps.alerts.alert_history_view import AlertHistoryView
+from apps.alerts.alert_subscription_views import (
+    AlertSubscriptionListView, AlertSubscriptionDetailView,
+)
 
 app_name = 'alerts'
 
@@ -39,6 +44,13 @@ urlpatterns = [
     # UC_ALR_03 — Reconocer Alerta
     path('<uuid:alert_id>/acknowledge/', AlertAcknowledgeView.as_view(), name='alert-acknowledge'),
     path('bulk-acknowledge/',    AlertBulkAcknowledgeView.as_view(),     name='alert-bulk-acknowledge'),
+
+
+    # UC_ALR_04 — Historial de alertas (FASE 4)
+    path('history/', AlertHistoryView.as_view(), name='alert-history'),
+    # UC_ALR_05 — Suscripciones (FASE 4)
+    path('me/subscriptions/', AlertSubscriptionListView.as_view(), name='alert-subscription-list'),
+    path('me/subscriptions/<int:sub_id>/', AlertSubscriptionDetailView.as_view(), name='alert-subscription-detail'),
 
     # Legacy router (mensajería, configuraciones)
     path('', include(router.urls)),

@@ -12,6 +12,13 @@ from .realtime_view   import RealtimeMetricsView
 from .dashboard_view  import DashboardView
 from .historical_view import HistoricalReportView
 from .export_views    import ExportView, ExportDetailView
+from .schedule_views    import ScheduledReportListCreateView, ScheduledReportDetailView
+from .share_views       import ShareCreateView, ShareDetailView
+from .analytics_views   import (
+    AgentReportView, AgentDetailView, QueueReportView,
+    CampaignReportView, TransferReportView, IVRMenuReportView,
+    UniqueClientsReportView,
+)
 from .ivr_views import (
     RedirectedMenusView, CenterMenuView,
     ClientsReportView,
@@ -37,6 +44,20 @@ urlpatterns = [
     # K-005: UC_RPT_02 — real-time metrics stub (CNST-004)
     path('realtime/',              RealtimeMetricsView.as_view(),  name='realtime-metrics'),
     path('historical/',            HistoricalReportView.as_view(), name='historical-report'),
+    # UC_RPT_07/08 — Reportes programados (FASE 4)
+    path('schedules/',                ScheduledReportListCreateView.as_view(), name='schedule-list-create'),
+    path('schedules/<int:sched_id>/', ScheduledReportDetailView.as_view(),     name='schedule-detail'),
+    # UC_RPT_11 — Compartir reporte (FASE 4)
+    path('shares/',                   ShareCreateView.as_view(),               name='share-create'),
+    path('shares/<uuid:share_id>/',   ShareDetailView.as_view(),               name='share-detail'),
+    # UC_RPT_12..17 — Reportes analíticos (FASE 4)
+    path('agents/',                   AgentReportView.as_view(),               name='agent-report'),
+    path('agents/<int:agent_id>/',    AgentDetailView.as_view(),               name='agent-detail'),
+    path('queues/',                   QueueReportView.as_view(),               name='queue-report'),
+    path('campaigns/',                CampaignReportView.as_view(),            name='campaign-report'),
+    path('ivr/transfers/',            TransferReportView.as_view(),            name='transfer-report'),
+    path('ivr/menus/',                IVRMenuReportView.as_view(),             name='ivr-menu-report'),
+    path('ivr/unique-clients/',       UniqueClientsReportView.as_view(),       name='unique-clients-report'),
     path('export/',                ExportView.as_view(),           name='export-queue'),
     path('export/<uuid:job_id>/',  ExportDetailView.as_view(),     name='export-detail'),
 

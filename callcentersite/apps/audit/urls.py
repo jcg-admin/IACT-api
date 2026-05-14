@@ -1,3 +1,4 @@
+from apps.audit.compliance_views import ComplianceReportView, ComplianceVerifyView
 """
 URLs para audit app.
 """
@@ -17,5 +18,7 @@ urlpatterns = [
 # B-08: UC_AUD_04 — integridad
 from .views import AuditIntegrityView
 urlpatterns += [
+    path('compliance-report/', ComplianceReportView.as_view(), name='compliance-report'),
+    path('compliance-verify/', ComplianceVerifyView.as_view(), name='compliance-verify'),
     path('integrity/', AuditIntegrityView.as_view(), name='integrity'),
 ]

@@ -96,6 +96,15 @@ FUNCTIONS_V540 = [
     ('RPT-013', 'view_historical_reports', 'MOD_RPT', 'Ver reportes históricos con buckets y comparativo (UC_RPT_03).'),
     ('ALR-011', 'view_active_alerts',      'MOD_ALR', 'Ver alertas activas/reconocidas del sistema (UC_ALR_02).'),
     ('LOG-008', 'view_system_logs',        'MOD_LOG', 'Ver logs de aplicación del sistema (UC_LOG_01).'),
+    # Hallazgo H-F4-GRP-PRE-001 (2026-05-13): funciones requeridas por FASE 4 TDD
+    # ausentes del catálogo v5.4.0 inicial.
+    ('RPT-014', 'view_agent_reports',      'MOD_RPT', 'Ver reportes de rendimiento de agentes (UC_RPT_12).'),
+    ('RPT-015', 'view_agent_detail',       'MOD_RPT', 'Ver detalle privilegiado de agente — requiere permiso adicional (UC_RPT_12 CA-06).'),
+    ('RPT-016', 'view_queue_reports',      'MOD_RPT', 'Ver reportes de colas de atención (UC_RPT_13).'),
+    ('RPT-017', 'view_campaign_reports',   'MOD_RPT', 'Ver reportes de campañas (UC_RPT_14).'),
+    ('RPT-018', 'view_transfer_reports',   'MOD_RPT', 'Ver reportes de transferencias IVR (UC_RPT_15).'),
+    ('RPT-019', 'view_ivr_reports',        'MOD_RPT', 'Ver reportes de navegación IVR (UC_RPT_16).'),
+    ('RPT-020', 'view_unique_clients_reports', 'MOD_RPT', 'Ver reportes de clientes únicos anonimizados (UC_RPT_17).'),
 
     # =========================================
     # MOD_ALR — 10 funciones
@@ -260,9 +269,9 @@ class Command(BaseCommand):
         self.stdout.write(f'  Actualizadas:{updated}')
         if not dry_run:
             total = Function.objects.count()
-            self.stdout.write(f'  Total en BD: {total} (esperado: 65)')
-            if total != 65:
+            self.stdout.write(f'  Total en BD: {total} (esperado: 72)')
+            if total != 72:
                 self.stdout.write(self.style.ERROR(
-                    f'ADVERTENCIA: se esperaban 65 funciones, hay {total}'
+                    f'ADVERTENCIA: se esperaban 72 funciones, hay {total}'
                 ))
         self.stdout.write('=' * 60)

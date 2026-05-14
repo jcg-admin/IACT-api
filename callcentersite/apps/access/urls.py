@@ -54,6 +54,11 @@ from .views import (
     MenuItemTransitionView,
     PermissionVerifyView,
 )
+from .exceptional_permission_views import (
+    ExceptionalGrantView   as _ExceptionalGrantView,
+    ExceptionalPreviewView as _ExceptionalPreviewView,
+    ExceptionalRevokeView  as _ExceptionalRevokeView,
+)
 
 # STD_008 FASE 3: SeparationRuleViewSet eliminado del router para evitar
 # colisión de operationId con las rutas explícitas de separation-rules/.
@@ -151,6 +156,16 @@ urlpatterns = [
          MyModulesView.as_view(), name='my-modules'),
     path('menu-items/<int:pk>/transition/',
          MenuItemTransitionView.as_view(), name='menuitem-transition'),
+
+    # ==================================================================
+    # UC_ACC_08, UC_PERM_03, UC_PERM_04 — Permisos Excepcionales (FASE 4)
+    # ==================================================================
+    path('users/<int:user_id>/exceptional-permissions/',
+         _ExceptionalGrantView.as_view(),   name='exceptional-grant'),
+    path('users/<int:user_id>/exceptional-permissions/preview/',
+         _ExceptionalPreviewView.as_view(), name='exceptional-preview'),
+    path('users/<int:user_id>/exceptional-permissions/<int:permission_id>/',
+         _ExceptionalRevokeView.as_view(),  name='exceptional-revoke'),
 
     # ==================================================================
     # Router legacy (al final — prioridad mínima)

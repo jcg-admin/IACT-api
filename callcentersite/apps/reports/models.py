@@ -267,37 +267,132 @@ class ExportJob(SoftDeleteMixin, models.Model):
 
 class ScheduledReport(models.Model):
     """
-    Scheduled report that runs periodically. UC_RPT_07/08.
-    Uses cron_expression to define the schedule.
-    APScheduler (CNST-004: no Celery) picks this up at runtime.
+    Reporte programado periódico — UC_RPT_07/08.
+
+    Fuente: uc-rpt-07/criterios-aceptacion.rst
+    Fuente: uc-rpt-08/criterios-aceptacion.rst
+    Patrón: cada tick del scheduler verifica next_run_at y encola ExportJob.
+    BR-009: no DELETE físico — status=deleted.
     """
+
+    STATUS_ACTIVE      = 'active'
+    STATUS_PAUSED      = 'paused'
+    STATUS_AUTO_PAUSED = 'auto_paused'  # CA-10: 3 fallos consecutivos
+    STATUS_DELETED     = 'deleted'
+
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE,      'Activo'),
+        (STATUS_PAUSED,      'Pausado'),
+        (STATUS_AUTO_PAUSED, 'Auto-pausado'),
+        (STATUS_DELETED,     'Eliminado'),
+    ]
+
+    FREQ_DAILY   = 'daily'
+    FREQ_WEEKLY  = 'weekly'
+    FREQ_MONTHLY = 'monthly'
+    FREQ_CRON    = 'cron'
+
+    FREQ_CHOICES = [
+        (FREQ_DAILY,   'Diario'),
+        (FREQ_WEEKLY,  'Semanal'),
+        (FREQ_MONTHLY, 'Mensual'),
+        (FREQ_CRON,    'Expresión cron personalizada'),
+    ]
+
+    actor = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='scheduled_reports',
+        null=True, blank=True,       # nullable para registros legacy sin actor
+        verbose_name='Actor',
+        help_text='Usuario que programó el reporte. Obligatorio para UC_RPT_07.',
+    )
+    report_type = models.CharField(
+        max_length=50, verbose_name='Tipo de reporte',
+        blank=True, default='',
+        help_text='Mismo enum que ExportJob.report_type.',
+    )
+    format = models.CharField(
+        max_length=10, default='csv',
+        choices=[('csv','CSV'),('xlsx','Excel'),('json','JSON'),('pdf','PDF')],
+    )
+    filters  = models.JSONField(default=dict)
+    group_by = models.JSONField(default=list)
+
+    # Programación
+    frequency      = models.CharField(max_length=15, choices=FREQ_CHOICES, default=FREQ_DAILY)
+    cron_expression = models.CharField(
+        max_length=100, blank=True,
+        help_text="'0 6 * * 1' — solo para frequency=cron (CA-04).",
+    )
+    day_of_week  = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text='0=lunes … 6=domingo — solo para frequency=weekly (CA-02).',
+    )
+    day_of_month = models.PositiveSmallIntegerField(
+        null=True, blank=True,
+        help_text='1..31 — solo para frequency=monthly (CA-03).',
+    )
+    run_at_hour   = models.PositiveSmallIntegerField(default=6,
+        help_text='Hora local de ejecución (0..23).')
+    run_at_minute = models.PositiveSmallIntegerField(default=0)
+
+    # Estado
+    status         = models.CharField(
+        max_length=15, choices=STATUS_CHOICES,
+        default=STATUS_ACTIVE, db_index=True,
+    )
+    next_run_at    = models.DateTimeField(null=True, blank=True, db_index=True)
+    last_run_at    = models.DateTimeField(null=True, blank=True)
+    failure_count  = models.PositiveSmallIntegerField(
+        default=0,
+        help_text='Fallos consecutivos. ≥3 → auto_paused (CA-10).',
+    )
+    auto_paused_at = models.DateTimeField(null=True, blank=True)
+    last_job       = models.ForeignKey(
+        'ExportJob',
+        null=True, blank=True,
+        on_delete=models.SET_NULL,
+        related_name='scheduled_source',
+    )
+
+    # Backward compat — FK legacy a Report (nullable)
     report = models.ForeignKey(
         Report,
-        on_delete=models.CASCADE,
-        related_name='scheduled_runs',
-    )
-    cron_expression = models.CharField(
-        max_length=50,
-        help_text="Cron expression, e.g. '0 6 * * 1' for every Monday at 06:00",
-    )
-    is_active = models.BooleanField(default=True)
-    last_run_at = models.DateTimeField(null=True, blank=True)
-    next_run_at = models.DateTimeField(null=True, blank=True)
-    created_by = models.ForeignKey(
-        User,
         on_delete=models.SET_NULL,
-        null=True,
-        related_name='scheduled_reports',
+        null=True, blank=True,
+        related_name='scheduled_runs',
+        verbose_name='Reporte legacy',
     )
+    cron_expr_legacy = models.CharField(
+        max_length=50, blank=True,
+        help_text='Legacy field — usar cron_expression.',
+    )
+    is_active = models.BooleanField(
+        default=True, help_text='Legacy — usar status.',
+    )
+    created_by = models.ForeignKey(
+        User, on_delete=models.SET_NULL, null=True,
+        related_name='scheduled_reports_legacy',
+        help_text='Legacy — usar actor.',
+    )
+
     created_at = models.DateTimeField(auto_now_add=True)
 
+    MAX_SCHEDULES_PER_USER = 10  # CA-07: 11ª → 429
+
     class Meta:
-        ordering = ['-created_at']
+        db_table = 'reports_scheduledreport'
         verbose_name = 'Scheduled Report'
         verbose_name_plural = 'Scheduled Reports'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['actor', 'status'], name='idx_schedrpt_actor_status'),
+            models.Index(fields=['next_run_at', 'status'], name='idx_schedrpt_next_run'),
+        ]
 
     def __str__(self) -> str:
-        return f"ScheduledReport({self.report.name}, cron={self.cron_expression})"
+        return f'ScheduledReport({self.report_type}/{self.frequency}/{self.status})'
 
 
 class SavedView(models.Model):

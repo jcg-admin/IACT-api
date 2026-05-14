@@ -228,9 +228,13 @@ class AlertConfiguration(SoftDeleteMixin, models.Model):
 
 class AlertSubscription(SoftDeleteMixin, models.Model):
     """
-    Suscripción de usuario a alertas específicas
-    
-    Permite que usuarios elijan a qué alertas suscribirse
+    Suscripción de usuario a alertas específicas.
+
+    Soporta dos FK:
+    - `alert_configuration`: legacy (pre-FASE 4)
+    - `rule`: canónico (UC_ALR_05 FASE 4)
+
+    state: active | paused | cancelled | auto_paused
     """
     user = models.ForeignKey(
         User,
@@ -241,30 +245,56 @@ class AlertSubscription(SoftDeleteMixin, models.Model):
     alert_configuration = models.ForeignKey(
         AlertConfiguration,
         on_delete=models.CASCADE,
+        null=True, blank=True,
         related_name='subscriptions',
-        verbose_name='Configuración de Alerta'
+        verbose_name='Configuración de Alerta (legacy)'
     )
+    # UC_ALR_05: FK canónica a AlertRule
+    rule = models.ForeignKey(
+        'AlertRule',
+        on_delete=models.CASCADE,
+        null=True, blank=True,
+        related_name='subscriptions',
+        verbose_name='Regla de Alerta',
+    )
+    # Estado canónico
+    state = models.CharField(
+        max_length=20, default='active',
+        choices=[
+            ('active',      'Activa'),
+            ('paused',      'Pausada'),
+            ('cancelled',   'Cancelada'),
+            ('auto_paused', 'Auto-pausada'),
+        ],
+        db_index=True,
+    )
+    severity_filter = models.CharField(
+        max_length=20, default='warning',
+        help_text='Filtro de severidad mínima para notificar.',
+    )
+    # Legacy
     is_active = models.BooleanField(
         default=True,
-        verbose_name='Activa'
+        verbose_name='Activa (legacy)'
     )
     subscribed_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name='Fecha de suscripción'
     )
-    
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+
     class Meta:
         db_table = 'alerts_alert_subscription'
-        unique_together = ('user', 'alert_configuration')
         verbose_name = 'Suscripción a Alerta'
         verbose_name_plural = 'Suscripciones a Alertas'
         indexes = [
             models.Index(fields=['user', 'is_active'], name='idx_sub_user_active'),
+            models.Index(fields=['user', 'state'],     name='idx_sub_user_state'),
         ]
-    
+
     def __str__(self):
-        status = "[OK]" if self.is_active else "[FAIL]"
-        return f"{status} {self.user.username} -> {self.alert_configuration.name}"
+        target = self.rule or self.alert_configuration
+        return f"Sub[{self.state}] {self.user.username} -> {target}"
 
 
 # ===========================================================================

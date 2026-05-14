@@ -241,16 +241,42 @@ class InfraLogView(APIView):
     UC_LOG_05 — Logs de infraestructura (host, container).
 
     GET /api/logs/infra/
+    Función: LOG-005 (view_infrastructure_logs)
+
+    Hallazgo H-F4-GRP-A-002 (2026-05-13):
+        required_function estaba en 'LOG-001' (view_application_logs).
+        Corregido a 'LOG-005' (view_infrastructure_logs).
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'LOG-001'
+    required_function  = 'LOG-005'   # view_infrastructure_logs (CA-05)
 
     def get(self, request):
-        return Response({
-            'nota': 'Logs de infraestructura requieren integracion con Loki/CloudWatch.',
-            'disponible': False,
-            'alternativa': 'Consultar directamente el sistema de observabilidad configurado.',
-        })
+        host = request.query_params.get('host')
+        try:
+            with connections['ivr'].cursor() as cursor:
+                if host:
+                    cursor.execute(
+                        "SELECT id, host, message, level, created_at "
+                        "FROM infra_logs WHERE host=%s ORDER BY created_at DESC LIMIT 500",
+                        (host,),
+                    )
+                else:
+                    cursor.execute(
+                        "SELECT id, host, message, level, created_at "
+                        "FROM infra_logs ORDER BY created_at DESC LIMIT 500"
+                    )
+                if cursor.description:
+                    cols    = [d[0] for d in cursor.description]
+                    entries = [dict(zip(cols, row)) for row in cursor.fetchall()]
+                else:
+                    entries = []
+        except OperationalError as e:
+            return Response(
+                {'error': 'SERVICE_UNAVAILABLE', 'detail': str(e)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response({'source': 'infrastructure', 'entries': entries})
 
 
 @extend_schema(
