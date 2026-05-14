@@ -423,3 +423,212 @@ class MailboxMessage(models.Model):
         self.state = self.STATE_READ
         self.read_at = timezone.now()
         self.save(update_fields=['state', 'read_at'])
+
+
+# ===========================================================================
+# UC_ALR_01/02/03 — AlertRule, AlertRuleHistory, Alert
+# Prerequisito FASE 3 (2026-05-13):
+# Fuente: uc-alr-01/datos-involucrados.rst § 7.1, uc-alr-02 § 7.1
+# AlertConfiguration (existente) es un modelo diferente — mensajería/APScheduler.
+# AlertRule es el modelo de RBAC-aware rules con metric/scope/condition.
+# ===========================================================================
+
+import uuid as _uuid
+
+
+class AlertRule(models.Model):
+    """
+    Regla de alerta definida por un usuario (UC_ALR_01).
+
+    Fuente: uc-alr-01/datos-involucrados.rst § 7.1
+    RBAC: ACC-002 configure_alerts (propias), ACC-003 configure_team_alerts (equipo).
+
+    Invariantes:
+    - scope define el segmento/cola/campaña — RuleValidator verifica que
+      el scope pertenezca a los segmentos del actor.
+    - version se incrementa en cada update (CA-05).
+    - state: active | paused (CA-06). BR-009: nunca DELETE.
+    """
+
+    STATUS_ACTIVE = 'active'
+    STATUS_PAUSED = 'paused'
+    STATUS_CHOICES = [
+        (STATUS_ACTIVE, 'Activa'),
+        (STATUS_PAUSED, 'Pausada'),
+    ]
+    SEVERITY_CHOICES = [
+        ('info',     'Info'),
+        ('warning',  'Warning'),
+        ('error',    'Error'),
+        ('critical', 'Critical'),
+    ]
+
+    id               = models.UUIDField(
+        primary_key=True, default=_uuid.uuid4, editable=False,
+        verbose_name='ID',
+    )
+    actor            = models.ForeignKey(
+        User, on_delete=models.PROTECT,
+        related_name='alert_rules',
+        verbose_name='Propietario',
+        help_text='Usuario que creó la regla.',
+    )
+    name             = models.CharField(max_length=200, verbose_name='Nombre')
+    metric           = models.CharField(
+        max_length=100, verbose_name='Métrica',
+        help_text='Métrica evaluada (call_volume, avg_wait_time, sla_percentage…).',
+    )
+    scope            = models.JSONField(
+        verbose_name='Scope',
+        help_text='{"segment"?, "queue"?, "campaign"?}. Validado por RuleValidator.',
+    )
+    condition        = models.JSONField(
+        verbose_name='Condición',
+        help_text='{"op": "> | < | >= | <= | ==", "threshold": N}.',
+    )
+    window_minutes   = models.PositiveIntegerField(
+        verbose_name='Ventana (min)',
+        help_text='Ventana de evaluación en minutos.',
+    )
+    severity         = models.CharField(
+        max_length=10, choices=SEVERITY_CHOICES, verbose_name='Severidad',
+    )
+    actions          = models.JSONField(
+        default=list, verbose_name='Acciones',
+        help_text='Lista de acciones a ejecutar cuando la regla se dispara.',
+    )
+    cooldown_minutes = models.PositiveIntegerField(
+        default=60, verbose_name='Cooldown (min)',
+        help_text='Minutos que deben pasar antes de que la regla se dispare de nuevo (CA-09).',
+    )
+    status           = models.CharField(
+        max_length=10, choices=STATUS_CHOICES,
+        default=STATUS_ACTIVE, verbose_name='Estado',
+    )
+    version          = models.PositiveIntegerField(
+        default=1, verbose_name='Versión',
+        help_text='Incrementado en cada update (CA-05). Permite trazabilidad de cambios.',
+    )
+    created_at       = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
+    updated_at       = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
+
+    class Meta:
+        db_table = 'alerts_alert_rule'
+        verbose_name = 'Regla de Alerta'
+        verbose_name_plural = 'Reglas de Alerta'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['actor'], name='idx_alr_actor'),
+            models.Index(fields=['status', 'version'], name='idx_alr_status_ver'),
+        ]
+
+    def __str__(self) -> str:
+        return f'[{self.severity}] {self.name} ({self.status})'
+
+
+class AlertRuleHistory(models.Model):
+    """
+    Snapshot inmutable de AlertRule por cada update (UC_ALR_01 CA-10 auditoría).
+
+    BR-009: no DELETE. Los snapshots son evidencia de cambios de configuración.
+    """
+
+    rule       = models.ForeignKey(
+        AlertRule, on_delete=models.CASCADE,
+        related_name='history', verbose_name='Regla',
+    )
+    version    = models.PositiveIntegerField(verbose_name='Versión')
+    snapshot   = models.JSONField(
+        verbose_name='Snapshot',
+        help_text='Copia completa del AlertRule en el momento del cambio.',
+    )
+    changed_by = models.ForeignKey(
+        User, on_delete=models.PROTECT,
+        related_name='alert_rule_changes', verbose_name='Cambiado por',
+    )
+    changed_at = models.DateTimeField(auto_now_add=True, verbose_name='Cambiado en')
+
+    class Meta:
+        db_table = 'alerts_alert_rule_history'
+        verbose_name = 'Historial de Regla'
+        verbose_name_plural = 'Historiales de Regla'
+        unique_together = ('rule', 'version')
+        ordering = ['-version']
+
+    def __str__(self) -> str:
+        return f'{self.rule.name} v{self.version}'
+
+
+class Alert(models.Model):
+    """
+    Alerta disparada por una AlertRule (UC_ALR_02, UC_ALR_03).
+
+    Fuente: uc-alr-02/datos-involucrados.rst § 7.1
+
+    Ciclo de vida: firing → acknowledged → resolved → closed.
+    BR-009: no DELETE físico.
+    """
+
+    STATE_FIRING       = 'firing'
+    STATE_ACKNOWLEDGED = 'acknowledged'
+    STATE_RESOLVED     = 'resolved'
+    STATE_CLOSED       = 'closed'
+    STATE_CHOICES = [
+        (STATE_FIRING,       'Disparada'),
+        (STATE_ACKNOWLEDGED, 'Reconocida'),
+        (STATE_RESOLVED,     'Resuelta'),
+        (STATE_CLOSED,       'Cerrada'),
+    ]
+
+    id                 = models.UUIDField(
+        primary_key=True, default=_uuid.uuid4, editable=False,
+    )
+    rule               = models.ForeignKey(
+        AlertRule, on_delete=models.PROTECT,
+        related_name='alerts', verbose_name='Regla',
+    )
+    # Snapshots — inmutables, independientes del estado de la regla
+    rule_name          = models.CharField(max_length=200, verbose_name='Nombre regla (snapshot)')
+    metric             = models.JSONField(verbose_name='Métrica (snapshot)')
+    scope              = models.JSONField(verbose_name='Scope (snapshot)')
+    severity           = models.CharField(max_length=10, verbose_name='Severidad')
+    # Estado mutable
+    state              = models.CharField(
+        max_length=15, choices=STATE_CHOICES,
+        default=STATE_FIRING, verbose_name='Estado',
+    )
+    fired_at           = models.DateTimeField(verbose_name='Disparada en')
+    acknowledged_by    = models.ForeignKey(
+        User, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='acknowledged_alerts', verbose_name='Reconocida por',
+    )
+    acknowledged_at    = models.DateTimeField(
+        null=True, blank=True, verbose_name='Reconocida en',
+    )
+    acknowledged_note  = models.TextField(
+        blank=True, verbose_name='Nota de reconocimiento',
+        help_text='UC_ALR_03 CA-02: nota libre. Máx 500 chars — validado en servicio.',
+    )
+    resolved_at        = models.DateTimeField(null=True, blank=True, verbose_name='Resuelta en')
+    current_value      = models.FloatField(
+        null=True, blank=True, verbose_name='Valor actual',
+        help_text='Valor de la métrica en el momento del query.',
+    )
+    threshold          = models.FloatField(
+        null=True, blank=True, verbose_name='Umbral (snapshot)',
+        help_text='Threshold de la condición en el momento del disparo.',
+    )
+
+    class Meta:
+        db_table = 'alerts_alert'
+        verbose_name = 'Alerta'
+        verbose_name_plural = 'Alertas'
+        ordering = ['-fired_at']
+        indexes = [
+            models.Index(fields=['state', 'severity', '-fired_at'],
+                         name='idx_alert_state_sev'),
+            models.Index(fields=['rule', '-fired_at'], name='idx_alert_rule'),
+        ]
+
+    def __str__(self) -> str:
+        return f'[{self.severity}] {self.rule_name} — {self.state}'

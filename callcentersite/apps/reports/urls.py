@@ -7,8 +7,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     ReportViewSet, ExportJobViewSet,
     ScheduledReportViewSet, SavedViewViewSet,
-    RealtimeMetricsView,
 )
+from .realtime_view import RealtimeMetricsView
 from .dashboard_view import DashboardView
 from .ivr_views import (
     RedirectedMenusView, CenterMenuView,

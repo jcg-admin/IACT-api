@@ -94,7 +94,7 @@ class ETLLogTailView(APIView):
     Retorna las ultimas entradas del job_execution_log de MariaDB.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'LOG-001'
+    required_function  = 'LOG-004'  # view_etl_logs — Prerequisito FASE 3: era LOG-001
 
     def get(self, request):
         from django.db import connections, OperationalError

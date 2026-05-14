@@ -250,8 +250,6 @@ def etl_status(request):
 # F1-H-005: etl_status tenía una verificación manual has_function('pipeline.view_status')
 # que usaba un namespace legado en lugar del código canónico v5.4.0.
 etl_status.required_function = 'PIP-001'
-
-
 # ---------------------------------------------------------------------------
 # B-04: UC_PIP_02 — Errores ETL
 # ---------------------------------------------------------------------------
@@ -284,12 +282,13 @@ def etl_errors(request):
       page_size (opcional): tamano de pagina (default 20, max 100)
 
     Fuente: job_execution_log WHERE status='FAILED' en MariaDB.
+    RBAC: PIP-002 (view_pipeline_errors) — verificado por HasFunction.
+
+    Prerequisito FASE 3 (2026-05-13):
+      Eliminada verificación inline has_function('pipeline.view_errors')
+      (formato legacy). HasFunction lee required_function='PIP-002' vía
+      getattr(view, 'required_function') — asignado al final del módulo.
     """
-    if not (request.user.is_superuser or
-            request.user.has_function('pipeline.view_errors')):
-        return Response(
-            {'error': 'Function pipeline.view_errors required.'},
-            status=status.HTTP_403_FORBIDDEN)
 
     quarter = request.query_params.get('quarter')
     try:
@@ -369,12 +368,12 @@ def etl_data_availability(request):
 
     Retorna el ultimo ETL exitoso para ese quarter y el status de frescura.
     Fuente: job_execution_log WHERE status='SUCCESS' en MariaDB.
+    RBAC: PIP-003 (view_data_availability) — verificado por HasFunction.
+
+    Prerequisito FASE 3 (2026-05-13):
+      Eliminada verificación inline has_function('pipeline.view_data_availability')
+      (formato legacy namespace.action). HasFunction lee required_function='PIP-003'.
     """
-    if not (request.user.is_superuser or
-            request.user.has_function('pipeline.view_data_availability')):
-        return Response(
-            {'error': 'Function pipeline.view_data_availability required.'},
-            status=status.HTTP_403_FORBIDDEN)
 
     quarter = request.query_params.get('quarter')
     if not quarter:
@@ -522,6 +521,15 @@ def etl_retry(request):
         'resultado': list(result) if result else None,
         'ejecutado_por': str(request.user),
     }, status=status.HTTP_202_ACCEPTED)
+
+
+# Prerequisito FASE 3 (2026-05-13): asignar required_function canónico a las
+# vistas @api_view de UC_PIP_02/03/04. HasFunction los lee vía getattr(view, ...)
+# Las verificaciones inline has_function('pipeline.*') fueron eliminadas
+# (formato legacy namespace.action).
+etl_errors.required_function           = 'PIP-002'  # view_pipeline_errors
+etl_data_availability.required_function = 'PIP-003'  # view_data_availability
+etl_retry.required_function            = 'PIP-004'  # request_pipeline_retry
 
 
 @extend_schema(

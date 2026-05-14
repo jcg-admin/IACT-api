@@ -73,17 +73,24 @@ FUNCTIONS_V540 = [
     # =========================================
     # MOD_RPT — 11 funciones
     # =========================================
-    ('RPT-001', 'view_reports',    'MOD_RPT', 'Ver reportes del sistema IVR (RPT-001)'),
-    ('RPT-002', 'view_dashboard',  'MOD_RPT', 'Ver dashboard ejecutivo con KPIs (RPT-002)'),
-    ('RPT-003', 'filter_reports',  'MOD_RPT', 'Filtrar reportes por dimensiones (RPT-003)'),
-    ('RPT-004', 'export_csv',      'MOD_RPT', 'Exportar reporte a CSV (RPT-004)'),
-    ('RPT-005', 'export_excel',    'MOD_RPT', 'Exportar reporte a Excel (RPT-005)'),
-    ('RPT-006', 'export_pdf',      'MOD_RPT', 'Exportar reporte a PDF (RPT-006)'),
-    ('RPT-007', 'view_kpis',       'MOD_RPT', 'Ver KPIs operativos en dashboard (RPT-007)'),
-    ('RPT-008', 'view_charts',     'MOD_RPT', 'Ver gráficos y visualizaciones (RPT-008)'),
-    ('RPT-009', 'schedule_report', 'MOD_RPT', 'Programar ejecución periódica de reportes (RPT-009)'),
-    ('RPT-010', 'save_view',       'MOD_RPT', 'Guardar configuración de vista de reporte (RPT-010)'),
-    ('RPT-011', 'share_report',    'MOD_RPT', 'Compartir reporte con otros usuarios (RPT-011)'),
+    ('RPT-001', 'view_reports',           'MOD_RPT', 'Ver reportes del sistema IVR (RPT-001)'),
+    ('RPT-002', 'view_dashboard',         'MOD_RPT', 'Ver dashboard ejecutivo con KPIs (RPT-002)'),
+    ('RPT-003', 'filter_reports',         'MOD_RPT', 'Filtrar reportes por dimensiones (RPT-003)'),
+    ('RPT-004', 'export_csv',             'MOD_RPT', 'Exportar reporte a CSV (RPT-004)'),
+    ('RPT-005', 'export_excel',           'MOD_RPT', 'Exportar reporte a Excel (RPT-005)'),
+    ('RPT-006', 'export_pdf',             'MOD_RPT', 'Exportar reporte a PDF (RPT-006)'),
+    ('RPT-007', 'view_kpis',              'MOD_RPT', 'Ver KPIs operativos en dashboard (RPT-007)'),
+    ('RPT-008', 'view_charts',            'MOD_RPT', 'Ver gráficos y visualizaciones (RPT-008)'),
+    ('RPT-009', 'schedule_report',        'MOD_RPT', 'Programar ejecución periódica de reportes (RPT-009)'),
+    ('RPT-010', 'save_view',              'MOD_RPT', 'Guardar configuración de vista de reporte (RPT-010)'),
+    ('RPT-011', 'share_report',           'MOD_RPT', 'Compartir reporte con otros usuarios (RPT-011)'),
+    # Prerequisito FASE 3 (2026-05-13): UC_RPT_02 requiere esta función.
+    # No existía en el catálogo original — omitida en v5.4.0 inicial.
+    # Hallazgo H-F3-PRE-005: RPT-002 estaba asignado a view_dashboard;
+    # view_realtime_metrics se añade como función adicional sin código RPT-NNN
+    # asignado porque los 11 slots RPT-001..011 están ocupados.
+    # Se usa el código RPT-012 para mantener coherencia MOD-NNN.
+    ('RPT-012', 'view_realtime_metrics',  'MOD_RPT', 'Ver métricas en tiempo real vía SSE (UC_RPT_02). Requiere infraestructura ASGI.'),
 
     # =========================================
     # MOD_ALR — 10 funciones
