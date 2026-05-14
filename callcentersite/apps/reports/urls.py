@@ -9,6 +9,7 @@ from .views import (
     ScheduledReportViewSet, SavedViewViewSet,
     RealtimeMetricsView,
 )
+from .dashboard_view import DashboardView
 from .ivr_views import (
     RedirectedMenusView, CenterMenuView,
     ClientsReportView,
@@ -35,6 +36,10 @@ urlpatterns = [
     path('realtime/', RealtimeMetricsView.as_view(), name='realtime-metrics'),
 
     # B-01: Reportes IVR (UC_RPT_12..17) — leen de MariaDB via SPs
+    # UC_RPT_01 — Dashboard principal de KPIs IVR
+    path('dashboard/', DashboardView.as_view(), name='dashboard'),
+
+    # B-01: Reportes IVR (UC_RPT_12..17)
     path('ivr/clients/',            ClientsReportView.as_view(),        name='ivr-clients'),
     path('ivr/transfer-centers/',   TransferCentersView.as_view(),  name='ivr-transfer-centers'),
     path('ivr/abandoned/',          AbandonedCallsView.as_view(),   name='ivr-abandoned'),
