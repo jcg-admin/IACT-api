@@ -189,6 +189,9 @@ def etl_status(request):
 
     GET /api/pipeline/status/
 
+    Función RBAC: PIP-001 view_pipeline_status
+    CNST-010: HasFunction verifica required_function='PIP-001' automáticamente.
+
     Response:
     {
         "resumen": {
@@ -204,12 +207,6 @@ def etl_status(request):
 
     Fuente: job_execution_log en MariaDB ivr_legacy via connections['ivr'].
     """
-    if not (request.user.is_superuser or
-            request.user.has_function('pipeline.view_status')):
-        return Response(
-            {'error': 'Function pipeline.view_status required.'},
-            status=status.HTTP_403_FORBIDDEN)
-
     try:
         runs = _get_pipeline_runs(limit=20)
     except OperationalError as e:
@@ -246,6 +243,13 @@ def etl_status(request):
         },
         'latest_executions': [_format_run(r) for r in runs],
     })
+
+
+# required_function='PIP-001' — HasFunction lo lee vía getattr(view, 'required_function')
+# En @api_view, la view es el wrapper function, por eso se setea como atributo.
+# F1-H-005: etl_status tenía una verificación manual has_function('pipeline.view_status')
+# que usaba un namespace legado en lugar del código canónico v5.4.0.
+etl_status.required_function = 'PIP-001'
 
 
 # ---------------------------------------------------------------------------
