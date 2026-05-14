@@ -289,14 +289,14 @@ class SeparationRule(models.Model):
     functions_set_a = models.ManyToManyField(
         Function,
         blank=True,
-        related_name='sod_rules_as_set_a',
+        related_name='separation_rules_as_set_a',
         verbose_name=_('Conjunto A'),
         help_text='Funciones del primer conjunto en conflicto (ej: Pipeline).',
     )
     functions_set_b = models.ManyToManyField(
         Function,
         blank=True,
-        related_name='sod_rules_as_set_b',
+        related_name='separation_rules_as_set_b',
         verbose_name=_('Conjunto B'),
         help_text='Funciones del segundo conjunto en conflicto (ej: Auditoria).',
     )
