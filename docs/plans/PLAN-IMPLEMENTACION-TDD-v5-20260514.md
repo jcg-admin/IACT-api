@@ -1,14 +1,36 @@
-# Plan de Implementación TDD v5.0.0
+# Plan de Implementación TDD v5.1.0
 
-**Versión:** 5.0.0
-**Fecha:** 2026-05-14
-**Base:** `develop` @ `fd7711d` (análisis de gaps commiteado)
-**Referencia:** `ANALISIS-GAPS-POST-PLAN-TDD-v4-20260513.md`
+**Versión:** 5.1.0
+**Fecha de actualización:** 2026-05-14
+**Versión anterior:** 5.0.0 (`2b1b9b3`)
+**Base:** `develop` @ `d178bfc` (remediación naming aplicada)
+**Referencias:**
+- `ANALISIS-GAPS-POST-PLAN-TDD-v4-20260513.md`
+- `ANALISIS-NAMING-TESTS-20260514.md` ← incorporado en esta versión
 **Metodología:** Red → Green → Refactor por CA. Tareas atómicas. Una tarea = un commit.
+
 
 ----
 
-## Convenciones del plan
+## Registro de cambios v5.0.0 → v5.1.0
+
+La versión 5.0.0 del plan contenía **56 violaciones de Clean Code** en los
+nombres de artefactos de test que proponía (15 en rutas, 41 heredadas del
+repositorio). El análisis `ANALISIS-NAMING-TESTS-20260514.md` (commit `0839599`)
+las documentó. El commit `d178bfc` las remedió todas.
+
+Esta versión (5.1.0) incorpora ese análisis con los siguientes cambios:
+
+- Commit base actualizado de `fd7711d` a `d178bfc`.
+- Sección §2 añadida: convención obligatoria de nombres de tests.
+- Sección §3 añadida: hallazgo DT-NAMING-001 con estado `RESUELTO`.
+- Tarea `F6-P0-T0` añadida: test de regresión de la convención.
+- Todos los `commit:` tags en tareas corregidos al scope real del dominio.
+- Criterion de F6-P1-T1 actualizado para incluir verificación de naming.
+- Error en F8-GA-T1 corregido: eliminada referencia incorrecta a `tests/unit/__init__.py`.
+----
+
+## 1. Convenciones del plan
 
 ### Identificadores de tarea
 
@@ -43,14 +65,58 @@ paralelo.
 | Dep. | Tareas que deben estar completas antes |
 | Criterio | Verificación binaria de completitud |
 
+
+
+----
+
+## 2. Convención obligatoria de nombres de tests
+
+Esta convención aplica a **todo** archivo o directorio de test nuevo creado
+durante la ejecución de este plan. El incumplimiento bloquea el merge.
+
+### 2.1 Estructura de directorios
+
+Los tests se organizan por **dominio funcional** — nunca por ciclo de desarrollo.
+
+**Prohibido:** `faseN/`, `sprintN/`, `iteracionN/`.
+
+### 2.2 Reglas de nombres de archivos
+
+**Regla A — Sin códigos de UC:**
+`test_uc_auth_04.py` → `test_change_password.py`
+
+**Regla B — Sin referencias al ciclo de desarrollo:**
+`test_f0_t6_db_router.py` → `test_multi_database_router.py`
+
+**Regla C — Sin nombres genéricos de artefacto:**
+`test_models.py` → `test_function_catalog_models.py`
+
+**Regla D — Un archivo por dominio:**
+Si un archivo cubriría UCs de dominios distintos, se separa en archivos independientes.
+
+### 2.3 Scope en mensajes de commit
+
+```
+PROHIBIDO:  test(authentication+users+access+audit): UC_AUTH_04
+CORRECTO:   test(authentication): UC_AUTH_04 — cambio de contraseña
+```
+
+----
+
+## 3. Hallazgo DT-NAMING-001 — Estado: RESUELTO
+
+Commit `d178bfc` eliminó 41 violaciones existentes y 15 propuestas por v5.0.0.
+El test de regresión `F6-P0-T0` asegura que no regresen.
+
+Análisis completo: `docs/revision/ANALISIS-NAMING-TESTS-20260514.md`.
 ----
 
 ## FASE 6 — Remediación de deuda técnica + cobertura TDD de UCs IMPL
 
 **Objetivo:** Llevar al 85 % del corpus a estado TDD canónico.
 Remediar la totalidad de la deuda técnica de drf-spectacular.
-**Estimación total:** 26 días (43 tareas atómicas).
-**Precondición:** `develop @ fd7711d` en estado limpio, sin conflictos.
+**Estimación total:** 26 días (24 tareas atómicas).
+**Precondición:** `develop @ d178bfc` — remediación naming aplicada, suite 39/39 PASS.
 
 ----
 
@@ -59,6 +125,24 @@ Remediar la totalidad de la deuda técnica de drf-spectacular.
 Estas tareas deben ejecutarse antes de cualquier otro grupo. Son independientes
 entre sí y pueden asignarse en paralelo, pero todas deben completarse antes de
 iniciar el Grupo GA.
+
+---
+
+**F6-P0-T0 — Test de regresión de la convención de naming**
+
+| Campo | Valor |
+|---|---|
+| ID | F6-P0-T0 |
+| Horas | 1 |
+| Artefactos | `tests/unit/config/test_naming_convention.py` (nuevo) |
+| Dep. | ninguna |
+| Criterio | Test PASS. Falla si se añade un archivo con `fase`, `test_uc_`, o nombre genérico prohibido. |
+
+Pasos:
+1. Crear `tests/unit/config/test_naming_convention.py`.
+2. El test recorre `tests/unit/**/*.py` y verifica que ningún nombre de archivo contiene `fase\d+`, `f\d+_t\d+`, comienza con `test_uc_`, o es exactamente `test_models.py`, `test_views.py`, `test_services.py`, `test_api.py` o `test_serializers.py`.
+3. Verifica también que ningún subdirectorio de `tests/unit/` se llame `faseN`.
+4. Commit: `test(config): DT-NAMING-001 — regresión de convención de nombres`.
 
 ---
 
@@ -209,8 +293,8 @@ Pasos:
 |---|---|
 | Horas | 1 |
 | Artefactos | — (solo verificación, sin cambios de código) |
-| Dep. | F6-P0-T1 a F6-P0-T8 |
-| Criterio | `python manage.py spectacular --validate` sin warnings de colisión. `Function.objects.count() == 74`. `'GENERAL_AUDIT_QUERIED' in VALID_EVENT_TYPES`. Test de regresión `test_required_function_catalog.py` PASS. |
+| Dep. | F6-P0-T0 a F6-P0-T8 |
+| Criterio | `python manage.py spectacular --validate` sin warnings de colisión. `Function.objects.count() == 74`. `'GENERAL_AUDIT_QUERIED' in VALID_EVENT_TYPES`. Tests `tests/unit/config/` PASS. 0 archivos con nombres prohibidos (F6-P0-T0). |
 
 ---
 
@@ -250,7 +334,7 @@ Pasos:
 1. Crear `tests/unit/authentication/test_change_password.py`.
 2. Escribir tests para: CA-01 flujo principal, CA-02 wrong_current, CA-03 política violada, CA-04 reuso, CA-05 same_as_current, CA-06 mismatch, CA-07 brute force 429, CA-08 scope_upgraded, CA-09 otras sesiones cerradas, CA-11 atomicidad, CA-12 sin password en logs, CA-13 sin password en audit payload, CA-16 BLOCKED puede cambiar.
 3. Verificar que los que no están implementados fallan (Red).
-4. Commit: `test(authentication+users+access+audit): UC_AUTH_04 — tests TDD Red phase (CA-01..16)`.
+4. Commit: `test(authentication): UC_AUTH_04 — cambio de contraseña Red phase (CA-01..16)`.
 
 ---
 
@@ -285,7 +369,7 @@ Pasos:
 Pasos:
 1. Crear `tests/unit/authentication/test_session_management.py`.
 2. Tests para: CA-01 listado paginado, CA-02 filtro user_id + `SESSIONS_VIEWED_FOR_USER`, CA-03 sin PII, CA-04 cierre individual + `SESSION_CLOSED`, CA-05 idempotencia `SESSION_CLOSE_NOOP`, CA-06 bulk close, CA-07 SELF_BULK_CLOSE_FORBIDDEN, CA-08 sin AUTH-004 → 403, CA-09 sin AUTH-002 → 403, CA-11 InternalMessage notificación, CA-12 solo sesiones del invocante.
-3. Commit: `test(authentication+users+access+audit): UC_AUTH_05 — tests TDD Red phase (CA-01..12)`.
+3. Commit: `test(authentication): UC_AUTH_05 — gestión de sesiones Red phase (CA-01..12)`.
 
 ---
 
@@ -339,7 +423,7 @@ Pasos:
 Pasos:
 1. Crear `tests/unit/users/test_user_list_search.py`.
 2. Tests para: CA-01 paginación 50/página, CA-02 sin `email`/`full_name` en listado (CNST-026), CA-03 detalle con `username` sólo, CA-04 filtro `?state=ACTIVE`, CA-05 filtros sin SQLi (ordenamiento whitelist), CA-06 sin permiso `list_users` → 403, CA-07 cursor paginación estable, CA-08 timeout BD → 503.
-3. Commit: `test(authentication+users+access+audit): UC_USR_02 — tests TDD Red phase`.
+3. Commit: `test(users): UC_USR_02 — listado y búsqueda de usuarios Red phase (CA-01..08)`.
 
 ---
 
@@ -373,7 +457,7 @@ Pasos:
 1. Crear `tests/unit/users/test_user_modify_eliminate.py`.
 2. Tests USR_03: CA-01 PATCH parcial, CA-02 BLOCKED cierra Sessions + BlacklistedTokens, CA-04 SELF_STATE_CHANGE_FORBIDDEN, CA-05 state=ELIMINATED → 400, CA-08 transiciones inválidas → 409, CA-09 `USER_MODIFIED` AuditEvent con `fields_changed`.
 3. Tests USR_04: CA-01 state=ELIMINATED + Assignments REVOKED + Sessions CLOSED, CA-02 BR-009 registro preservado, CA-03 SELF_ELIMINATION_FORBIDDEN, CA-06 idempotencia `USER_ELIMINATE_NOOP`.
-4. Commit: `test(authentication+users+access+audit): UC_USR_03/04 — tests TDD Red phase`.
+4. Commit: `test(users): UC_USR_03/04 — modificar y eliminar usuario Red phase`.
 
 ---
 
@@ -427,7 +511,7 @@ Pasos:
 Pasos:
 1. Crear `tests/unit/access/test_effective_permissions_engine.py`.
 2. Tests para: CA-01 AGR otorga con `origin=GRANTED_BY_AGR`, CA-02 revocación excepcional gana con `origin=REVOKED_EXCEPTIONAL`, CA-03 concesión sin AGR `origin=GRANTED_EXCEPTIONAL`, CA-04 sin nada `origin=DENIED_NO_GRANT`, CA-05 AGR INACTIVE no cuenta, CA-06 Assignment expirado no cuenta, CA-07 concesión expirada no cuenta, CA-08 multi-AGR retorna lista, CA-09 cache hit (`cache=true`), CA-10 cache invalidate por evento, CA-11 bulk check 50 codes (1 query), CA-12 función no existe → 400, CA-15 fail-closed en BD timeout, CA-16 cero AuditEvents, CA-17 TTL ajustado por valid_until.
-3. Commit: `test(authentication+users+access+audit): UC_PERM_07 — tests TDD Red phase (CA-01..17)`.
+3. Commit: `test(access): UC_PERM_07 — motor de permisos efectivos Red phase (CA-01..17)`.
 
 ---
 
@@ -497,7 +581,7 @@ Pasos:
 1. Crear `tests/unit/access/test_access_group_management.py`.
 2. Tests PERM_05: CA-01 crear AGR 201, CA-02 code duplicado 409, CA-03 code formato inválido 400, CA-04 is_predefined bloqueado, CA-07 PREDEFINED_NOT_MUTABLE al intentar editar un AGR predefinido, CA-09 AGR retirado no asignable 400, CA-10 sin `manage_access_groups` → 403.
 3. Tests PERM_06: CA-01 add functions + COMPOSITION_CHANGED, CA-02 remove functions, CA-04 función ya en AGR idempotente (add duplicado → 200, no 409), CA-06 AGR PREDEFINED no editable → 403, CA-08 función inactiva → 400.
-4. Commit: `test(authentication+users+access+audit): UC_PERM_05/06 — tests TDD Red phase`.
+4. Commit: `test(access): UC_PERM_05/06 — gestión de access groups Red phase`.
 
 ---
 
@@ -548,7 +632,7 @@ Pasos:
 1. Crear `tests/unit/access/test_agr_assign_revoke_perm_view.py`.
 2. PERM_01 CAs adicionales (vs UC_ACC_04): preview de impacto SoD antes de confirmar la asignación, endpoint de confirmación explícita en dos pasos.
 3. PERM_02 CAs adicionales: CA-PERM-01 (404 si AGR nunca fue asignado, no 400 — anti-info-leak por AGR nunca asignado).
-4. Commit: `test(authentication+users+access+audit): UC_PERM_01/02 — tests TDD Red phase (CAs adicionales)`.
+4. Commit: `test(access): UC_PERM_01/02 — vista PERM assign/revoke Red phase (CAs adicionales)`.
 
 ---
 
@@ -580,7 +664,7 @@ Pasos:
 Pasos:
 1. Crear `tests/unit/authentication/test_dynamic_menu.py`.
 2. Tests: CA-01 menú con múltiples dominios, CA-02 User sin funciones → `domains: []`, CA-03 función REVOKED no aparece, CA-06 locale=es retorna labels en español, CA-07 locale=en retorna labels en inglés, CA-15 cero AuditEvents por invocación.
-3. Commit: `test(authentication+users+access+audit): UC_PERM_08 — tests TDD Red phase`.
+3. Commit: `test(authentication): UC_PERM_08 — menú dinámico Red phase`.
 
 ---
 
@@ -619,7 +703,7 @@ Prerequisito: F6-P0-T7 y F6-P0-T8 completos.
 Pasos:
 1. Crear `tests/unit/audit/test_general_audit_timeline.py`.
 2. Tests: CA-01 list básico timeline, CA-02 filtro `?module=MOD_AUTH`, CA-03 filtro `?actor_id=X`, CA-04 cursor paginación estable, CA-05 range > 90 días → 400, CA-06 meta-audit `GENERAL_AUDIT_QUERIED` obligatorio, CA-07 sin `view_general_audit` → 403, CA-08 BD timeout → 503.
-3. Commit: `test(authentication+users+access+audit): UC_AUD_01 — tests TDD Red phase`.
+3. Commit: `test(audit): UC_AUD_01 — timeline general de auditoría Red phase (CA-01..08)`.
 
 ---
 
@@ -653,7 +737,7 @@ Pasos:
 | Horas | 2 |
 | Artefactos | — (solo verificación) |
 | Dep. | F6-GA-T5, F6-GB-T5, F6-GC-T12, F6-GD-T2 |
-| Criterio | Todos los tests `tests/unit/` PASS. `python manage.py spectacular --validate` sin warnings de colisión. Catálogo = 74. 0 regresiones en tests existentes. |
+| Criterio | Todos los tests `tests/unit/` PASS. `python manage.py spectacular --validate` sin warnings de colisión. Catálogo = 74. 0 regresiones. Test de naming `F6-P0-T0` PASS (ningún archivo nuevo viola §2). |
 
 ---
 
@@ -678,6 +762,9 @@ UC_OPR_10.
 **Estimación total:** 10 días (20 tareas atómicas).
 **Precondición:** FASE 6 completada. Decisión de arquitectura sobre SSE vs
 polling tomada por el equipo.
+
+> **Convención §2:** todos los tests nuevos van en `tests/unit/operator/` con
+> nombres descriptivos. El directorio existe desde `d178bfc`.
 
 ---
 
@@ -885,7 +972,7 @@ Pasos:
 | Horas | 2 |
 | Artefactos | — |
 | Dep. | F7-GA-T4, F7-GB-T2 |
-| Criterio | `tests/unit/` PASS. Migraciones aplican limpiamente. drf-spectacular sin colisiones nuevas. |
+| Criterio | `tests/unit/` PASS. Migraciones aplican limpiamente. drf-spectacular sin colisiones nuevas. Test `F6-P0-T0` PASS (ningún archivo nuevo viola §2). |
 
 ---
 
@@ -926,7 +1013,8 @@ Documentar los ítems pendientes en IACT-docs y IACT-ui.
 | Criterio | Tests cubren CA-01..05. Todos en rojo. |
 
 Pasos:
-1. Crear `tests/unit/__init__.py` y `tests/unit/operator/test_agent_broadcast.py`.
+1. Crear `tests/unit/operator/test_agent_broadcast.py`.
+   El directorio `tests/unit/operator/` ya existe desde el commit `d178bfc`.
 2. Tests: CA-01 broadcast básico → `InternalMessage` entregado a receptores, CA-02 cross-segmento → 403, CA-03 `recipients` vacío → 400, CA-04 urgente → priority=critical en `InternalMessage`, CA-05 `BROADCAST_SENT` AuditEvent con count de receptores.
 
 ---
@@ -1006,7 +1094,7 @@ git commit -m "docs(normativa): STD-008 FASES 4-5 — CNST-033 v2.0.0 + CNST-030
 | Horas | 2 |
 | Artefactos | — |
 | Dep. | F8-GA-T2, F8-GB-T1, F8-GB-T2, F8-GB-T3 |
-| Criterio | `tests/unit/` PASS. drf-spectacular sin colisiones. Cobertura corpus: 70 UCs TDD canónico (87.5 %). |
+| Criterio | `tests/unit/` PASS. drf-spectacular sin colisiones. Catálogo sin duplicados. Test `F6-P0-T0` PASS. Cobertura: 70/80 UCs TDD canónico (87.5 %). |
 
 ---
 
@@ -1027,10 +1115,10 @@ git commit -m "docs(normativa): STD-008 FASES 4-5 — CNST-033 v2.0.0 + CNST-030
 
 | FASE | Tareas | Horas | UCs cubiertos | Deuda saldada |
 |---|---|---|---|---|
-| FASE 6 | 23 | 63h | 13 (12 IMPL + UC_AUD_01) | DT-SPECTACULAR-001..007, DT-REQUIRED-FUNCTION-001 |
+| FASE 6 | 24 | 64h | 13 (12 IMPL + UC_AUD_01) | DT-SPECTACULAR-001..007, DT-REQUIRED-FUNCTION-001, DT-NAMING-001 (regresión) |
 | FASE 7 | 12 | 30h | 4 (UC_OPR_01/08/09/10) | — |
 | FASE 8 | 8 | 13h | 1 (UC_SUP_03) | H-M-001 (docs), STD-008 IACT-ui |
-| **Total** | **43** | **106h** | **18** | todas las DT activas |
+| **Total** | **44** | **107h** | **18** | todas las DT activas |
 
 ### Cobertura al finalizar el plan v5
 
@@ -1039,6 +1127,7 @@ Al completar FASE 8:
   70 UCs con TDD canónico  (87.5 % del corpus)
    0 deuda técnica drf-spectacular activa
    0 vistas con required_function incorrecto (test de regresión activo)
+   0 archivos con nombres que violan Clean Code §2 (test de regresión activo)
   10 UCs bloqueados por PBX (UC_OPR_02..07, UC_SUP_01/02, UC_CLI_01..05)
    4 UCs sin corpus definido (UC_RPT_05/06, UC_ACC_06/07)
 ```
