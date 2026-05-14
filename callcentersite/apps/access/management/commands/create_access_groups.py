@@ -82,9 +82,15 @@ ACCESS_GROUPS_V540 = [
         'AGR-007', 'permission_admin_group',
         [
             'ACC-001', 'ACC-002', 'ACC-003', 'ACC-004', 'ACC-005',
-            # assign, revoke, view_assignments, assign_groups, view_sod_rules
+            'ACC-006', 'ACC-007', 'ACC-008', 'ACC-009', 'ACC-010',
+            'ACC-011', 'ACC-012',
+            # assign_functions, revoke_functions, view_assignments,
+            # assign_function_groups, view_separation_rules,
+            # create_function_group, assign_functions_to_group,
+            # remove_functions_from_group, view_function_group,
+            # revoke_function_group, update_separation_rule, disable_separation_rule
         ],
-        'Administrador de permisos — gestión RBAC. SoD: sin AUD.',
+        'Administrador de permisos — gestión RBAC completa. SoD: sin AUD.',
     ),
     (
         'AGR-008', 'auditor_group',
@@ -105,11 +111,13 @@ ACCESS_GROUPS_V540 = [
     (
         'AGR-010', 'system_admin_group',
         [
-            'AUTH-002', 'AUTH-003', 'AUTH-004',
-            'USR-001', 'USR-002', 'USR-006',
-            # close_session, reset_password, view_all_sessions, create_users, update_users, block_users
+            'AUTH-001', 'AUTH-002', 'AUTH-003', 'AUTH-004',
+            'USR-001', 'USR-002', 'USR-003', 'USR-006', 'USR-007', 'USR-008', 'USR-009',
+            'ACC-001', 'ACC-002', 'ACC-003', 'ACC-004', 'ACC-005',
+            'ACC-006', 'ACC-007', 'ACC-008', 'ACC-009', 'ACC-010', 'ACC-011', 'ACC-012',
+            # Full system admin: all auth + user + access management
         ],
-        'Sysadmin — administración del sistema.',
+        'Sysadmin — administración completa del sistema.',
     ),
 ]
 
