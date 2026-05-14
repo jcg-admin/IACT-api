@@ -328,23 +328,23 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
 )
 @extend_schema_view(
     list=extend_schema(
-        summary='[DEPRECATED] Listar reglas de separación — usar /access/sod-rules/',
+        summary='[DEPRECATED] Listar reglas de separación — usar GET /access/separation-rules/',
         deprecated=True,
         tags=['Control de Acceso'],
     ),
     create=extend_schema(
-        summary='[DEPRECATED] Crear regla de separación — usar /access/sod-rules/',
+        summary='[DEPRECATED] Crear regla de separación — usar POST /access/separation-rules/',
         deprecated=True,
         tags=['Control de Acceso'],
     ),
     retrieve=extend_schema(
-        summary='[DEPRECATED] Detalle de regla de separación — usar /access/sod-rules/{id}/',
+        summary='[DEPRECATED] Detalle de regla — usar GET /access/separation-rules/{id}/',
         deprecated=True,
         tags=['Control de Acceso'],
     ),
     update=extend_schema(deprecated=True, tags=['Control de Acceso']),
     partial_update=extend_schema(
-        summary='[DEPRECATED] Modificar regla de separación — usar /access/sod-rules/{id}/',
+        summary='[DEPRECATED] Modificar regla — usar PATCH /access/separation-rules/{id}/',
         deprecated=True,
         tags=['Control de Acceso'],
     ),
@@ -796,43 +796,57 @@ class FunctionRevokeView(APIView):
         return Response({'detail': 'Function revoked successfully.'})
 
 
-@extend_schema(
-    summary="UC_ACC_05 — Validar conflicto de separacion",
-    description=(
-        "Retorna conflicts[] con la estructura que consume accessSlice.sodConflicts."
-    ),
-    tags=["Control de Acceso"],
-    request=inline_serializer('SeparationValidateRequest', fields={
-        'userId':     drf_serializers_module.IntegerField(),
-        'functionId': drf_serializers_module.IntegerField(),
-    }),
-    responses={
-        200: inline_serializer('SeparationValidateResponse', fields={
-            'conflicts': drf_serializers_module.ListField(
-                child=drf_serializers_module.DictField()),
-        }),
-        404: OpenApiResponse(description='Usuario o funcion no encontrados'),
-    },
-)
 class SeparationRuleValidateView(APIView):
     """
-    accessService.validateSoD(userId, functionId)
-    POST /api/access/validate-sod
-    Body: { userId, functionId }
+    UC_ACC_01 — Validar conflictos de separación de funciones.
 
-    NOTA: El nombre del endpoint respeta el contrato del frontend
-    (strings opacos de API). El nombre de la clase en Python sigue
-    CLEAN_CODE_NAMING_PRINCIPLES (sin acronimos).
+    POST /api/access/separation-rules/validate  (canónico — FASE 3)
+    POST /api/access/validate-sod               (legacy — backward compat sin consumidor activo)
+    Body: { userId: int, functionId: int }
 
-    Retorna estructura que consume accessSlice:
+    Evalúa si la función `functionId` puede asignarse al usuario `userId`
+    sin crear violaciones de separación (CNST-030, BR-007).
+
+    Retorna estructura que consume accessGateway.validateSeparationRules():
       { conflicts: [{ rule, ruleDesc, setA, setB, message }] }
+
+    Hallazgo H-003 (STD_008 FASE 3, 2026-05-13):
+      Implementación anterior usaba function_a/function_b/status='active'/
+      rule.justification — campos inexistentes en SeparationRule v5.4.0.
+      Reescrita para usar functions_set_a/functions_set_b M2M y state='ENABLED'.
     """
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-005'
 
+    @extend_schema(
+        operation_id='separation_rule_validate',
+        summary='UC_ACC_01 — Validar conflictos de separación antes de asignar función',
+        description=(
+            'Evalúa si asignar `functionId` al usuario `userId` crearía un conflicto\n'
+            'con las reglas de separación activas (state=ENABLED).\n\n'
+            'Retorna la lista de conflictos detectados. Lista vacía = sin conflictos.\n\n'
+            'URL canónica: `POST /api/access/separation-rules/validate`\n'
+            'URL legacy (sin consumidor activo): `POST /api/access/validate-sod`\n\n'
+            'Consumido por: `accessGateway.validateSeparationRules()` (IACT-ui)\n'
+            'Estado Redux: `accessSlice.separationConflicts`\n\n'
+            'ACC-005 `view_separation_rules` requerido.'
+        ),
+        tags=['Control de Acceso'],
+        request=inline_serializer('SeparationValidateRequest', fields={
+            'userId':     drf_serializers_module.IntegerField(),
+            'functionId': drf_serializers_module.IntegerField(),
+        }),
+        responses={
+            200: inline_serializer('SeparationValidateResponse', fields={
+                'conflicts': drf_serializers_module.ListField(
+                    child=drf_serializers_module.DictField()),
+            }),
+            400: OpenApiResponse(description='userId y functionId son requeridos'),
+            404: OpenApiResponse(description='Usuario o función no encontrados'),
+        },
+    )
     def post(self, request):
         from django.contrib.auth import get_user_model
-        from django.db import models as dj_models
         User = get_user_model()
 
         user_id     = request.data.get('userId')
@@ -845,29 +859,66 @@ class SeparationRuleValidateView(APIView):
         try:
             user     = User.objects.get(pk=user_id)
             function = Function.objects.get(pk=function_id)
-        except (User.DoesNotExist, Function.DoesNotExist) as e:
-            return Response({'error': str(e)}, status=404)
+        except (User.DoesNotExist, Function.DoesNotExist) as exc:
+            return Response({'error': str(exc)}, status=404)
 
-        existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
-        rules = SeparationRule.objects.filter(
-            status='active'
-        ).filter(
-            dj_models.Q(function_a=function) | dj_models.Q(function_b=function)
-        ).select_related('function_a', 'function_b')
+        # Funciones actuales activas del usuario
+        from apps.access.models import UserFunctionAssignment
+        current_codes = set(
+            UserFunctionAssignment.objects.filter(user=user, state='ACTIVE')
+            .values_list('function__code', flat=True)
+        )
+        proposed_code = function.code
 
+        # Evaluar reglas ENABLED con prefetch M2M para evitar N+1
         conflicts = []
-        for rule in rules:
-            other_fn = rule.function_b if rule.function_a == function else rule.function_a
-            if other_fn.code in existing_codes:
-                conflicts.append({
-                    'rule':     rule.name,
-                    'ruleDesc': rule.justification,
-                    'setA':     [function.code],
-                    'setB':     [other_fn.code],
-                    'message':  f'{rule.name}: {function.code} incompatible con {other_fn.code}',
-                })
+        for rule in (
+            SeparationRule.objects
+            .filter(state='ENABLED')
+            .prefetch_related('functions_set_a', 'functions_set_b')
+        ):
+            codes_a = set(rule.functions_set_a.values_list('code', flat=True))
+            codes_b = set(rule.functions_set_b.values_list('code', flat=True))
+
+            if proposed_code in codes_a:
+                conflicting = current_codes & codes_b
+                if conflicting:
+                    conflicts.append({
+                        'rule':     rule.code,
+                        'ruleDesc': rule.description,
+                        'setA':     [proposed_code],
+                        'setB':     sorted(conflicting),
+                        'message':  (
+                            f'{rule.name}: {proposed_code} '
+                            f'incompatible con {", ".join(sorted(conflicting))}'
+                        ),
+                    })
+            elif proposed_code in codes_b:
+                conflicting = current_codes & codes_a
+                if conflicting:
+                    conflicts.append({
+                        'rule':     rule.code,
+                        'ruleDesc': rule.description,
+                        'setA':     sorted(conflicting),
+                        'setB':     [proposed_code],
+                        'message':  (
+                            f'{rule.name}: {proposed_code} '
+                            f'incompatible con {", ".join(sorted(conflicting))}'
+                        ),
+                    })
 
         return Response({'conflicts': conflicts})
+
+
+@extend_schema(exclude=True)
+class SeparationRuleValidateLegacyView(SeparationRuleValidateView):
+    """
+    POST /api/access/validate-sod — DEPRECATED legacy endpoint.
+
+    Sin consumidor activo en IACT-ui (migrado a separation-rules/validate).
+    Delegada a SeparationRuleValidateView.
+    Excluida del schema OpenAPI para evitar colisión de operationId.
+    """
 
 
 @extend_schema(

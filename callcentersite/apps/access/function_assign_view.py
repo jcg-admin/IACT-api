@@ -81,10 +81,10 @@ class FunctionAssignSerializer(serializers.Serializer):
 @extend_schema(
     summary='UC_ACC_01 — Asignar funciones a usuario',
     description=(
-        'Asigna funciones RBAC a un usuario con validación SoD (BR-007).\n\n'
-        '**CA-01**: asignación exitosa → 201, 3 Assignments, AuditEvent, cache invalidada.\n'
+        'Asigna funciones RBAC a un usuario con validación de separación (BR-007).\n\n'
+        '**CA-01**: asignación exitosa → 201, Assignments, AuditEvent, cache invalidada.\n'
         '**CA-03**: ya activa → skipped (idempotente).\n'
-        '**CA-05**: SoD violation → 409 SOD_VIOLATION, rollback total.\n'
+        '**CA-05**: violación de separación → 409 SEPARATION_RULE_VIOLATION, rollback total.\n'
         '**CA-06**: all-or-nothing — si 1 viola, ninguna se asigna.\n'
         '**CA-07**: auto-asignación → 400 SELF_ASSIGN_FORBIDDEN.\n'
         '**CA-21**: re-asignación post-revocación → NUEVO Assignment preservando historial.'
@@ -157,10 +157,10 @@ class FunctionAssignView(APIView):
             AuditLogService.emit(
                 event_type='FUNCTIONS_ASSIGN_FAILED',
                 actor_user_id=request.user.pk,
-                payload={'target_user_id': user_id, 'reason': 'sod_violation', 'violations': violations},
+                payload={'target_user_id': user_id, 'reason': 'separation_rule_violation', 'violations': violations},
             )
             return Response({
-                'error': 'SOD_VIOLATION',
+                'error': 'SEPARATION_RULE_VIOLATION',
                 'violations': violations,
             }, status=409)
 
@@ -324,10 +324,10 @@ class AGRAssignSerializer(serializers.Serializer):
 @extend_schema(
     summary='UC_ACC_04 / UC_PERM_01 — Asignar AccessGroup a usuario',
     description=(
-        'Asigna un AGR a un usuario con validación SoD.\n\n'
+        'Asigna un AGR a un usuario con validación de separación de funciones.\n\n'
         '**CA-01**: asignación exitosa → 201.\n'
         '**CA-02**: ya asignado → 200 already_assigned.\n'
-        '**CA-03**: SoD violation → 409.\n'
+        '**CA-03**: violación de separación → 409 SEPARATION_RULE_VIOLATION.\n'
         '**CA-05**: auto-asignación → 400.\n'
         '**CA-06**: AGR no existe → 400.'
     ),
@@ -375,11 +375,11 @@ class AGRAssignView(APIView):
             )
             return Response({'already_assigned': True, 'agr_code': agr.code}, status=200)
 
-        # CA-03: SoD check — las funciones del AGR vs las del usuario
+        # CA-03: validar separación — las funciones del AGR vs las del usuario
         agr_codes = list(agr.functions.values_list('code', flat=True))
         violations = DutySeparationValidator.validate(target, agr_codes)
         if violations:
-            return Response({'error': 'SOD_VIOLATION', 'violations': violations}, status=409)
+            return Response({'error': 'SEPARATION_RULE_VIOLATION', 'violations': violations}, status=409)
 
         # Calcular cuántas funciones ya tiene el usuario directamente
         from apps.access.models import UserFunctionAssignment

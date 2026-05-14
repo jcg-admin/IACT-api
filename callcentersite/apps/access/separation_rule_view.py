@@ -4,7 +4,12 @@ apps/access/separation_rule_view.py
 SeparationRuleCRUDView — UC_ACC_05: Gestionar Reglas de Separación de Deberes.
 
 Fuente: uc-acc-05/criterios-aceptacion.rst § 9
-Endpoints: /api/access/sod-rules/  (STD_008 remediación FASE 3: → separation-rules/)
+Endpoints:
+  GET  /api/access/separation-rules/             — listar
+  POST /api/access/separation-rules/             — crear
+  GET  /api/access/separation-rules/{rule_id}/   — detalle
+  PATCH /api/access/separation-rules/{rule_id}/  — modificar
+  DELETE /api/access/separation-rules/{rule_id}/ — retirar (baja lógica)
 Función RBAC: ACC-005 view_separation_rules / ACC-011 update_separation_rule
              ACC-012 disable_separation_rule
 
@@ -15,31 +20,40 @@ Historial de renombres:
     SoDRuleRetireSerializer  → SeparationRuleRetireSerializer
     SoDRuleListCreateView    → SeparationRuleListCreateView
     SoDRuleDetailView        → SeparationRuleDetailView
-  STD_008 FASE 3 (pendiente): URL sod-rules/ → separation-rules/,
-    error codes SOD_RULE_* → SEPARATION_RULE_*, event types SOD_RULE_* → SEPARATION_RULE_*
+  STD_008 FASE 3 (2026-05-13): URL sod-rules/ → separation-rules/
+    error codes SOD_RULE_* → SEPARATION_RULE_*
+    event types SOD_RULE_* → SEPARATION_RULE_*
+    @extend_schema por método — operation_id explícito + request + responses
 """
 from django.db import transaction
-from django.utils import timezone
-from drf_spectacular.utils import extend_schema, OpenApiResponse
-from rest_framework import serializers, status
+from drf_spectacular.utils import (
+    extend_schema, OpenApiResponse, inline_serializer,
+)
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.access.permissions.function_permissions import HasFunction
 
+_TAG = 'Control de Acceso'
+
+
+# ---------------------------------------------------------------------------
+# Serializers de request
+# ---------------------------------------------------------------------------
 
 class SeparationRuleCreateSerializer(serializers.Serializer):
-    code          = serializers.CharField(max_length=20)
-    name          = serializers.CharField(max_length=200)
-    description   = serializers.CharField(required=False, allow_blank=True, default='')
+    code           = serializers.CharField(max_length=20)
+    name           = serializers.CharField(max_length=200)
+    description    = serializers.CharField(required=False, allow_blank=True, default='')
     function_ids_a = serializers.ListField(child=serializers.IntegerField(), min_length=1)
     function_ids_b = serializers.ListField(child=serializers.IntegerField(), min_length=1)
 
 
 class SeparationRulePatchSerializer(serializers.Serializer):
-    name         = serializers.CharField(required=False)
-    description  = serializers.CharField(required=False, allow_blank=True)
+    name           = serializers.CharField(required=False)
+    description    = serializers.CharField(required=False, allow_blank=True)
     function_ids_a = serializers.ListField(child=serializers.IntegerField(), required=False)
     function_ids_b = serializers.ListField(child=serializers.IntegerField(), required=False)
 
@@ -48,32 +62,93 @@ class SeparationRuleRetireSerializer(serializers.Serializer):
     retire_reason = serializers.CharField(min_length=5)
 
 
-@extend_schema(
-    summary='UC_ACC_05 — Listar / Crear reglas SoD',
-    description=(
-        'GET: lista reglas SoD. ACC-005 view_separation_rules.\n\n'
-        'POST: crea nueva regla SoD. ACC-011 update_separation_rule.\n\n'
-        '**CA-01**: listado paginado.\n'
-        '**CA-03**: crear exitoso → state=ENABLED.\n'
-        '**CA-04**: duplicado → 409.\n'
-        '**CA-05**: con violaciones existentes → 201 + existing_violations_count.\n'
-        '**CA-06**: function no existe → 400.'
-    ),
-    tags=['Control de Acceso'],
-)
+# ---------------------------------------------------------------------------
+# Inline response schemas para drf-spectacular
+# ---------------------------------------------------------------------------
+
+def _rule_item_schema():
+    return inline_serializer('SeparationRuleItem', fields={
+        'id':              serializers.IntegerField(),
+        'code':            serializers.CharField(),
+        'name':            serializers.CharField(),
+        'state':           serializers.CharField(),
+        'functions_set_a': serializers.ListField(child=serializers.CharField()),
+        'functions_set_b': serializers.ListField(child=serializers.CharField()),
+    })
+
+
+def _rule_list_schema():
+    return inline_serializer('SeparationRuleListResponse', fields={
+        'count':   serializers.IntegerField(),
+        'results': serializers.ListField(child=_rule_item_schema()),
+    })
+
+
+def _rule_create_response_schema():
+    return inline_serializer('SeparationRuleCreateResponse', fields={
+        'id':                        serializers.IntegerField(),
+        'code':                      serializers.CharField(),
+        'state':                     serializers.CharField(),
+        'existing_violations_count': serializers.IntegerField(),
+    })
+
+
+def _rule_detail_schema():
+    return inline_serializer('SeparationRuleDetailResponse', fields={
+        'id':              serializers.IntegerField(),
+        'code':            serializers.CharField(),
+        'name':            serializers.CharField(),
+        'state':           serializers.CharField(),
+        'description':     serializers.CharField(),
+        'functions_set_a': serializers.ListField(child=serializers.CharField()),
+        'functions_set_b': serializers.ListField(child=serializers.CharField()),
+    })
+
+
+def _rule_patch_response_schema():
+    return inline_serializer('SeparationRulePatchResponse', fields={
+        'id':             serializers.IntegerField(),
+        'code':           serializers.CharField(),
+        'state':          serializers.CharField(),
+        'fields_changed': serializers.ListField(child=serializers.CharField()),
+    })
+
+
+def _rule_retire_response_schema():
+    return inline_serializer('SeparationRuleRetireResponse', fields={
+        'message': serializers.CharField(),
+        'state':   serializers.CharField(),
+    })
+
+
+# ---------------------------------------------------------------------------
+# UC_ACC_05 — SeparationRuleListCreateView
+# ---------------------------------------------------------------------------
+
 class SeparationRuleListCreateView(APIView):
     """
-    GET/POST /api/access/sod-rules/
+    GET/POST /api/access/separation-rules/
 
     UC_ACC_05 — Listar y crear reglas de separación de funciones.
     CNST-010: permission_classes gestionado via get_permissions() con HasFunction.
-    STD_008: URL sod-rules/ pendiente de actualizar en FASE 3.
+    STD_008 FASE 3: URL separation-rules/ vigente desde 2026-05-13.
     """
 
     def get_permissions(self):
         self.required_function = 'ACC-005' if self.request.method == 'GET' else 'ACC-011'
         return [IsAuthenticated(), HasFunction()]
 
+    @extend_schema(
+        operation_id='separation_rule_list',
+        summary='UC_ACC_05 — Listar reglas de separación',
+        description=(
+            'Retorna todas las reglas registradas en el catálogo.\n\n'
+            'ACC-005 `view_separation_rules` requerido.\n\n'
+            '**CA-01**: listado ordenado por `code`.'
+        ),
+        tags=[_TAG],
+        responses={200: _rule_list_schema()},
+    )
     def get(self, request):
         from apps.access.models import SeparationRule
         qs = SeparationRule.objects.all().order_by('code')
@@ -90,6 +165,25 @@ class SeparationRuleListCreateView(APIView):
             ],
         })
 
+    @extend_schema(
+        operation_id='separation_rule_create',
+        summary='UC_ACC_05 — Crear regla de separación',
+        description=(
+            'Crea una nueva regla en el catálogo.\n\n'
+            'ACC-011 `update_separation_rule` requerido.\n\n'
+            '**CA-03**: exitoso → state=ENABLED, AuditEvent SEPARATION_RULE_CREATED.\n'
+            '**CA-04**: código duplicado → 409 SEPARATION_RULE_DUPLICATE.\n'
+            '**CA-05**: con violaciones → 201 + existing_violations_count > 0.\n'
+            '**CA-06**: function inexistente o inactiva → 400 FUNCTION_NOT_FOUND.'
+        ),
+        tags=[_TAG],
+        request=SeparationRuleCreateSerializer,
+        responses={
+            201: _rule_create_response_schema(),
+            400: OpenApiResponse(description='VALIDATION_ERROR | FUNCTION_NOT_FOUND'),
+            409: OpenApiResponse(description='SEPARATION_RULE_DUPLICATE'),
+        },
+    )
     def post(self, request):
         from apps.access.models import SeparationRule, Function, UserFunctionAssignment
         from apps.audit.services import AuditLogService
@@ -104,7 +198,10 @@ class SeparationRuleListCreateView(APIView):
         # CA-04: duplicado
         if SeparationRule.objects.filter(code=code).exists():
             existing = SeparationRule.objects.get(code=code)
-            return Response({'error': 'SOD_RULE_DUPLICATE', 'existing_rule_id': existing.pk}, status=409)
+            return Response(
+                {'error': 'SEPARATION_RULE_DUPLICATE', 'existing_rule_id': existing.pk},
+                status=409,
+            )
 
         # CA-06: functions válidas
         fns_a = list(Function.objects.filter(pk__in=data['function_ids_a'], is_active=True))
@@ -124,16 +221,16 @@ class SeparationRuleListCreateView(APIView):
             # CA-05: detectar violaciones existentes
             codes_a = {f.code for f in fns_a}
             codes_b = {f.code for f in fns_b}
-            violations = UserFunctionAssignment.objects.filter(
+            violations_qs = UserFunctionAssignment.objects.filter(
                 state='ACTIVE', function__code__in=codes_a,
                 user__in=UserFunctionAssignment.objects.filter(
                     state='ACTIVE', function__code__in=codes_b
                 ).values('user'),
             ).values_list('user_id', flat=True).distinct()
-            violations_count = violations.count()
+            violations_count = violations_qs.count()
 
             AuditLogService.emit(
-                event_type='SOD_RULE_CREATED',
+                event_type='SEPARATION_RULE_CREATED',
                 actor_user_id=request.user.pk,
                 payload={'rule_code': code, 'existing_violations': violations_count},
             )
@@ -144,23 +241,17 @@ class SeparationRuleListCreateView(APIView):
         }, status=201)
 
 
-@extend_schema(
-    summary='UC_ACC_05 — Detalle / Modificar / Retirar regla SoD',
-    description=(
-        '**CA-02**: detalle por id.\n'
-        '**CA-07**: PATCH parcial — name/description.\n'
-        '**CA-08**: function_ids inmutables → 400.\n'
-        '**CA-09**: DELETE (BR-009) → state=DISABLED.'
-    ),
-    tags=['Control de Acceso'],
-)
+# ---------------------------------------------------------------------------
+# UC_ACC_05 — SeparationRuleDetailView
+# ---------------------------------------------------------------------------
+
 class SeparationRuleDetailView(APIView):
     """
-    GET/PATCH/DELETE /api/access/sod-rules/{rule_id}/
+    GET/PATCH/DELETE /api/access/separation-rules/{rule_id}/
 
     UC_ACC_05 — Detalle, modificación y retiro de regla de separación.
     CNST-010: permission_classes gestionado via get_permissions() con HasFunction.
-    STD_008: URL sod-rules/ pendiente de actualizar en FASE 3.
+    STD_008 FASE 3: URL separation-rules/ vigente desde 2026-05-13.
     """
 
     def get_permissions(self):
@@ -179,10 +270,20 @@ class SeparationRuleDetailView(APIView):
         except SeparationRule.DoesNotExist:
             return None
 
+    @extend_schema(
+        operation_id='separation_rule_retrieve',
+        summary='UC_ACC_05 — Detalle de regla de separación',
+        description='Retorna el detalle completo de una regla por su id.\nACC-005 requerido.',
+        tags=[_TAG],
+        responses={
+            200: _rule_detail_schema(),
+            404: OpenApiResponse(description='SEPARATION_RULE_NOT_FOUND'),
+        },
+    )
     def get(self, request, rule_id):
         rule = self._get_rule(rule_id)
         if not rule:
-            return Response({'error': 'SOD_RULE_NOT_FOUND'}, status=404)
+            return Response({'error': 'SEPARATION_RULE_NOT_FOUND'}, status=404)
         return Response({
             'id': rule.pk, 'code': rule.code, 'name': rule.name,
             'state': rule.state, 'description': rule.description,
@@ -190,11 +291,27 @@ class SeparationRuleDetailView(APIView):
             'functions_set_b': list(rule.functions_set_b.values_list('code', flat=True)),
         })
 
+    @extend_schema(
+        operation_id='separation_rule_partial_update',
+        summary='UC_ACC_05 — Modificar regla de separación',
+        description=(
+            'PATCH parcial — solo `name` y `description`.\n\n'
+            '**CA-08**: `function_ids_a/b` son inmutables → 400 FUNCTION_IDS_IMMUTABLE.\n'
+            'ACC-011 requerido.'
+        ),
+        tags=[_TAG],
+        request=SeparationRulePatchSerializer,
+        responses={
+            200: _rule_patch_response_schema(),
+            400: OpenApiResponse(description='VALIDATION_ERROR | FUNCTION_IDS_IMMUTABLE'),
+            404: OpenApiResponse(description='SEPARATION_RULE_NOT_FOUND'),
+        },
+    )
     def patch(self, request, rule_id):
         from apps.audit.services import AuditLogService
         rule = self._get_rule(rule_id)
         if not rule:
-            return Response({'error': 'SOD_RULE_NOT_FOUND'}, status=404)
+            return Response({'error': 'SEPARATION_RULE_NOT_FOUND'}, status=404)
 
         # CA-08: function_ids inmutables
         if 'function_ids_a' in request.data or 'function_ids_b' in request.data:
@@ -214,29 +331,54 @@ class SeparationRuleDetailView(APIView):
             rule.save(update_fields=changed)
 
         AuditLogService.emit(
-            event_type='SOD_RULE_UPDATED',
+            event_type='SEPARATION_RULE_UPDATED',
             actor_user_id=request.user.pk,
             payload={'rule_id': rule_id, 'fields_changed': changed},
         )
-        return Response({'id': rule.pk, 'code': rule.code, 'state': rule.state, 'fields_changed': changed})
+        return Response({
+            'id': rule.pk, 'code': rule.code,
+            'state': rule.state, 'fields_changed': changed,
+        })
 
+    @extend_schema(
+        operation_id='separation_rule_destroy',
+        summary='UC_ACC_05 — Retirar regla de separación',
+        description=(
+            'Baja lógica: state → DISABLED (BR-009: nunca DELETE).\n\n'
+            '`retire_reason` requerido, mínimo 5 caracteres.\n'
+            'ACC-012 requerido.'
+        ),
+        tags=[_TAG],
+        request=SeparationRuleRetireSerializer,
+        responses={
+            200: _rule_retire_response_schema(),
+            400: OpenApiResponse(description='VALIDATION_ERROR — retire_reason requerido'),
+            404: OpenApiResponse(description='SEPARATION_RULE_NOT_FOUND'),
+        },
+    )
     def delete(self, request, rule_id):
         from apps.audit.services import AuditLogService
         rule = self._get_rule(rule_id)
         if not rule:
-            return Response({'error': 'SOD_RULE_NOT_FOUND'}, status=404)
+            return Response({'error': 'SEPARATION_RULE_NOT_FOUND'}, status=404)
 
         ser = SeparationRuleRetireSerializer(data=request.data)
         if not ser.is_valid():
-            return Response({'error': 'VALIDATION_ERROR', 'message': 'retire_reason requerido.'}, status=400)
+            return Response(
+                {'error': 'VALIDATION_ERROR', 'message': 'retire_reason requerido.'},
+                status=400,
+            )
 
         with transaction.atomic():
             rule.state = 'DISABLED'
             rule.save(update_fields=['state'])
             AuditLogService.emit(
-                event_type='SOD_RULE_DISABLED',
+                event_type='SEPARATION_RULE_DISABLED',
                 actor_user_id=request.user.pk,
-                payload={'rule_id': rule_id, 'retire_reason': ser.validated_data['retire_reason']},
+                payload={
+                    'rule_id':      rule_id,
+                    'retire_reason': ser.validated_data['retire_reason'],
+                },
             )
 
         return Response({'message': f'Regla {rule.code} desactivada.', 'state': 'DISABLED'})
