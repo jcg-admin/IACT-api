@@ -1,9 +1,7 @@
 """
-tests/unit/fase0/test_f0_t6_db_router.py
+tests/unit/infrastructure/test_multi_database_router.py
 
-F0-T6: DB router e infraestructura de base de datos.
-
-Fuente: databases/modelo-dual.rst, BR-001, config/db_router.py
+DB router multi-base-de-datos — infraestructura de conexiones PostgreSQL/MariaDB.
 """
 import pytest
 from django.conf import settings

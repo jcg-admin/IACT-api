@@ -1,8 +1,7 @@
 """
-tests/unit/fase2/test_uc_auth_02_logout.py
+tests/unit/authentication/test_logout_token_blacklist.py
 
-UC_AUTH_02 — Cerrar Sesión.
-Fuente: uc-auth-02/criterios-aceptacion.rst § 9
+UC_AUTH_02 — Cerrar Sesión. Revocación de token JWT + BlacklistedToken.
 """
 import pytest
 from datetime import timedelta

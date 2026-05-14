@@ -1,10 +1,7 @@
 """
-tests/unit/fase3/test_uc_alr_01_02_03.py
+tests/unit/alerts/test_alert_rules_and_acknowledgement.py
 
-N-ALR-01 — Configurar Umbrales.    POST/PATCH/DELETE /api/alerts/rules/
-N-ALR-02 — Ver Alertas Activas.    GET /api/alerts/active/
-N-ALR-03 — Reconocer Alerta.       POST /api/alerts/{id}/acknowledge/
-Fuente: uc-alr-01/02/03 testing.rst + criterios-aceptacion.rst
+UC_ALR_01 — Configurar Umbrales. UC_ALR_02 — Ver Alertas Activas. UC_ALR_03 — Reconocer Alerta.
 """
 import uuid
 import pytest

@@ -1,10 +1,7 @@
 """
-tests/unit/fase4/test_uc_alr_04.py
+tests/unit/alerts/test_alert_history.py
 
-UC_ALR_04 — Ver Historial de Alertas.
-GET /api/alerts/history/
-Función: ALR-006 (view_alert_history)
-Fuente: uc-alr-04/criterios-aceptacion.rst
+UC_ALR_04 — Ver Historial de Alertas. GET /api/alerts/history/ (ALR-006).
 """
 import pytest
 from datetime import datetime, timezone, timedelta

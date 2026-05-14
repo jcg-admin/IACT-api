@@ -1,13 +1,7 @@
 """
-tests/unit/fase4/test_uc_acc08_perm03_perm04.py
+tests/unit/access/test_exceptional_permission_grant_revoke.py
 
-UC_ACC_08 — Conceder Permiso Excepcional (ACC-008).
-UC_PERM_03 — Conceder Permiso Excepcional desde vista PERM (ACC-008 + preview).
-UC_PERM_04 — Revocar Permiso Excepcional (ACC-009).
-
-POST /api/users/{id}/exceptional-permissions/
-GET  /api/users/{id}/exceptional-permissions/preview/
-DELETE /api/users/{id}/exceptional-permissions/{perm_id}/
+UC_ACC_08 — Conceder Permiso Excepcional. UC_PERM_03 — Preview. UC_PERM_04 — Revocar.
 """
 import uuid
 import pytest

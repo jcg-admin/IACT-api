@@ -1,10 +1,7 @@
 """
-tests/unit/fase1/test_uc_auth_01_login.py
+tests/unit/authentication/test_login_jwt.py
 
-UC_AUTH_01 — Iniciar Sesión. 16 CAs del testing.rst § 12.2.
-Fuente: uc-auth-01/criterios-aceptacion.rst + testing.rst
-
-Endpoint: POST /api/auth/login/
+UC_AUTH_01 — Iniciar Sesión. JWT + BlacklistedToken. 16 CAs del corpus.
 """
 import pytest
 from unittest import mock

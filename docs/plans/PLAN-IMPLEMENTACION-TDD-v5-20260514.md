@@ -242,15 +242,15 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 3 |
-| Artefactos | `tests/unit/fase6/test_uc_auth_04.py` (nuevo) |
+| Artefactos | `tests/unit/authentication/test_change_password.py` (nuevo) |
 | Dep. | F6-GA-T1 |
 | Criterio | Archivo creado con tests que cubren CA-01..CA-16. Todos FAIL en estado Red. |
 
 Pasos:
-1. Crear `tests/unit/fase6/__init__.py` y `tests/unit/fase6/test_uc_auth_04.py`.
+1. Crear `tests/unit/authentication/test_change_password.py`.
 2. Escribir tests para: CA-01 flujo principal, CA-02 wrong_current, CA-03 política violada, CA-04 reuso, CA-05 same_as_current, CA-06 mismatch, CA-07 brute force 429, CA-08 scope_upgraded, CA-09 otras sesiones cerradas, CA-11 atomicidad, CA-12 sin password en logs, CA-13 sin password en audit payload, CA-16 BLOCKED puede cambiar.
 3. Verificar que los que no están implementados fallan (Red).
-4. Commit: `test(fase6): UC_AUTH_04 — tests TDD Red phase (CA-01..16)`.
+4. Commit: `test(authentication+users+access+audit): UC_AUTH_04 — tests TDD Red phase (CA-01..16)`.
 
 ---
 
@@ -261,7 +261,7 @@ Pasos:
 | Horas | 4 |
 | Artefactos | `apps/authentication/change_password_view.py` |
 | Dep. | F6-GA-T2 |
-| Criterio | `tests/unit/fase6/test_uc_auth_04.py` — 100 % PASS. Sin regresiones en suite existente. |
+| Criterio | `tests/unit/authentication/test_change_password.py` — 100 % PASS. Sin regresiones en suite existente. |
 
 Pasos:
 1. Implementar CA-07: throttle de 5 intentos fallidos en 5 min → 429 `TOO_MANY_ATTEMPTS` + `AuditEvent SUSPICIOUS_PASSWORD_CHANGE_ATTEMPTS`.
@@ -278,14 +278,14 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 2 |
-| Artefactos | `tests/unit/fase6/test_uc_auth_05.py` (nuevo) |
+| Artefactos | `tests/unit/authentication/test_session_management.py` (nuevo) |
 | Dep. | F6-P0-T9 |
 | Criterio | Tests cubren CA-01..12. Los gaps identificados fallan. |
 
 Pasos:
-1. Crear `tests/unit/fase6/test_uc_auth_05.py`.
+1. Crear `tests/unit/authentication/test_session_management.py`.
 2. Tests para: CA-01 listado paginado, CA-02 filtro user_id + `SESSIONS_VIEWED_FOR_USER`, CA-03 sin PII, CA-04 cierre individual + `SESSION_CLOSED`, CA-05 idempotencia `SESSION_CLOSE_NOOP`, CA-06 bulk close, CA-07 SELF_BULK_CLOSE_FORBIDDEN, CA-08 sin AUTH-004 → 403, CA-09 sin AUTH-002 → 403, CA-11 InternalMessage notificación, CA-12 solo sesiones del invocante.
-3. Commit: `test(fase6): UC_AUTH_05 — tests TDD Red phase (CA-01..12)`.
+3. Commit: `test(authentication+users+access+audit): UC_AUTH_05 — tests TDD Red phase (CA-01..12)`.
 
 ---
 
@@ -296,7 +296,7 @@ Pasos:
 | Horas | 3 |
 | Artefactos | `apps/authentication/session_admin_view.py` |
 | Dep. | F6-GA-T4 |
-| Criterio | `tests/unit/fase6/test_uc_auth_05.py` — 100 % PASS. |
+| Criterio | `tests/unit/authentication/test_session_management.py` — 100 % PASS. |
 
 Pasos:
 1. Verificar CA-02: filtro `?user_id` genera `AuditEvent SESSIONS_VIEWED_FOR_USER` con el user_id correcto en payload.
@@ -332,14 +332,14 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 2 |
-| Artefactos | `tests/unit/fase6/test_uc_usr_02.py` (nuevo) |
+| Artefactos | `tests/unit/users/test_user_list_search.py` (nuevo) |
 | Dep. | F6-GB-T1 |
 | Criterio | Tests cubren CA-01..08. Los CAs que faltan están en rojo. |
 
 Pasos:
-1. Crear `tests/unit/fase6/test_uc_usr_02.py`.
+1. Crear `tests/unit/users/test_user_list_search.py`.
 2. Tests para: CA-01 paginación 50/página, CA-02 sin `email`/`full_name` en listado (CNST-026), CA-03 detalle con `username` sólo, CA-04 filtro `?state=ACTIVE`, CA-05 filtros sin SQLi (ordenamiento whitelist), CA-06 sin permiso `list_users` → 403, CA-07 cursor paginación estable, CA-08 timeout BD → 503.
-3. Commit: `test(fase6): UC_USR_02 — tests TDD Red phase`.
+3. Commit: `test(authentication+users+access+audit): UC_USR_02 — tests TDD Red phase`.
 
 ---
 
@@ -350,7 +350,7 @@ Pasos:
 | Horas | 3 |
 | Artefactos | `apps/users/viewsets/user_viewset.py`, `apps/users/serializers/user_list_serializer.py` |
 | Dep. | F6-GB-T2 |
-| Criterio | `tests/unit/fase6/test_uc_usr_02.py` — 100 % PASS. |
+| Criterio | `tests/unit/users/test_user_list_search.py` — 100 % PASS. |
 
 Pasos:
 1. Verificar CNST-026: `UserListSerializer` no expone `email`, `date_of_birth`, `phone`. Si lo hace, corregir.
@@ -365,15 +365,15 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 2 |
-| Artefactos | `tests/unit/fase6/test_uc_usr_03_04.py` (nuevo) |
+| Artefactos | `tests/unit/users/test_user_modify_eliminate.py` (nuevo) |
 | Dep. | F6-GB-T1 |
 | Criterio | Tests cubren CAs principales de USR_03 (CA-01..08) y USR_04 (CA-01..06). |
 
 Pasos:
-1. Crear `tests/unit/fase6/test_uc_usr_03_04.py`.
+1. Crear `tests/unit/users/test_user_modify_eliminate.py`.
 2. Tests USR_03: CA-01 PATCH parcial, CA-02 BLOCKED cierra Sessions + BlacklistedTokens, CA-04 SELF_STATE_CHANGE_FORBIDDEN, CA-05 state=ELIMINATED → 400, CA-08 transiciones inválidas → 409, CA-09 `USER_MODIFIED` AuditEvent con `fields_changed`.
 3. Tests USR_04: CA-01 state=ELIMINATED + Assignments REVOKED + Sessions CLOSED, CA-02 BR-009 registro preservado, CA-03 SELF_ELIMINATION_FORBIDDEN, CA-06 idempotencia `USER_ELIMINATE_NOOP`.
-4. Commit: `test(fase6): UC_USR_03/04 — tests TDD Red phase`.
+4. Commit: `test(authentication+users+access+audit): UC_USR_03/04 — tests TDD Red phase`.
 
 ---
 
@@ -384,7 +384,7 @@ Pasos:
 | Horas | 3 |
 | Artefactos | `apps/users/modify_user_view.py` |
 | Dep. | F6-GB-T4 |
-| Criterio | `tests/unit/fase6/test_uc_usr_03_04.py` — 100 % PASS. |
+| Criterio | `tests/unit/users/test_user_modify_eliminate.py` — 100 % PASS. |
 
 Pasos:
 1. USR_03 CA-02: verificar que `BLOCKED` cierra Sessions activas + añade tokens a `BlacklistedToken`.
@@ -420,14 +420,14 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 3 |
-| Artefactos | `tests/unit/fase6/test_uc_perm_07.py` (nuevo) |
+| Artefactos | `tests/unit/access/test_effective_permissions_engine.py` (nuevo) |
 | Dep. | F6-GC-T1 |
 | Criterio | Tests cubren CA-01..17. Los gaps identificados están en rojo. |
 
 Pasos:
-1. Crear `tests/unit/fase6/test_uc_perm_07.py`.
+1. Crear `tests/unit/access/test_effective_permissions_engine.py`.
 2. Tests para: CA-01 AGR otorga con `origin=GRANTED_BY_AGR`, CA-02 revocación excepcional gana con `origin=REVOKED_EXCEPTIONAL`, CA-03 concesión sin AGR `origin=GRANTED_EXCEPTIONAL`, CA-04 sin nada `origin=DENIED_NO_GRANT`, CA-05 AGR INACTIVE no cuenta, CA-06 Assignment expirado no cuenta, CA-07 concesión expirada no cuenta, CA-08 multi-AGR retorna lista, CA-09 cache hit (`cache=true`), CA-10 cache invalidate por evento, CA-11 bulk check 50 codes (1 query), CA-12 función no existe → 400, CA-15 fail-closed en BD timeout, CA-16 cero AuditEvents, CA-17 TTL ajustado por valid_until.
-3. Commit: `test(fase6): UC_PERM_07 — tests TDD Red phase (CA-01..17)`.
+3. Commit: `test(authentication+users+access+audit): UC_PERM_07 — tests TDD Red phase (CA-01..17)`.
 
 ---
 
@@ -489,15 +489,15 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 2 |
-| Artefactos | `tests/unit/fase6/test_uc_perm_05_06.py` (nuevo) |
+| Artefactos | `tests/unit/access/test_access_group_management.py` (nuevo) |
 | Dep. | F6-P0-T9 |
 | Criterio | Tests para PERM_05 y PERM_06 cubren sus CAs. Los gaps están en rojo. |
 
 Pasos:
-1. Crear `tests/unit/fase6/test_uc_perm_05_06.py`.
+1. Crear `tests/unit/access/test_access_group_management.py`.
 2. Tests PERM_05: CA-01 crear AGR 201, CA-02 code duplicado 409, CA-03 code formato inválido 400, CA-04 is_predefined bloqueado, CA-07 PREDEFINED_NOT_MUTABLE al intentar editar un AGR predefinido, CA-09 AGR retirado no asignable 400, CA-10 sin `manage_access_groups` → 403.
 3. Tests PERM_06: CA-01 add functions + COMPOSITION_CHANGED, CA-02 remove functions, CA-04 función ya en AGR idempotente (add duplicado → 200, no 409), CA-06 AGR PREDEFINED no editable → 403, CA-08 función inactiva → 400.
-4. Commit: `test(fase6): UC_PERM_05/06 — tests TDD Red phase`.
+4. Commit: `test(authentication+users+access+audit): UC_PERM_05/06 — tests TDD Red phase`.
 
 ---
 
@@ -540,15 +540,15 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 2 |
-| Artefactos | `tests/unit/fase6/test_uc_perm_01_02.py` (nuevo) |
+| Artefactos | `tests/unit/access/test_agr_assign_revoke_perm_view.py` (nuevo) |
 | Dep. | F6-GC-T5 (PERM_07 completo — las vistas PERM dependen del motor) |
 | Criterio | Tests para PERM_01 y PERM_02 cubren sus CAs adicionales. Los nuevos CAs están en rojo. |
 
 Pasos:
-1. Crear `tests/unit/fase6/test_uc_perm_01_02.py`.
+1. Crear `tests/unit/access/test_agr_assign_revoke_perm_view.py`.
 2. PERM_01 CAs adicionales (vs UC_ACC_04): preview de impacto SoD antes de confirmar la asignación, endpoint de confirmación explícita en dos pasos.
 3. PERM_02 CAs adicionales: CA-PERM-01 (404 si AGR nunca fue asignado, no 400 — anti-info-leak por AGR nunca asignado).
-4. Commit: `test(fase6): UC_PERM_01/02 — tests TDD Red phase (CAs adicionales)`.
+4. Commit: `test(authentication+users+access+audit): UC_PERM_01/02 — tests TDD Red phase (CAs adicionales)`.
 
 ---
 
@@ -559,7 +559,7 @@ Pasos:
 | Horas | 3 |
 | Artefactos | `apps/access/function_assign_view.py` (AGRAssignView, AGRRevokeView) |
 | Dep. | F6-GC-T9 |
-| Criterio | `tests/unit/fase6/test_uc_perm_01_02.py` — 100 % PASS. |
+| Criterio | `tests/unit/access/test_agr_assign_revoke_perm_view.py` — 100 % PASS. |
 
 Pasos:
 1. UC_PERM_01: añadir endpoint `GET /api/access/users/{id}/agr/{agr_id}/preview/` que retorna impacto SoD sin persistir.
@@ -573,14 +573,14 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 2 |
-| Artefactos | `tests/unit/fase6/test_uc_perm_08.py` (nuevo) |
+| Artefactos | `tests/unit/authentication/test_dynamic_menu.py` (nuevo) |
 | Dep. | F6-GC-T5 (PERM_07 completo — el menú depende del motor) |
 | Criterio | Tests cubren CAs de PERM_08. Los gaps están en rojo. |
 
 Pasos:
-1. Crear `tests/unit/fase6/test_uc_perm_08.py`.
+1. Crear `tests/unit/authentication/test_dynamic_menu.py`.
 2. Tests: CA-01 menú con múltiples dominios, CA-02 User sin funciones → `domains: []`, CA-03 función REVOKED no aparece, CA-06 locale=es retorna labels en español, CA-07 locale=en retorna labels en inglés, CA-15 cero AuditEvents por invocación.
-3. Commit: `test(fase6): UC_PERM_08 — tests TDD Red phase`.
+3. Commit: `test(authentication+users+access+audit): UC_PERM_08 — tests TDD Red phase`.
 
 ---
 
@@ -591,7 +591,7 @@ Pasos:
 | Horas | 2 |
 | Artefactos | `apps/authentication/menu_view.py` |
 | Dep. | F6-GC-T11 |
-| Criterio | `tests/unit/fase6/test_uc_perm_08.py` — 100 % PASS. |
+| Criterio | `tests/unit/authentication/test_dynamic_menu.py` — 100 % PASS. |
 
 Pasos:
 1. CA-03: verificar que `MenuBuilder` llama a `EffectivePermissionsView` (via `calculate_effective_functions()`) para excluir funciones `REVOKED_EXCEPTIONAL`.
@@ -612,14 +612,14 @@ Prerequisito: F6-P0-T7 y F6-P0-T8 completos.
 | Campo | Valor |
 |---|---|
 | Horas | 2 |
-| Artefactos | `tests/unit/fase6/test_uc_aud_01.py` (nuevo) |
+| Artefactos | `tests/unit/audit/test_general_audit_timeline.py` (nuevo) |
 | Dep. | F6-P0-T7, F6-P0-T8 |
 | Criterio | Tests cubren CA-01..08. Todos en rojo (endpoint no existe). |
 
 Pasos:
-1. Crear `tests/unit/fase6/test_uc_aud_01.py`.
+1. Crear `tests/unit/audit/test_general_audit_timeline.py`.
 2. Tests: CA-01 list básico timeline, CA-02 filtro `?module=MOD_AUTH`, CA-03 filtro `?actor_id=X`, CA-04 cursor paginación estable, CA-05 range > 90 días → 400, CA-06 meta-audit `GENERAL_AUDIT_QUERIED` obligatorio, CA-07 sin `view_general_audit` → 403, CA-08 BD timeout → 503.
-3. Commit: `test(fase6): UC_AUD_01 — tests TDD Red phase`.
+3. Commit: `test(authentication+users+access+audit): UC_AUD_01 — tests TDD Red phase`.
 
 ---
 
@@ -630,7 +630,7 @@ Pasos:
 | Horas | 3 |
 | Artefactos | `apps/audit/audit_event_views.py`, `apps/audit/urls.py` |
 | Dep. | F6-GD-T1 |
-| Criterio | `tests/unit/fase6/test_uc_aud_01.py` — 100 % PASS. URL `audit:general-audit-list` registrada. |
+| Criterio | `tests/unit/audit/test_general_audit_timeline.py` — 100 % PASS. URL `audit:general-audit-list` registrada. |
 
 Pasos:
 1. Añadir `GeneralAuditListView(APIView)` con `required_function = 'AUD-005'`.
@@ -653,7 +653,7 @@ Pasos:
 | Horas | 2 |
 | Artefactos | — (solo verificación) |
 | Dep. | F6-GA-T5, F6-GB-T5, F6-GC-T12, F6-GD-T2 |
-| Criterio | Todos los tests `tests/unit/fase6/` PASS. `python manage.py spectacular --validate` sin warnings de colisión. Catálogo = 74. 0 regresiones en tests existentes. |
+| Criterio | Todos los tests `tests/unit/` PASS. `python manage.py spectacular --validate` sin warnings de colisión. Catálogo = 74. 0 regresiones en tests existentes. |
 
 ---
 
@@ -770,12 +770,12 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 3 |
-| Artefactos | `tests/unit/fase7/test_uc_opr_01.py` (nuevo) |
+| Artefactos | `tests/unit/operator/test_agent_state_transitions.py` (nuevo) |
 | Dep. | F7-P0-T4 |
 | Criterio | Tests cubren CA-01..10. Todos en rojo (endpoint no existe). |
 
 Pasos:
-1. Crear `tests/unit/fase7/__init__.py` y `tests/unit/fase7/test_uc_opr_01.py`.
+1. Crear `tests/unit/operator/test_agent_state_transitions.py`.
 2. Tests: CA-01 transición valid (available→break con reason), CA-04 break sin reason → 400, CA-05 transición inválida (offline→ACW) → 409, CA-06 audit `AGENT_STATE_CHANGED` con from/to/duration, CA-08 logout fuerza offline, CA-09 inactividad → offline (mock timer), CA-10 break exceeded → 409.
 
 ---
@@ -846,7 +846,7 @@ Pasos:
 | Campo | Valor |
 |---|---|
 | Horas | 2 |
-| Artefactos | `tests/unit/fase7/test_uc_opr_08_09_10.py` (nuevo) |
+| Artefactos | `tests/unit/operator/test_agent_acw_break_logout.py` (nuevo) |
 | Dep. | F7-GA-T3 |
 | Criterio | Tests cubren CAs de UC_OPR_08 (ACW), UC_OPR_09 (Break), UC_OPR_10 (Logout). |
 
@@ -864,7 +864,7 @@ Pasos:
 | Horas | 3 |
 | Artefactos | `apps/operator/agent_state_service.py`, `apps/operator/views.py` |
 | Dep. | F7-GB-T1 |
-| Criterio | `tests/unit/fase7/test_uc_opr_08_09_10.py` — 100 % PASS. |
+| Criterio | `tests/unit/operator/test_agent_acw_break_logout.py` — 100 % PASS. |
 
 Pasos:
 1. UC_OPR_08: registrar `ACW_STARTED` audit. Configurar `max_acw_minutes` en `AgentSession`. APScheduler job para timeout de ACW.
@@ -885,7 +885,7 @@ Pasos:
 | Horas | 2 |
 | Artefactos | — |
 | Dep. | F7-GA-T4, F7-GB-T2 |
-| Criterio | `tests/unit/fase7/` PASS. Migraciones aplican limpiamente. drf-spectacular sin colisiones nuevas. |
+| Criterio | `tests/unit/` PASS. Migraciones aplican limpiamente. drf-spectacular sin colisiones nuevas. |
 
 ---
 
@@ -921,12 +921,12 @@ Documentar los ítems pendientes en IACT-docs y IACT-ui.
 | Campo | Valor |
 |---|---|
 | Horas | 2 |
-| Artefactos | `tests/unit/fase8/test_uc_sup_03.py` (nuevo) |
+| Artefactos | `tests/unit/operator/test_agent_broadcast.py` (nuevo) |
 | Dep. | FASE 7 completa |
 | Criterio | Tests cubren CA-01..05. Todos en rojo. |
 
 Pasos:
-1. Crear `tests/unit/fase8/__init__.py` y `tests/unit/fase8/test_uc_sup_03.py`.
+1. Crear `tests/unit/__init__.py` y `tests/unit/operator/test_agent_broadcast.py`.
 2. Tests: CA-01 broadcast básico → `InternalMessage` entregado a receptores, CA-02 cross-segmento → 403, CA-03 `recipients` vacío → 400, CA-04 urgente → priority=critical en `InternalMessage`, CA-05 `BROADCAST_SENT` AuditEvent con count de receptores.
 
 ---
@@ -1006,7 +1006,7 @@ git commit -m "docs(normativa): STD-008 FASES 4-5 — CNST-033 v2.0.0 + CNST-030
 | Horas | 2 |
 | Artefactos | — |
 | Dep. | F8-GA-T2, F8-GB-T1, F8-GB-T2, F8-GB-T3 |
-| Criterio | `tests/unit/fase8/` PASS. drf-spectacular sin colisiones. Cobertura corpus: 70 UCs TDD canónico (87.5 %). |
+| Criterio | `tests/unit/` PASS. drf-spectacular sin colisiones. Cobertura corpus: 70 UCs TDD canónico (87.5 %). |
 
 ---
 

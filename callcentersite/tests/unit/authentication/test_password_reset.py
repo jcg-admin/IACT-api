@@ -1,17 +1,7 @@
 """
-tests/unit/fase4/test_uc_auth_03.py
+tests/unit/authentication/test_password_reset.py
 
-UC_AUTH_03 — Recuperar Contraseña (mejoras FASE 4).
-POST /api/users/{user_id}/reset-password/
-Función: AUTH-003 (reset_password)
-Fuente: uc-auth-03/criterios-aceptacion.rst (CAs faltantes en FASE 2)
-
-FASE 4 cubre los CAs que faltaban:
-  CA-10: User BLOCKED → 200 + warning (estado BLOCKED permanece)
-  CA-11: Mailbox HARD — rollback si falla
-  CA-12: Audit HARD — rollback si falla
-  CA-17: Throttling → 429
-  Alineación event_type: PASSWORD_RESET (corpus) vs USER_PASSWORD_RESET (legacy)
+UC_AUTH_03 — Recuperar Contraseña. Contraseña temporal + InternalMailbox.
 """
 import pytest
 from unittest.mock import patch, MagicMock
