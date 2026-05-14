@@ -15,6 +15,9 @@ from rest_framework.routers import DefaultRouter
 from apps.authentication.login_view import LoginView
 from apps.authentication.change_password_view import ChangePasswordView
 from apps.authentication.logout_view import LogoutView
+from apps.authentication.session_admin_view import (
+    SessionListView, SessionCloseView, SessionCloseAllView, SessionOwnView,
+)
 from apps.authentication.viewsets import AuthViewSet, SessionViewSet
 
 # Router para acciones secundarias (logout, change-password, security-questions…)
@@ -31,6 +34,12 @@ urlpatterns = [
     path('auth/change-password/', ChangePasswordView.as_view(), name='change-password'),
     # UC_AUTH_02 — cerrar sesión con blacklist de tokens
     path('auth/logout/', LogoutView.as_view(), name='logout'),
+
+    # UC_AUTH_05 — Gestionar Sesiones
+    path('auth/sessions/', SessionListView.as_view(), name='session-list'),
+    path('auth/sessions/own/', SessionOwnView.as_view(), name='session-own'),
+    path('auth/sessions/close-all/', SessionCloseAllView.as_view(), name='session-close-all'),
+    path('auth/sessions/<uuid:session_id>/close/', SessionCloseView.as_view(), name='session-close'),
 
     # Resto de endpoints de autenticación vía router
     path('', include(router.urls)),
