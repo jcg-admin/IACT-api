@@ -257,6 +257,27 @@ VALID_EVENT_TYPES = frozenset({
     'REPORT_SHARE_REVOKED',
     # FASE 4 — UC_RPT_12..17 (Reportes analíticos)
     'AGENT_DETAIL_VIEWED',
+    # FASE 5 — UC_ACC_09 (Auditar cambios de acceso)
+    'ACCESS_AUDIT_VIEWED',
+    # FASE 5 — UC_PERM_10 (Consultar auditoría)
+    'AUDIT_LOG_QUERIED',
+    'AUDIT_LOG_DETAIL_VIEWED',
+    'AUDIT_LOG_AGGREGATE_QUERIED',
+    'AUDIT_LOG_EXPORT_QUEUED',
+    # FASE 5 — UC_AUD_02 (Buscar auditoría)
+    'AUDIT_SEARCH_QUERIED',
+    # FASE 5 — UC_AUD_03 (Exportar auditoría)
+    'AUDIT_EXPORT_QUEUED',
+    'AUDIT_EXPORT_COMPLETED',
+    'AUDIT_EXPORT_FAILED',
+    # FASE 5 — UC_RPT_09 / UC_RPT_10 (Filtros y vistas guardadas)
+    'SAVED_FILTER_CREATED',
+    'SAVED_FILTER_UPDATED',
+    'SAVED_FILTER_DELETED',
+    'SAVED_VIEW_CREATED',
+    'SAVED_VIEW_UPDATED',
+    'SAVED_VIEW_DELETED',
+    'SAVED_VIEW_CLONED',
 })
 
 

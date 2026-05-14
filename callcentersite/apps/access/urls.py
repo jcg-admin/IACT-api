@@ -54,6 +54,9 @@ from .views import (
     MenuItemTransitionView,
     PermissionVerifyView,
 )
+from apps.audit.access_audit_views import (
+    AccessAuditListView, AccessAuditDetailView, AccessAuditAggregationsView,
+)
 from .exceptional_permission_views import (
     ExceptionalGrantView   as _ExceptionalGrantView,
     ExceptionalPreviewView as _ExceptionalPreviewView,
@@ -158,6 +161,10 @@ urlpatterns = [
          MenuItemTransitionView.as_view(), name='menuitem-transition'),
 
     # ==================================================================
+    # UC_ACC_09 — Auditar cambios de acceso (FASE 5)
+    path('audit/',                      AccessAuditListView.as_view(),         name='access-audit-list'),
+    path('audit/<int:event_id>/',       AccessAuditDetailView.as_view(),       name='access-audit-detail'),
+    path('audit/aggregations/',         AccessAuditAggregationsView.as_view(), name='access-audit-aggregations'),
     # UC_ACC_08, UC_PERM_03, UC_PERM_04 — Permisos Excepcionales (FASE 4)
     # ==================================================================
     path('users/<int:user_id>/exceptional-permissions/',

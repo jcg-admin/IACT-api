@@ -14,6 +14,11 @@ from .historical_view import HistoricalReportView
 from .export_views    import ExportView, ExportDetailView
 from .schedule_views    import ScheduledReportListCreateView, ScheduledReportDetailView
 from .share_views       import ShareCreateView, ShareDetailView
+from .saved_filter_views import (
+    SavedFilterListView, SavedFilterDetailView,
+    SavedViewListView, SavedViewDetailView, SavedViewCloneView,
+)
+
 from .analytics_views   import (
     AgentReportView, AgentDetailView, QueueReportView,
     CampaignReportView, TransferReportView, IVRMenuReportView,
@@ -44,6 +49,13 @@ urlpatterns = [
     # K-005: UC_RPT_02 — real-time metrics stub (CNST-004)
     path('realtime/',              RealtimeMetricsView.as_view(),  name='realtime-metrics'),
     path('historical/',            HistoricalReportView.as_view(), name='historical-report'),
+    # UC_RPT_09 — Filtros guardados (FASE 5)
+    path('me/filters/',              SavedFilterListView.as_view(),     name='saved-filter-list'),
+    path('me/filters/<int:pk>/',     SavedFilterDetailView.as_view(),   name='saved-filter-detail'),
+    # UC_RPT_10 — Vistas guardadas (FASE 5)
+    path('me/views/',                SavedViewListView.as_view(),       name='saved-view-list'),
+    path('me/views/<int:pk>/',       SavedViewDetailView.as_view(),     name='saved-view-detail'),
+    path('me/views/<int:pk>/clone/', SavedViewCloneView.as_view(),      name='saved-view-clone'),
     # UC_RPT_07/08 — Reportes programados (FASE 4)
     path('schedules/',                ScheduledReportListCreateView.as_view(), name='schedule-list-create'),
     path('schedules/<int:sched_id>/', ScheduledReportDetailView.as_view(),     name='schedule-detail'),

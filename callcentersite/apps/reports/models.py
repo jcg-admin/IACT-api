@@ -397,36 +397,102 @@ class ScheduledReport(models.Model):
 
 class SavedView(models.Model):
     """
-    Saved view of a report — filters + column configuration. UC_RPT_10.
+    Vista guardada de un reporte — UC_RPT_10.
+
+    Fuente: uc-rpt-10/criterios-aceptacion.rst
+    Almacena: filters + columns + chart_config por report_type.
+    Límite: 30 vistas por usuario (CA-04).
     """
-    name = models.CharField(max_length=100)
-    report = models.ForeignKey(
-        Report,
-        on_delete=models.CASCADE,
-        related_name='saved_views',
+
+    actor       = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='saved_views', null=True, blank=True,
+        help_text='UC_RPT_10 canonical actor. Null para registros legacy.',
     )
-    filters = models.JSONField(
-        default=dict,
-        blank=True,
-        help_text="Filter configuration as JSON",
+    name        = models.CharField(max_length=100)
+    report_type = models.CharField(max_length=50, blank=True, default='')
+    filters     = models.JSONField(default=dict, blank=True)
+    columns     = models.JSONField(default=list, blank=True)
+    chart_config= models.JSONField(default=dict, blank=True)
+    is_default  = models.BooleanField(
+        default=False,
+        help_text='CA-05: único is_default por report_type por usuario.',
     )
-    columns = models.JSONField(
-        default=list,
-        blank=True,
-        help_text="Ordered list of visible column names",
+    is_available = models.BooleanField(
+        default=True,
+        help_text='CA-08: False si alguna columna fue deprecada.',
     )
-    created_by = models.ForeignKey(
-        User,
-        on_delete=models.CASCADE,
-        related_name='saved_views',
+    # Backward compat
+    report     = models.ForeignKey(
+        Report, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='saved_views', verbose_name='Reporte legacy',
     )
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_by  = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='saved_views_legacy', null=True, blank=True,
+        help_text='Legacy — usar actor.',
+    )
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+
+    MAX_VIEWS_PER_USER = 30  # CA-04
 
     class Meta:
-        ordering = ['-created_at']
-        verbose_name = 'Saved View'
+        ordering         = ['-created_at']
+        verbose_name     = 'Saved View'
         verbose_name_plural = 'Saved Views'
-        unique_together = [('name', 'created_by')]
+        db_table         = 'reports_savedview'
+        indexes          = [
+            models.Index(fields=['actor', 'report_type'], name='idx_savedview_actor_type'),
+        ]
 
     def __str__(self) -> str:
-        return f"SavedView({self.name} — {self.report.name})"
+        return f'SavedView({self.name}/{self.report_type})'
+
+
+class SavedFilter(models.Model):
+    """
+    Filtro guardado para reportes — UC_RPT_09.
+
+    Fuente: uc-rpt-09/criterios-aceptacion.rst
+    Límite: 50 filtros por usuario (CA-04).
+    """
+
+    actor       = models.ForeignKey(
+        User, on_delete=models.CASCADE,
+        related_name='report_saved_filters',   # prefijo 'report_' para evitar colisión con dashboard.SavedFilter
+    )
+    name        = models.CharField(max_length=100)
+    report_type = models.CharField(
+        max_length=50, blank=True,
+        help_text='Tipo de reporte al que aplica (CA-09: default único por tipo).',
+    )
+    applies_to  = models.JSONField(
+        default=list,
+        help_text='Lista de report_types a los que aplica este filtro.',
+    )
+    filters     = models.JSONField(default=dict, blank=True)
+    is_default  = models.BooleanField(
+        default=False,
+        help_text='CA-09: único is_default por report_type por usuario.',
+    )
+    is_valid    = models.BooleanField(
+        default=True,
+        help_text='CA-10: False si el usuario pierde el segmento requerido.',
+    )
+    created_at  = models.DateTimeField(auto_now_add=True)
+    updated_at  = models.DateTimeField(auto_now=True)
+
+    MAX_FILTERS_PER_USER = 50  # CA-04
+
+    class Meta:
+        ordering            = ['-created_at']
+        verbose_name        = 'Saved Filter'
+        verbose_name_plural = 'Saved Filters'
+        db_table            = 'reports_savedfilter'
+        indexes             = [
+            models.Index(fields=['actor', 'report_type'], name='idx_savedfilter_actor_type'),
+        ]
+
+    def __str__(self) -> str:
+        return f'SavedFilter({self.actor.username}/{self.name})'

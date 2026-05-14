@@ -391,6 +391,32 @@ class AuditLogService:
             details=clean_payload,
         )
 
+
+    @classmethod
+    def emit_batch(cls, events: list) -> list:
+        """
+        UC_PERM_09 CA-11: emit_batch atómico.
+
+        Valida todos los eventos antes de persistir ninguno.
+        Si uno falla, rollback del batch completo.
+        """
+        from django.db import transaction
+        from apps.audit.models import VALID_EVENT_TYPES, AuditValidationError
+        # Validar todos antes de persistir
+        for ev in events:
+            if ev.get('event_type') not in VALID_EVENT_TYPES:
+                raise AuditValidationError(f"event_type inválido: {ev.get('event_type')!r}")
+        records = []
+        with transaction.atomic():
+            for ev in events:
+                record = cls.emit(
+                    event_type=ev['event_type'],
+                    actor_user_id=ev['actor_user_id'],
+                    payload=ev.get('payload', {}),
+                )
+                records.append(record)
+        return records
+
     @staticmethod
     def _strip_pii(payload: dict) -> dict:
         """

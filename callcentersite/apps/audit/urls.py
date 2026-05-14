@@ -1,3 +1,8 @@
+from apps.audit.audit_event_views import (
+    AuditEventListView, AuditEventDetailView,
+    AuditEventAggregateView, AuditEventExportView,
+    AuditSearchView,
+)
 from apps.audit.compliance_views import ComplianceReportView, ComplianceVerifyView
 """
 URLs para audit app.
@@ -18,6 +23,15 @@ urlpatterns = [
 # B-08: UC_AUD_04 — integridad
 from .views import AuditIntegrityView
 urlpatterns += [
+    # UC_PERM_10 — Consultar auditoría
+    path('audit-events/',                   AuditEventListView.as_view(),      name='audit-event-list'),
+    path('audit-events/<int:event_id>/',    AuditEventDetailView.as_view(),    name='audit-event-detail'),
+    path('audit-events/aggregate/',         AuditEventAggregateView.as_view(), name='audit-event-aggregate'),
+    path('audit-events/export/',            AuditEventExportView.as_view(),    name='audit-event-export'),
+    # UC_AUD_02 — Buscar auditoría
+    path('search/',                         AuditSearchView.as_view(),         name='audit-search'),
+    # UC_AUD_03 — Exportar auditoría (same view, different required_function)
+    path('export/',                         AuditEventExportView.as_view(),    name='audit-export'),
     path('compliance-report/', ComplianceReportView.as_view(), name='compliance-report'),
     path('compliance-verify/', ComplianceVerifyView.as_view(), name='compliance-verify'),
     path('integrity/', AuditIntegrityView.as_view(), name='integrity'),

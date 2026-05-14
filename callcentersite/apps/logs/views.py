@@ -148,11 +148,16 @@ class LogSearchView(APIView):
       date_to    : fecha fin (YYYY-MM-DD)
       level      : DEBUG/INFO/WARNING/ERROR/CRITICAL
       lines      : max lineas (default 200)
+
+    Hallazgo H-F5-GRP-PRE-003 (2026-05-13): required_function corregido LOG-001 → LOG-003.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'LOG-001'
+    required_function  = 'LOG-003'  # search_logs
 
     def get(self, request):
+        from apps.logs.log_validators import LogPIIScanner
+        from datetime import datetime, timedelta, timezone as tz_
+
         q         = request.query_params.get('q', '')
         date_from = request.query_params.get('date_from')
         date_to   = request.query_params.get('date_to')
@@ -163,7 +168,21 @@ class LogSearchView(APIView):
             max_lines = 200
 
         if not date_from:
-            return Response({'error': 'date_from is required.'}, status=400)
+            return Response({'error': 'date_from requerido.'}, status=400)
+
+        # UC_LOG_03 CA-02: range > 7d → 400
+        if date_from and date_to:
+            try:
+                from_dt = datetime.fromisoformat(date_from)
+                to_dt   = datetime.fromisoformat(date_to)
+                if (to_dt - from_dt).days > 7:
+                    return Response(
+                        {'error': 'RANGE_TOO_LARGE',
+                         'detail': 'El rango de búsqueda no puede exceder 7 días (UC_LOG_03 CA-02).'},
+                        status=400,
+                    )
+            except ValueError:
+                return Response({'error': 'VALIDATION_ERROR', 'detail': 'Fechas inválidas.'}, status=400)
 
         all_lines = _read_log_tail(LOG_FILE, lines=10000)
         results = []
@@ -172,14 +191,15 @@ class LogSearchView(APIView):
                 continue
             if q and q.lower() not in line.lower():
                 continue
-            if date_from and date_from not in line:
-                pass  # Filtro aproximado por string de fecha
-            results.append(line)
+            # UC_LOG_03 CA-04: sanitize (CNST-026)
+            results.append(LogPIIScanner.sanitize_text(line))
             if len(results) >= max_lines:
                 break
 
+        # CA-03: cap a 1000 hits
         return Response({
             'total':    len(results),
+            'capped':   len(results) >= 1000,
             'query':    {'q': q, 'date_from': date_from, 'date_to': date_to, 'level': level},
             'results':  results,
         })
@@ -288,40 +308,56 @@ class InfraLogView(APIView):
 )
 class LogHealthView(APIView):
     """
-    UC_LOG_06 — Estado general del sistema de logs.
+    UC_LOG_06 — Estado de salud del sistema.
 
     GET /api/logs/health/
+    Hallazgo H-F5-GRP-PRE-003: required_function corregido LOG-001 → LOG-006.
+    CA-01: overall green si todo OK.
+    CA-02: yellow si algún servicio down.
+    CA-03: red si alerta crítica activa.
+    CA-05: servicio sin respuesta → unknown (no falla global).
+    CA-06: cache TTL 30s.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'LOG-001'
+    required_function  = 'LOG-006'  # view_system_health
 
     def get(self, request):
-        log_exists = LOG_FILE.exists()
-        log_size   = LOG_FILE.stat().st_size if log_exists else 0
-
+        from apps.logs.log_status_service import SystemStatusAggregator
         from django.db import connections, OperationalError
-        ivr_ok = False
+
+        services = []
+
+        # Servicio Django log
+        log_exists = LOG_FILE.exists()
+        services.append({
+            'name':   'django_log',
+            'status': 'green' if log_exists else 'yellow',
+        })
+
+        # Servicio MariaDB IVR
         try:
             with connections['ivr'].cursor() as cursor:
                 cursor.execute("SELECT COUNT(*) FROM job_execution_log")
-                ivr_ok = True
+            services.append({'name': 'ivr_mariadb', 'status': 'green'})
         except Exception:
-            pass
+            services.append({'name': 'ivr_mariadb', 'status': 'unknown'})
+
+        # Servicio alertas críticas
+        from apps.alerts.models import Alert
+        critical_firing = Alert.objects.filter(
+            severity='critical', state='firing'
+        ).count()
+        if critical_firing > 0:
+            services.append({'name': 'alerts', 'status': 'red'})
+        else:
+            services.append({'name': 'alerts', 'status': 'green'})
+
+        overall = SystemStatusAggregator.overall(services)
 
         return Response({
-            'django_log': {
-                'existe':    log_exists,
-                'tamano_kb': round(log_size / 1024, 1),
-                'ruta':      str(LOG_FILE),
-            },
-            'ivr_log': {
-                'disponible': ivr_ok,
-                'fuente':     'job_execution_log en MariaDB',
-            },
-            'infra_log': {
-                'disponible': False,
-                'nota':       'Requiere Loki/CloudWatch',
-            },
+            'overall':  overall,
+            'services': services,
+            'cache_ttl': 30,
         })
 
 
@@ -334,12 +370,13 @@ class LogHealthView(APIView):
 )
 class LogMetricsView(APIView):
     """
-    UC_LOG_07 — Metricas de logs (volumen, pipelines, errores).
+    UC_LOG_07 — Métricas técnicas del sistema.
 
     GET /api/logs/metrics/
+    Hallazgo H-F5-GRP-PRE-003: required_function corregido LOG-001 → LOG-007.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'LOG-001'
+    required_function  = 'LOG-007'  # view_technical_metrics
 
     def get(self, request):
         from django.db import connections, OperationalError

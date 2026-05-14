@@ -105,6 +105,10 @@ FUNCTIONS_V540 = [
     ('RPT-018', 'view_transfer_reports',   'MOD_RPT', 'Ver reportes de transferencias IVR (UC_RPT_15).'),
     ('RPT-019', 'view_ivr_reports',        'MOD_RPT', 'Ver reportes de navegación IVR (UC_RPT_16).'),
     ('RPT-020', 'view_unique_clients_reports', 'MOD_RPT', 'Ver reportes de clientes únicos anonimizados (UC_RPT_17).'),
+    # Hallazgo H-F5-GRP-PRE-001 (2026-05-13): view_access_audit ausente — UC_ACC_09
+    # Nota H-F5-GRP-PRE-001-B: ACC-012 ya existía (disable_separation_rule).
+    # view_access_audit asignado como ACC-013.
+    ('ACC-013', 'view_access_audit', 'MOD_ACC', 'Auditar cambios de acceso (funciones, AGRs, SoD) — UC_ACC_09.'),
 
     # =========================================
     # MOD_ALR — 10 funciones
@@ -269,7 +273,7 @@ class Command(BaseCommand):
         self.stdout.write(f'  Actualizadas:{updated}')
         if not dry_run:
             total = Function.objects.count()
-            self.stdout.write(f'  Total en BD: {total} (esperado: 72)')
+            self.stdout.write(f'  Total en BD: {total} (esperado: 73)')
             if total != 72:
                 self.stdout.write(self.style.ERROR(
                     f'ADVERTENCIA: se esperaban 72 funciones, hay {total}'
