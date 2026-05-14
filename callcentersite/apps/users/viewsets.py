@@ -117,16 +117,16 @@ class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.filter(is_deleted=False).order_by('-date_joined')
     permission_classes = [IsAuthenticated, RequiresFunctionPermission]
     
-    # RBAC v6.0.0: Namespaces Django para cada acción
+    # F1-H-006/F1-H-007: códigos canónicos v5.4.0 (antes namespaces Django legacy)
     function_map = {
-        'list': 'users.view',           # <- Namespace Django
-        'retrieve': 'users.view',       # <- Namespace Django
-        'create': 'users.create',       # <- Namespace Django
-        'update': 'users.edit',         # <- Namespace Django
-        'partial_update': 'users.edit', # <- Namespace Django
-        'destroy': 'users.delete',      # <- Namespace Django
-        'activate': 'users.edit',       # <- Namespace Django
-        'deactivate': 'users.edit',     # <- Namespace Django
+        'list':           'USR-004',  # list_users
+        'retrieve':       'USR-009',  # view_users
+        'create':         'USR-001',  # create_users
+        'update':         'USR-002',  # update_users
+        'partial_update': 'USR-002',  # update_users
+        'destroy':        'USR-003',  # deactivate_users (BR-009)
+        'activate':       'USR-008',  # reactivate_users
+        'deactivate':     'USR-003',  # deactivate_users
     }
     
     def get_serializer_class(self):

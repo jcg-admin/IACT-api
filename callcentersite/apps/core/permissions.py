@@ -94,11 +94,11 @@ class RequiresFunctionPermission(permissions.BasePermission):
         if action not in function_map:
             return True
         
-        # 6. Obtener permission_django (namespace)
-        permission_django = function_map[action]
-        
-        # Verificar permiso RBAC usando namespace
-        return request.user.has_function(permission_django)
+        # 6. Obtener código de función requerido (F1-H-007)
+        required_code = function_map[action]
+        # has_function_by_code() usa Function.code canónico (ej: USR-004)
+        # Antes usaba has_function() con permission_django legado ('users.view')
+        return request.user.has_function_by_code(required_code)
     
     def get_required_function(self, request, view):
         """
