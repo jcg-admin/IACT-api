@@ -15,7 +15,9 @@ AlertBulkAcknowledgeView — POST /api/alerts/bulk-acknowledge/
 import uuid
 from django.db import transaction
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import (
+    extend_schema, extend_schema_view, OpenApiResponse,
+)
 from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -87,7 +89,16 @@ def _alert_to_dict(alert: Alert) -> dict:
 # UC_ALR_01 — CRUD
 # ---------------------------------------------------------------------------
 
-@extend_schema(tags=[_TAG_ALR], operation_id='alerts_rule_list_create')
+@extend_schema_view(
+    get=extend_schema(
+        operation_id='alerts_rule_list', summary='UC_ALR_01 — Listar reglas de alerta',
+        tags=[_TAG_ALR],
+    ),
+    post=extend_schema(
+        operation_id='alerts_rule_create', summary='UC_ALR_01 — Crear regla de alerta',
+        tags=[_TAG_ALR],
+    ),
+)
 class AlertRuleListCreateView(APIView):
     """GET/POST /api/alerts/rules/ — UC_ALR_01"""
 
@@ -134,7 +145,20 @@ class AlertRuleListCreateView(APIView):
         return Response(_rule_to_dict(rule), status=201)
 
 
-@extend_schema(tags=[_TAG_ALR], operation_id='alerts_rule_detail')
+@extend_schema_view(
+    get=extend_schema(
+        operation_id='alerts_rule_retrieve', summary='UC_ALR_01 — Detalle de regla',
+        tags=[_TAG_ALR],
+    ),
+    patch=extend_schema(
+        operation_id='alerts_rule_update', summary='UC_ALR_01 — Modificar regla',
+        tags=[_TAG_ALR],
+    ),
+    delete=extend_schema(
+        operation_id='alerts_rule_destroy', summary='UC_ALR_01 — Retirar regla (baja lógica)',
+        tags=[_TAG_ALR],
+    ),
+)
 class AlertRuleDetailView(APIView):
     """GET/PATCH/DELETE /api/alerts/rules/{id}/ — UC_ALR_01"""
 
