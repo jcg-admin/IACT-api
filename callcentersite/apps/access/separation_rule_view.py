@@ -1,12 +1,22 @@
 """
-apps/access/sod_rule_view.py
+apps/access/separation_rule_view.py
 
-SoDRuleCRUDView — UC_ACC_05: Gestionar Reglas de Separación de Deberes.
+SeparationRuleCRUDView — UC_ACC_05: Gestionar Reglas de Separación de Deberes.
 
 Fuente: uc-acc-05/criterios-aceptacion.rst § 9
-Endpoints: /api/access/sod-rules/
+Endpoints: /api/access/sod-rules/  (STD_008 remediación FASE 3: → separation-rules/)
 Función RBAC: ACC-005 view_separation_rules / ACC-011 update_separation_rule
              ACC-012 disable_separation_rule
+
+Historial de renombres:
+  STD_008 FASE 1 (2026-05-13): sod_rule_view.py → separation_rule_view.py
+    SoDRuleCreateSerializer  → SeparationRuleCreateSerializer
+    SoDRulePatchSerializer   → SeparationRulePatchSerializer
+    SoDRuleRetireSerializer  → SeparationRuleRetireSerializer
+    SoDRuleListCreateView    → SeparationRuleListCreateView
+    SoDRuleDetailView        → SeparationRuleDetailView
+  STD_008 FASE 3 (pendiente): URL sod-rules/ → separation-rules/,
+    error codes SOD_RULE_* → SEPARATION_RULE_*, event types SOD_RULE_* → SEPARATION_RULE_*
 """
 from django.db import transaction
 from django.utils import timezone
@@ -19,7 +29,7 @@ from rest_framework.views import APIView
 from apps.access.permissions.function_permissions import HasFunction
 
 
-class SoDRuleCreateSerializer(serializers.Serializer):
+class SeparationRuleCreateSerializer(serializers.Serializer):
     code          = serializers.CharField(max_length=20)
     name          = serializers.CharField(max_length=200)
     description   = serializers.CharField(required=False, allow_blank=True, default='')
@@ -27,14 +37,14 @@ class SoDRuleCreateSerializer(serializers.Serializer):
     function_ids_b = serializers.ListField(child=serializers.IntegerField(), min_length=1)
 
 
-class SoDRulePatchSerializer(serializers.Serializer):
+class SeparationRulePatchSerializer(serializers.Serializer):
     name         = serializers.CharField(required=False)
     description  = serializers.CharField(required=False, allow_blank=True)
     function_ids_a = serializers.ListField(child=serializers.IntegerField(), required=False)
     function_ids_b = serializers.ListField(child=serializers.IntegerField(), required=False)
 
 
-class SoDRuleRetireSerializer(serializers.Serializer):
+class SeparationRuleRetireSerializer(serializers.Serializer):
     retire_reason = serializers.CharField(min_length=5)
 
 
@@ -51,8 +61,14 @@ class SoDRuleRetireSerializer(serializers.Serializer):
     ),
     tags=['Control de Acceso'],
 )
-class SoDRuleListCreateView(APIView):
-    """GET/POST /api/access/sod-rules/"""
+class SeparationRuleListCreateView(APIView):
+    """
+    GET/POST /api/access/sod-rules/
+
+    UC_ACC_05 — Listar y crear reglas de separación de funciones.
+    CNST-010: permission_classes gestionado via get_permissions() con HasFunction.
+    STD_008: URL sod-rules/ pendiente de actualizar en FASE 3.
+    """
 
     def get_permissions(self):
         self.required_function = 'ACC-005' if self.request.method == 'GET' else 'ACC-011'
@@ -78,7 +94,7 @@ class SoDRuleListCreateView(APIView):
         from apps.access.models import SeparationRule, Function, UserFunctionAssignment
         from apps.audit.services import AuditLogService
 
-        ser = SoDRuleCreateSerializer(data=request.data)
+        ser = SeparationRuleCreateSerializer(data=request.data)
         if not ser.is_valid():
             return Response({'error': 'VALIDATION_ERROR', 'fields': ser.errors}, status=400)
 
@@ -138,8 +154,14 @@ class SoDRuleListCreateView(APIView):
     ),
     tags=['Control de Acceso'],
 )
-class SoDRuleDetailView(APIView):
-    """GET/PATCH/DELETE /api/access/sod-rules/{rule_id}/"""
+class SeparationRuleDetailView(APIView):
+    """
+    GET/PATCH/DELETE /api/access/sod-rules/{rule_id}/
+
+    UC_ACC_05 — Detalle, modificación y retiro de regla de separación.
+    CNST-010: permission_classes gestionado via get_permissions() con HasFunction.
+    STD_008: URL sod-rules/ pendiente de actualizar en FASE 3.
+    """
 
     def get_permissions(self):
         if self.request.method == 'GET':
@@ -178,7 +200,7 @@ class SoDRuleDetailView(APIView):
         if 'function_ids_a' in request.data or 'function_ids_b' in request.data:
             return Response({'error': 'FUNCTION_IDS_IMMUTABLE'}, status=400)
 
-        ser = SoDRulePatchSerializer(data=request.data, partial=True)
+        ser = SeparationRulePatchSerializer(data=request.data, partial=True)
         if not ser.is_valid():
             return Response({'error': 'VALIDATION_ERROR', 'fields': ser.errors}, status=400)
 
@@ -204,7 +226,7 @@ class SoDRuleDetailView(APIView):
         if not rule:
             return Response({'error': 'SOD_RULE_NOT_FOUND'}, status=404)
 
-        ser = SoDRuleRetireSerializer(data=request.data)
+        ser = SeparationRuleRetireSerializer(data=request.data)
         if not ser.is_valid():
             return Response({'error': 'VALIDATION_ERROR', 'message': 'retire_reason requerido.'}, status=400)
 

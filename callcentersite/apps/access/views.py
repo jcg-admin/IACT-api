@@ -326,9 +326,37 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
     destroy=extend_schema(
         summary="UC_ACC_05 — Eliminar regla", tags=["Control de Acceso"]),
 )
+@extend_schema_view(
+    list=extend_schema(
+        summary='[DEPRECATED] Listar reglas de separación — usar /access/sod-rules/',
+        deprecated=True,
+        tags=['Control de Acceso'],
+    ),
+    create=extend_schema(
+        summary='[DEPRECATED] Crear regla de separación — usar /access/sod-rules/',
+        deprecated=True,
+        tags=['Control de Acceso'],
+    ),
+    retrieve=extend_schema(
+        summary='[DEPRECATED] Detalle de regla de separación — usar /access/sod-rules/{id}/',
+        deprecated=True,
+        tags=['Control de Acceso'],
+    ),
+    update=extend_schema(deprecated=True, tags=['Control de Acceso']),
+    partial_update=extend_schema(
+        summary='[DEPRECATED] Modificar regla de separación — usar /access/sod-rules/{id}/',
+        deprecated=True,
+        tags=['Control de Acceso'],
+    ),
+    destroy=extend_schema(deprecated=True, tags=['Control de Acceso']),
+)
 class SeparationRuleViewSet(viewsets.ModelViewSet):
     """
-    CRUD de reglas de Separacion de Deberes.
+    CRUD de reglas de Separación de Funciones — ViewSet LEGACY.
+
+    DEPRECATED: supersedido por SeparationRuleListCreateView /
+    SeparationRuleDetailView (FASE 2). Se mantiene para backward
+    compatibility del router. Se eliminará en FASE 3 de remediación.
 
     UC_ACC_05, UC_ADM_01.
     GET    /api/access/separation-rules/  — listar reglas
@@ -336,8 +364,15 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
     GET    /api/access/separation-rules/{id}/  — detalle
     PATCH  /api/access/separation-rules/{id}/ — modificar
     DELETE /api/access/separation-rules/{id}/ — baja logica
+
+    Hallazgo H-001 (STD_008 FASE 1, 2026-05-13):
+      queryset usaba select_related('function_a', 'function_b') inválidos.
+      check_conflict usaba function_a_id/function_b_id y status='active'.
+      Corregido para eliminar FieldError en runtime.
     """
-    queryset = SeparationRule.objects.select_related('function_a', 'function_b').all()
+    queryset = SeparationRule.objects.prefetch_related(
+        'functions_set_a', 'functions_set_b'
+    ).select_related('created_by').all()
     permission_classes = [IsAuthenticated, RequiresFunctionPermission]
     function_map = {
         'list': 'ACC-005',
@@ -354,21 +389,51 @@ class SeparationRuleViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(created_by=self.request.user)
 
+    @extend_schema(
+        summary='[DEPRECATED] Verificar conflicto entre dos funciones',
+        deprecated=True,
+        tags=['Control de Acceso'],
+        parameters=[
+            OpenApiParameter('function_a', int, description='ID de función A'),
+            OpenApiParameter('function_b', int, description='ID de función B'),
+        ],
+    )
     @action(detail=False, methods=['get'], url_path='check')
     def check_conflict(self, request):
         """
-        UC_ACC_05 — Verificar si dos funciones tienen conflicto SoD.
+        UC_ACC_05 — Verificar si dos funciones crean un conflicto de separación.
+
+        DEPRECATED: usar POST /api/access/separation-rules/validate (FASE 3).
+
         GET /api/access/separation-rules/check/?function_a=X&function_b=Y
+
+        Hallazgo H-001: corregido para usar functions_set_a/b y state=ENABLED.
         """
         from django.db.models import Q
-        fa = request.query_params.get('function_a')
-        fb = request.query_params.get('function_b')
+        from apps.access.models import Function
+
+        fa_id = request.query_params.get('function_a')
+        fb_id = request.query_params.get('function_b')
+
+        if not fa_id or not fb_id:
+            return Response(
+                {'error': 'MISSING_PARAMS', 'detail': 'function_a y function_b son requeridos.'},
+                status=400,
+            )
+
+        try:
+            fn_a = Function.objects.get(pk=fa_id)
+            fn_b = Function.objects.get(pk=fb_id)
+        except Function.DoesNotExist:
+            return Response({'error': 'FUNCTION_NOT_FOUND'}, status=404)
+
         conflicto = SeparationRule.objects.filter(
-            status='active'
+            state='ENABLED',
         ).filter(
-            Q(function_a_id=fa, function_b_id=fb) |
-            Q(function_a_id=fb, function_b_id=fa)
+            Q(functions_set_a=fn_a, functions_set_b=fn_b) |
+            Q(functions_set_a=fn_b, functions_set_b=fn_a)
         ).first()
+
         return Response({
             'tiene_conflicto': conflicto is not None,
             'regla': str(conflicto) if conflicto else None,

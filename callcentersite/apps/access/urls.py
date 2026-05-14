@@ -19,7 +19,7 @@ from rest_framework.routers import DefaultRouter
 
 # ── FASE 2 — importaciones canónicas (DEBEN preceder a views.py) ──
 from .access_group_view import AccessGroupListCreateView, AccessGroupDetailView
-from .sod_rule_view import SoDRuleListCreateView, SoDRuleDetailView
+from .separation_rule_view import SeparationRuleListCreateView, SeparationRuleDetailView
 from .function_assign_view import (
     FunctionAssignView      as FunctionAssignV2,
     FunctionRevokeView      as FunctionRevokeV2,
@@ -73,12 +73,12 @@ urlpatterns = [
     path('access-groups/<int:agr_id>/functions/',
          FunctionGroupFnView.as_view(), name='access-group-functions'),
 
-    # UC_ACC_05 — Reglas SoD
-    # B-03: usa prefijo 'sod-rules/' para evitar conflicto con router 'separation-rules/'
+    # UC_ACC_05 — Reglas de Separación de Funciones (STD_008 FASE 1: clases renombradas)
+    # NOTA STD_008 FASE 3 pendiente: path 'sod-rules/' → 'separation-rules/', names 'sod-rule-*' → 'separation-rule-*'
     path('sod-rules/',
-         SoDRuleListCreateView.as_view(), name='sod-rule-list-create'),
+         SeparationRuleListCreateView.as_view(), name='sod-rule-list-create'),
     path('sod-rules/<int:rule_id>/',
-         SoDRuleDetailView.as_view(), name='sod-rule-detail'),
+         SeparationRuleDetailView.as_view(), name='sod-rule-detail'),
 
     # UC_ACC_01 / UC_ACC_02 — Asignar / Revocar funciones (canónico)
     path('users/<int:user_id>/functions/assign/',

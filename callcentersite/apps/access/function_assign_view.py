@@ -27,18 +27,25 @@ from apps.access.permissions.function_permissions import HasFunction
 
 
 # ---------------------------------------------------------------------------
-# SoDValidator — BR-007: validar SoD antes de asignar
+# DutySeparationValidator — BR-007: validar separación de funciones antes de asignar.
+# STD_008 FASE 1 (2026-05-13): SoDValidator → DutySeparationValidator
 # ---------------------------------------------------------------------------
-class SoDValidator:
+class DutySeparationValidator:
     """
-    UC_ACC_01 CA-05/06: all-or-nothing ante violación SoD.
+    Valida reglas de separación de funciones (CNST-030) antes de asignar.
+
+    UC_ACC_01 CA-05/06: all-or-nothing ante violación de separación.
+    UC_ACC_04 CA-03: SoD check en asignación de grupo (AGR).
     Especificación BR-007.
     """
     @staticmethod
     def validate(user, new_function_codes: list[str]) -> list[dict]:
         """
+        Evalúa las reglas de separación activas (state=ENABLED) contra
+        el conjunto efectivo de funciones: actuales del usuario + nuevas a asignar.
+
         Retorna lista de violaciones: [{rule_id, rule_code, conflict_pair}].
-        Lista vacía = sin violaciones.
+        Lista vacía = sin violaciones — asignación puede proceder.
         """
         from apps.access.models import SeparationRule, UserFunctionAssignment
         violations = []
@@ -145,7 +152,7 @@ class FunctionAssignView(APIView):
         new_codes = [f.code for f in fns]
 
         # CA-05/06: validar SoD
-        violations = SoDValidator.validate(target, new_codes)
+        violations = DutySeparationValidator.validate(target, new_codes)
         if violations:
             AuditLogService.emit(
                 event_type='FUNCTIONS_ASSIGN_FAILED',
@@ -370,7 +377,7 @@ class AGRAssignView(APIView):
 
         # CA-03: SoD check — las funciones del AGR vs las del usuario
         agr_codes = list(agr.functions.values_list('code', flat=True))
-        violations = SoDValidator.validate(target, agr_codes)
+        violations = DutySeparationValidator.validate(target, agr_codes)
         if violations:
             return Response({'error': 'SOD_VIOLATION', 'violations': violations}, status=409)
 
