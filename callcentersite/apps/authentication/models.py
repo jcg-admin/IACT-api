@@ -739,3 +739,136 @@ class Session(models.Model):
     def is_active(self) -> bool:
         """True si state=ACTIVE y no ha expirado (CA-06 UC_PERM_07)."""
         return self.state == self.STATE_ACTIVE and self.expires_at > timezone.now()
+
+
+# ===========================================================================
+# BLACKLISTED TOKEN — FASE 2 (UC_AUTH_02)
+# ===========================================================================
+# Fuente: uc-auth-02/datos-involucrados.rst § 7.4.2
+# Fuente: uc-auth-02/flujo-principal.rst PASO 7
+#
+# Hallazgo F2-H-001: inexistente — logout sin blacklist deja tokens válidos
+# indefinidamente tras cerrar la sesión (brecha de seguridad).
+
+class BlacklistedToken(models.Model):
+    """
+    Token JWT invalidado tras logout o cierre de sesión administrativo.
+
+    Lookup O(1) via jti (JWT ID claim, UNIQUE).
+    El middleware de autenticación consulta esta tabla en cada request
+    autenticado para verificar que el token no está blacklisteado.
+
+    Purga: un cron job elimina entradas con expires_at < NOW()
+    (los tokens ya expirados son inofensivos aunque no estén en lista).
+
+    UC_AUTH_02: cierre voluntario de sesión.
+    UC_AUTH_05: cierre administrativo de sesión.
+    UC_USR_03:  cierre al bloquear usuario.
+    UC_USR_04:  cierre al eliminar usuario.
+    UC_AUTH_04: cierre de otras sesiones al cambiar contraseña.
+    """
+
+    TYPE_ACCESS  = 'ACCESS'
+    TYPE_REFRESH = 'REFRESH'
+    TYPE_CHOICES = [
+        (TYPE_ACCESS,  'Access token'),
+        (TYPE_REFRESH, 'Refresh token'),
+    ]
+
+    jti = models.CharField(
+        max_length=255,
+        unique=True,
+        verbose_name='JWT ID (jti)',
+        help_text='Claim jti del token. UNIQUE para lookup O(1).',
+    )
+    token_type = models.CharField(
+        max_length=10,
+        choices=TYPE_CHOICES,
+        verbose_name='Tipo',
+    )
+    expires_at = models.DateTimeField(
+        verbose_name='Expira en',
+        help_text='Fecha de expiración original. Usada por el cron de purga.',
+        db_index=True,
+    )
+    blacklisted_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Blacklisteado en',
+    )
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='blacklisted_tokens',
+        null=True,
+        blank=True,
+        verbose_name='Usuario',
+    )
+
+    class Meta:
+        db_table = 'authentication_blacklisted_token'
+        verbose_name = 'Token blacklisteado'
+        verbose_name_plural = 'Tokens blacklisteados'
+        ordering = ['-blacklisted_at']
+        indexes = [
+            models.Index(fields=['jti'],        name='idx_blacklist_jti'),
+            models.Index(fields=['expires_at'], name='idx_blacklist_expires'),
+        ]
+
+    def __str__(self) -> str:
+        return f'BlacklistedToken({self.token_type}, {self.jti[:16]}...)'
+
+    @classmethod
+    def is_blacklisted(cls, jti: str) -> bool:
+        """Verifica O(1) si el token está blacklisteado."""
+        return cls.objects.filter(jti=jti).exists()
+
+    @classmethod
+    def blacklist_jwt(cls, token_str: str, token_type: str, user=None) -> 'BlacklistedToken':
+        """
+        Parsea un JWT string y lo agrega al blacklist.
+
+        Args:
+            token_str:  JWT en formato string.
+            token_type: 'ACCESS' | 'REFRESH'
+            user:       Usuario propietario (opcional, para FK).
+
+        Returns:
+            BlacklistedToken creado.
+
+        Raises:
+            ValueError si el token no se puede parsear.
+        """
+        import jwt as pyjwt
+        from django.conf import settings
+        from datetime import datetime, timezone as tz
+
+        try:
+            payload = pyjwt.decode(
+                token_str,
+                settings.SECRET_KEY,
+                algorithms=['HS256'],
+                options={'verify_exp': False},  # puede estar expirado en logout
+            )
+        except Exception as exc:
+            raise ValueError(f'No se puede parsear el token: {exc}') from exc
+
+        jti = payload.get('jti')
+        if not jti:
+            raise ValueError('El token no tiene claim jti.')
+
+        exp = payload.get('exp')
+        if exp:
+            expires_at = datetime.fromtimestamp(exp, tz=tz.utc)
+        else:
+            from django.utils import timezone
+            expires_at = timezone.now()
+
+        obj, _ = cls.objects.get_or_create(
+            jti=jti,
+            defaults={
+                'token_type': token_type,
+                'expires_at': expires_at,
+                'user': user,
+            },
+        )
+        return obj

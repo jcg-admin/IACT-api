@@ -94,6 +94,16 @@ class Function(SoftDeleteModel):
         verbose_name=_('Estado'),
     )
 
+    # -- Campos de menú dinámico (F2-H-004 / UC_PERM_08) --
+    menu_visible  = models.BooleanField(default=False, verbose_name=_('Visible en menú'))
+    menu_domain   = models.CharField(max_length=50,  blank=True, default='', verbose_name=_('Dominio'))
+    menu_section  = models.CharField(max_length=50,  blank=True, default='', verbose_name=_('Sección'))
+    menu_action   = models.CharField(max_length=50,  blank=True, default='', verbose_name=_('Acción'))
+    menu_label_es = models.CharField(max_length=100, blank=True, default='', verbose_name=_('Label ES'))
+    menu_label_en = models.CharField(max_length=100, blank=True, default='', verbose_name=_('Label EN'))
+    menu_icon     = models.CharField(max_length=100, blank=True, default='', verbose_name=_('Icono'))
+    menu_order    = models.PositiveSmallIntegerField(default=0, verbose_name=_('Orden menú'))
+
     class Meta:
         verbose_name = _('Funcion')
         verbose_name_plural = _('Funciones')
@@ -161,6 +171,25 @@ class AccessGroup(SoftDeleteModel):
         blank=True,
         related_name='access_groups',
         verbose_name=_('Funciones'),
+    )
+
+    is_predefined = models.BooleanField(
+        default=False,
+        verbose_name=_('Predefinido'),
+        help_text='True para los 10 AGRs del catálogo v5.4.0. UC_PERM_05 CA-07: inmutables.',
+        db_index=True,
+    )
+    is_active = models.BooleanField(
+        default=True,
+        verbose_name=_('Activo'),
+        help_text='BR-009: desactivar en lugar de eliminar.',
+        db_index=True,
+    )
+    retired_at = models.DateTimeField(
+        null=True, blank=True, verbose_name=_('Retirado en'),
+    )
+    retire_reason = models.CharField(
+        max_length=500, blank=True, default='', verbose_name=_('Razón de retiro'),
     )
 
     class Meta:
@@ -577,8 +606,9 @@ class UserFunctionAssignment(models.Model):
     class Meta:
         verbose_name = _('Asignacion de funcion')
         verbose_name_plural = _('Asignaciones de funcion')
-        unique_together = [('user', 'function')]
         db_table = 'access_user_function_assignment'
+        # F2-H-006: unique_together (user, function) eliminado.
+        # CA-21 UC_ACC_01: nueva asignación tras revocación preserva historial REVOKED.
         indexes = [
             models.Index(fields=['user', 'state'], name='idx_ufassign_user_state'),
             models.Index(fields=['state', 'expires_at'], name='idx_ufassign_state_expires'),

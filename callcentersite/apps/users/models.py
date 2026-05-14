@@ -37,14 +37,59 @@ class User(AbstractUser):
     state = models.CharField(
         max_length=10,
         choices=[
-            ('ACTIVE',   'Activo'),
-            ('INACTIVE', 'Inactivo'),   # BR-009: baja lógica
-            ('BLOCKED',  'Bloqueado'),  # BR-015: 5 intentos fallidos
+            ('ACTIVE',     'Activo'),
+            ('INACTIVE',   'Inactivo'),    # BR-009: baja lógica
+            ('BLOCKED',    'Bloqueado'),   # BR-015: 5 intentos fallidos
+            ('ELIMINATED', 'Eliminado'),   # UC_USR_04: baja definitiva (BR-009)
         ],
         default='ACTIVE',
         verbose_name='Estado',
         db_index=True,
-        help_text='Estado canónico del usuario. Fuente: modelo-dominio-iact.rst § 4.1.',
+        help_text='Estado canónico del usuario. ELIMINATED = baja lógica definitiva.',
+    )
+    # -- Trazabilidad de ciclo de vida (F2-H-003) --
+    created_by_admin = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        related_name='users_created',
+        null=True,
+        blank=True,
+        verbose_name='Creado por admin',
+        help_text='UC_USR_01 PASO 10.',
+    )
+    last_modified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Última modificación',
+        help_text='UC_USR_03 PASO 8.',
+    )
+    last_modified_by_admin = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        related_name='users_modified',
+        null=True,
+        blank=True,
+        verbose_name='Modificado por admin',
+    )
+    state_changed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Estado cambiado en',
+        help_text='UC_USR_03: solo si state cambia.',
+    )
+    eliminated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Eliminado en',
+        help_text='UC_USR_04 CA-01.',
+    )
+    eliminated_by_admin = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        related_name='users_eliminated',
+        null=True,
+        blank=True,
+        verbose_name='Eliminado por admin',
     )
     first_login = models.BooleanField(
         default=True,
