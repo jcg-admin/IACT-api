@@ -215,47 +215,47 @@ class TestETLLogTail:
 
 
 # ---------------------------------------------------------------------------
-# T-005 — Endpoints menu-redirigidos y menu-centro
+# T-005 — Endpoints menu-redirected y menu-center
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db(databases=['default', 'ivr'])
-class TestIVRMenuRedirigidos:
-    """T-005: endpoint GET /api/reports/ivr/menu-redirigidos/"""
+class TestIVRMenuRedirected:
+    """T-005: endpoint GET /api/reports/ivr/menu-redirected/"""
 
     def test_quarter_valido_retorna_filas(self, pipeline_client, ivr_quarter_data):
-        url = reverse('reports:ivr-menu-redirigidos')
+        url = reverse('reports:ivr-menu-redirected')
         response = pipeline_client.get(url, {'quarter': 'Q01_25', 'segment': 'todas'})
         assert response.status_code == status.HTTP_200_OK
 
     def test_quarter_invalido_retorna_400(self, pipeline_client, ivr_quarter_data):
-        url = reverse('reports:ivr-menu-redirigidos')
+        url = reverse('reports:ivr-menu-redirected')
         response = pipeline_client.get(url, {'quarter': 'INVALIDO'})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_endpoint_distinto_de_ivr_menus(self, pipeline_client):
-        url_redir = reverse('reports:ivr-menu-redirigidos')
+        url_redir = reverse('reports:ivr-menu-redirected')
         url_menus = reverse('reports:ivr-menus')
         assert url_redir != url_menus
 
 
 @pytest.mark.django_db(databases=['default', 'ivr'])
-class TestIVRMenuCentro:
-    """T-005: endpoint GET /api/reports/ivr/menu-centro/"""
+class TestIVRMenuCenter:
+    """T-005: endpoint GET /api/reports/ivr/menu-center/"""
 
     def test_quarter_valido_retorna_filas(self, pipeline_client, ivr_quarter_data):
-        url = reverse('reports:ivr-menu-centro')
+        url = reverse('reports:ivr-menu-center')
         response = pipeline_client.get(url, {'quarter': 'Q01_25', 'segment': 'todas'})
         assert response.status_code == status.HTTP_200_OK
 
     def test_quarter_invalido_retorna_400(self, pipeline_client, ivr_quarter_data):
-        url = reverse('reports:ivr-menu-centro')
+        url = reverse('reports:ivr-menu-center')
         response = pipeline_client.get(url, {'quarter': 'INVALIDO'})
         assert response.status_code == status.HTTP_400_BAD_REQUEST
 
-    def test_semantica_distinta_de_menu_redirigidos(self, pipeline_client, ivr_quarter_data):
-        url_centro = reverse('reports:ivr-menu-centro')
-        url_redir = reverse('reports:ivr-menu-redirigidos')
-        assert url_centro != url_redir
+    def test_distinct_url_from_menu_redirected(self, pipeline_client, ivr_quarter_data):
+        url_center     = reverse('reports:ivr-menu-center')
+        url_redirected = reverse('reports:ivr-menu-redirected')
+        assert url_center != url_redirected
 
 
 # ---------------------------------------------------------------------------
@@ -399,8 +399,8 @@ class TestRendimientoEndpoints:
         ('clientes',         'reports:ivr-clients',             {},                    500),
         ('centros',          'reports:ivr-transfer-centers',    {'segment': 'todas'}, 3000),
         ('abandonadas',      'reports:ivr-abandoned',           {'segment': 'todas'}, 1000),
-        ('menu-redirigidos', 'reports:ivr-menu-redirigidos',    {'segment': 'todas'}, 3000),
-        ('menu-centro',      'reports:ivr-menu-centro',         {'segment': 'todas'}, 3000),
+        ('menu-redirected', 'reports:ivr-menu-redirected', {'segment': 'todas'}, 3000),
+        ('menu-center',     'reports:ivr-menu-center',     {'segment': 'todas'}, 3000),
         ('cmenu-error',      'reports:ivr-menu-errors',         {'segment': 'todas'}, 3000),
         ('centros-segmento', 'reports:ivr-centers-by-segment',  {},                   8000),
     ]
