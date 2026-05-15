@@ -269,23 +269,37 @@ class TestUserFunctionAssignment:
         assignment.refresh_from_db()
         assert assignment.is_active is False
 
-    @pytest.mark.xfail(
-        reason="F2-H-006: unique_together (user, function) eliminado de UserFunctionAssignment. "
-               "CA-21: permite nueva asignación tras revocación para preservar historial REVOKED. "
-               "La restricción de duplicados la aplica lógica de negocio, no la BD.",
-        strict=True,
-    )
     def test_unique_together_user_function(self):
-        """Un usuario no puede tener la misma función asignada dos veces (unique_together eliminado)."""
+        """
+        F2-H-006: unique_together eliminado de UserFunctionAssignment.
+        CA-21: la BD permite múltiples asignaciones (para preservar historial REVOKED).
+        La restricción de duplicados ACTIVOS la aplica la lógica de negocio en el service.
+
+        Este test verifica que la BD SÍ permite crear dos asignaciones para el mismo
+        (user, function) — ambas con estado diferente (ACTIVE / REVOKED).
+        El service previene dos asignaciones ACTIVE simultáneas (verificar en
+        test_function_assign_view.py).
+        """
         user  = UserTestData()
         admin = AdminUserTestData()
         fn    = FunctionTestData()
 
-        UserFunctionAssignment.objects.create(
-            user=user, function=fn, assigned_by=admin, reason='first')
-        with pytest.raises(IntegrityError):
-            UserFunctionAssignment.objects.create(
-                user=user, function=fn, assigned_by=admin, reason='second')
+        # La BD permite: primera asignación ACTIVE
+        a1 = UserFunctionAssignment.objects.create(
+            user=user, function=fn, assigned_by=admin, reason='first', state='ACTIVE')
+        a1.state = 'REVOKED'
+        a1.save(update_fields=['state'])
+
+        # La BD permite: segunda asignación ACTIVE (preserva historial REVOKED)
+        a2 = UserFunctionAssignment.objects.create(
+            user=user, function=fn, assigned_by=admin, reason='second', state='ACTIVE')
+
+        assert UserFunctionAssignment.objects.filter(
+            user=user, function=fn).count() == 2
+        assert UserFunctionAssignment.objects.filter(
+            user=user, function=fn, state='ACTIVE').count() == 1
+        assert UserFunctionAssignment.objects.filter(
+            user=user, function=fn, state='REVOKED').count() == 1
 
     def test_filter_active_assignments(self):
         """Consultar solo asignaciones activas de un usuario."""

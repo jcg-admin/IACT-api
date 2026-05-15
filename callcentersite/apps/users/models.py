@@ -155,16 +155,17 @@ class User(AbstractUser):
 
         function_codes: set[str] = set()
 
-        # 1. Direct UserPermission
+        # 1. Direct UserPermission — solo funciones activas
         function_codes.update(
-            UserPermission.objects.filter(user=self)
+            UserPermission.objects.filter(user=self, function__is_active=True)
             .values_list('function__code', flat=True)
         )
 
-        # 2. Via AccessGroup membership
+        # 2. Via AccessGroup membership — solo funciones activas
         function_codes.update(
             Function.objects.filter(
-                access_groups__memberships__user=self
+                access_groups__memberships__user=self,
+                is_active=True,
             ).values_list('code', flat=True)
         )
 
@@ -175,6 +176,7 @@ class User(AbstractUser):
                 user=self,
                 status=ExceptionalPermission.STATE_ACTIVE,
                 expires_at__gte=now,
+                function__is_active=True,
             ).values_list('function__code', flat=True)
         )
 
