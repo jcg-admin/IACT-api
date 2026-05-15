@@ -1,64 +1,50 @@
 """
-Tests unitarios para AuthViewSet.
+Tests unitarios para LoginView (API v2).
 
-Cubre el endpoint POST /api/v1/auth/login/ con todos sus flujos:
-- Login exitoso
-- Credenciales invalidas (401)
-- Cuenta bloqueada (403)
-- Usuario inactivo (403)
-- Campos vacios (400)
-- first_login deteccion
-- Registros de LoginAttempt y SessionLog
+POST /api/auth/login/ — estructura de respuesta real:
+  {tokens: {access, refresh, ...}, user: {user_id, username, first_login, ...},
+   session: {session_id, ...}, next_step, warning, request_id, timestamp}
+
+Errores: estructura {error: {error_code, message, details}}
+El sistema registra fallos en LoginLockout, no en LoginAttempt directamente.
 """
 
 import pytest
-
-@pytest.fixture(autouse=True)
-def disable_view_throttles(monkeypatch):
-    """Deshabilitar throttle en vistas con throttle_classes explícito."""
-    try:
-        from apps.authentication.login_view import LoginView
-        monkeypatch.setattr(LoginView, 'throttle_classes', [])
-    except Exception: pass
-    try:
-        from apps.authentication.logout_view import LogoutView
-        monkeypatch.setattr(LogoutView, 'throttle_classes', [])
-    except Exception: pass
-    try:
-        from apps.users.create_user_view import CreateUserView
-        monkeypatch.setattr(CreateUserView, 'throttle_classes', [])
-    except Exception: pass
-    try:
-        from apps.authentication.change_password_view import ChangePasswordView
-        monkeypatch.setattr(ChangePasswordView, 'throttle_classes', [])
-    except Exception: pass
-
 from rest_framework.test import APIClient
 from rest_framework import status
 from django.urls import reverse
 
-from tests.test_data import UserTestData, LoginAttemptTestData
-from apps.authentication.models import LoginAttempt, SessionLog, LoginLockout
+from tests.test_data import UserTestData
+from apps.authentication.models import SessionLog, LoginLockout
+
+
+@pytest.fixture(autouse=True)
+def disable_view_throttles(monkeypatch):
+    """Deshabilitar throttle en vistas con throttle_classes explícito."""
+    for cls_path in [
+        ('apps.authentication.login_view', 'LoginView'),
+        ('apps.authentication.logout_view', 'LogoutView'),
+        ('apps.authentication.change_password_view', 'ChangePasswordView'),
+    ]:
+        try:
+            import importlib
+            mod = importlib.import_module(cls_path[0])
+            monkeypatch.setattr(getattr(mod, cls_path[1]), 'throttle_classes', [])
+        except Exception:
+            pass
 
 
 @pytest.mark.unit
-@pytest.mark.django_db
+@pytest.mark.django_db(transaction=True)
 class TestAuthViewSetLogin:
-    """
-    Tests unitarios para AuthViewSet.login.
-
-    POST /api/v1/auth/login/  [AllowAny]
-    """
+    """Tests unitarios para POST /api/auth/login/."""
 
     def setup_method(self):
-        """Setup antes de cada test."""
         self.client = APIClient()
-        self.url = reverse('authentication:auth-login')
+        self.url = reverse('authentication:login')
         LoginLockout.objects.all().delete()
 
-    # -------------------------------------------------------------------------
-    # FLUJO PRINCIPAL — Login exitoso
-    # -------------------------------------------------------------------------
+    # --- Flujo principal: login exitoso ---
 
     def test_login_exitoso_retorna_200(self):
         """Login con credenciales correctas retorna 200."""
@@ -66,413 +52,231 @@ class TestAuthViewSetLogin:
         user.set_password('pass1234')
         user.save()
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': user.username, 'password': 'pass1234'}, format='json')
 
-        assert response.status_code == status.HTTP_200_OK
+        assert resp.status_code == status.HTTP_200_OK
 
-    def test_login_exitoso_retorna_success_true(self):
-        """Login exitoso incluye success: true en la respuesta."""
+    def test_login_exitoso_retorna_tokens(self):
+        """Login exitoso incluye tokens.access y tokens.refresh."""
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': user.username, 'password': 'pass1234'}, format='json')
 
-        assert response.status_code == 200
+        assert 'tokens' in resp.data
+        assert resp.data['tokens']['access'] is not None
+        assert resp.data['tokens']['refresh'] is not None
 
-    def test_login_exitoso_retorna_token(self):
-        """Login exitoso retorna token DRF en data."""
+    def test_login_exitoso_retorna_session_id(self):
+        """Login exitoso incluye session.session_id en la respuesta."""
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': user.username, 'password': 'pass1234'}, format='json')
 
-        assert 'tokens' in response.data
-        assert response.data['tokens']['access'] is not None
+        assert 'session' in resp.data
+        assert resp.data['session']['session_id'] is not None
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_login_exitoso_retorna_session_key(self):
-        """Login exitoso retorna session_key en data."""
-        user = UserTestData()
-        user.set_password('pass1234')
-        user.save()
-
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
-
-        assert response.data.get('session') is not None and 'session_id' in response.data.get('session', {}).get('session', {})
-
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
     def test_login_exitoso_retorna_datos_usuario(self):
-        """Login exitoso retorna id, username, email, first_name, last_name."""
+        """Login exitoso retorna user_id, username en user block."""
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': user.username, 'password': 'pass1234'}, format='json')
 
-        user_data = response.data['user']
-        assert user_data['id'] == user.id
+        user_data = resp.data['user']
+        assert user_data['user_id'] == user.id
         assert user_data['username'] == user.username
-        assert 'email' in user_data
-        assert 'first_name' in user_data
-        assert 'last_name' in user_data
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_login_exitoso_crea_login_attempt_exitoso(self):
-        """Login exitoso registra LoginAttempt con success=True."""
+    def test_login_exitoso_crea_session(self):
+        """Login exitoso crea Session activa para el usuario (modelo API v2)."""
+        from apps.authentication.models import Session
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        self.client.post(self.url,
+            {'username': user.username, 'password': 'pass1234'}, format='json')
 
-        assert LoginAttempt.objects.filter(
-            username=user.username,
-            success=True
-        ).exists()
+        assert Session.objects.filter(user=user, state='ACTIVE').exists()
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_login_exitoso_crea_session_log(self):
-        """Login exitoso crea SessionLog con is_active=True."""
+    def test_login_exitoso_retorna_first_login_true_primer_intento(self):
+        """Primer login retorna first_login: true."""
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': user.username, 'password': 'pass1234'}, format='json')
 
-        assert SessionLog.objects.filter(
-            user=user,
-            is_active=True
-        ).exists()
+        assert resp.data['user'].get('first_login') is True
 
-    def test_login_exitoso_retorna_first_login_true_en_primer_intento(self):
-        """Primer login exitoso retorna first_login: true."""
-        user = UserTestData()
-        user.set_password('pass1234')
-        user.save()
+    def test_login_exitoso_retorna_first_login_false_segundo_intento(self):
+        """Segundo login (first_login=False en user): retorna first_login false."""
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = User.objects.create_user(username=f'u2_{u}', password='pass1234')
+        user.first_login = False
+        user.save(update_fields=['first_login'])
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': f'u2_{u}', 'password': 'pass1234'}, format='json')
 
-        assert response.data['user'].get('first_login', False) is True
+        assert resp.data['user'].get('first_login') is False
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_login_exitoso_retorna_first_login_false_en_segundo_intento(self):
-        """Segundo login exitoso retorna first_login: false."""
-        user = UserTestData()
-        user.set_password('pass1234')
-        user.save()
-
-        # Primer login — registra un LoginAttempt exitoso
-        LoginAttemptTestData(user=user, username=user.username, success=True)
-
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
-
-        assert response.data['user'].get('first_login', False) is False
-
-    # -------------------------------------------------------------------------
-    # A1 — Credenciales invalidas
-    # -------------------------------------------------------------------------
+    # --- Credenciales inválidas ---
 
     def test_credenciales_invalidas_retorna_401(self):
-        """Password incorrecto retorna 401 Unauthorized."""
+        """Password incorrecto retorna 401."""
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'wrongpass'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': user.username, 'password': 'wrongpas'}, format='json')
 
-        assert response.status_code in (400, 401)
+        assert resp.status_code == status.HTTP_401_UNAUTHORIZED
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_credenciales_invalidas_retorna_error_code_invalid_credentials(self):
+    def test_credenciales_invalidas_retorna_error_code(self):
         """Password incorrecto retorna error_code INVALID_CREDENTIALS."""
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'wrongpass'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': user.username, 'password': 'wrongpas'}, format='json')
 
-        assert not bool(response.data.get('tokens'))
-        assert response.data.get('error', response.data)['error_code'] == 'INVALID_CREDENTIALS'
+        assert resp.data.get('error', {}).get('code') == 'INVALID_CREDENTIALS'
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_credenciales_invalidas_retorna_attempts_remaining(self):
-        """Primer intento fallido retorna attempts_remaining: 4."""
+    def test_credenciales_invalidas_registra_lockout(self):
+        """Intento fallido incrementa LoginLockout para el username."""
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'wrongpass'},
-            format='json'
-        )
+        self.client.post(self.url,
+            {'username': user.username, 'password': 'wrongpas'}, format='json')
 
-        assert response.data.get('error', response.data)['details']['attempts_remaining'] == 4
+        assert LoginLockout.objects.filter(username=user.username).exists()
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
     def test_usuario_inexistente_retorna_401(self):
-        """Username que no existe retorna 401 (mismo error que password incorrecto)."""
-        response = self.client.post(
-            self.url,
-            {'username': 'noexiste', 'password': 'anypass'},
-            format='json'
-        )
+        """Username que no existe retorna 401 (RN-007: mismo código que pass incorrecto)."""
+        resp = self.client.post(self.url,
+            {'username': 'noexiste_xyz_abc', 'password': 'anypass1'}, format='json')
 
-        assert response.status_code in (400, 401)
-        assert response.data.get('error', response.data)['error_code'] == 'INVALID_CREDENTIALS'
+        assert resp.status_code == status.HTTP_401_UNAUTHORIZED
+        assert resp.data.get('error', {}).get('code') == 'INVALID_CREDENTIALS'
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_credenciales_invalidas_registra_login_attempt_fallido(self):
-        """Intento fallido registra LoginAttempt con success=False."""
-        user = UserTestData()
-        user.set_password('pass1234')
-        user.save()
+    def test_usuario_inexistente_registra_lockout(self):
+        """Username inexistente crea LoginLockout para el username tentado."""
+        self.client.post(self.url,
+            {'username': 'noexiste_xyz_abc', 'password': 'anypass1'}, format='json')
 
-        self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'wrongpass'},
-            format='json'
-        )
+        assert LoginLockout.objects.filter(username='noexiste_xyz_abc').exists()
 
-        assert LoginAttempt.objects.filter(
-            username=user.username,
-            success=False
-        ).exists()
-
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_usuario_inexistente_registra_login_attempt_con_user_none(self):
-        """Username inexistente registra LoginAttempt con user=None."""
-        self.client.post(
-            self.url,
-            {'username': 'noexiste', 'password': 'anypass'},
-            format='json'
-        )
-
-        assert LoginAttempt.objects.filter(
-            username='noexiste',
-            user=None,
-            success=False
-        ).exists()
-
-    # -------------------------------------------------------------------------
-    # A2 — Cuenta bloqueada
-    # -------------------------------------------------------------------------
+    # --- Cuenta bloqueada ---
 
     def test_cuenta_bloqueada_retorna_403(self):
-        """Cuenta con lockout activo retorna 403 Forbidden."""
+        """Cuenta con lockout activo retorna 403."""
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        # Crear lockout activo directamente
-        from apps.authentication.services import LockoutService
-        lockout_service = LockoutService()
-        for _ in range(5):
-            lockout_service.record_failed_attempt(user.username)
+        lockout, _ = LoginLockout.objects.get_or_create(
+            username=user.username, defaults={'failed_attempts': 0})
+        lockout.failed_attempts = 5
+        from django.utils import timezone
+        from datetime import timedelta
+        lockout.locked_until = timezone.now() + timedelta(minutes=15)
+        lockout.save()
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': user.username, 'password': 'pass1234'}, format='json')
 
-        assert response.status_code in (200, 403)
+        assert resp.status_code == status.HTTP_403_FORBIDDEN
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
     def test_cuenta_bloqueada_retorna_error_code_account_locked(self):
         """Cuenta bloqueada retorna error_code ACCOUNT_LOCKED."""
         user = UserTestData()
         user.set_password('pass1234')
         user.save()
 
-        from apps.authentication.services import LockoutService
-        lockout_service = LockoutService()
-        for _ in range(5):
-            lockout_service.record_failed_attempt(user.username)
+        lockout, _ = LoginLockout.objects.get_or_create(
+            username=user.username, defaults={'failed_attempts': 0})
+        lockout.failed_attempts = 5
+        from django.utils import timezone
+        from datetime import timedelta
+        lockout.locked_until = timezone.now() + timedelta(minutes=15)
+        lockout.save()
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': user.username, 'password': 'pass1234'}, format='json')
 
-        assert response.data.get('error', response.data)['error_code'] == 'ACCOUNT_LOCKED'
+        assert resp.data.get('error', {}).get('code') in ('ACCOUNT_LOCKED', 'ACCOUNT_BLOCKED')
 
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_cuenta_bloqueada_retorna_locked_minutes(self):
-        """Cuenta ya bloqueada (intento posterior) retorna details.locked_minutes."""
-        user = UserTestData()
-        user.set_password('pass1234')
-        user.save()
+    # --- Usuario inactivo ---
 
-        # Bloquear cuenta
-        from apps.authentication.services import LockoutService
-        lockout_service = LockoutService()
-        for _ in range(5):
-            lockout_service.record_failed_attempt(user.username)
+    def test_usuario_inactivo_retorna_400_o_403(self):
+        """Usuario con state=INACTIVE retorna 400 o 403."""
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = User.objects.create_user(username=f'inact_{u}', password='pass1234')
+        user.state = 'INACTIVE'
+        user.save(update_fields=['state'])
 
-        # Intento posterior al lockout — debe incluir locked_minutes
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        resp = self.client.post(self.url,
+            {'username': f'inact_{u}', 'password': 'pass1234'}, format='json')
 
-        assert 'locked_minutes' in response.data.get('error', response.data)['details']
+        assert resp.status_code in (400, 403)
 
-    # -------------------------------------------------------------------------
-    # A3 — Usuario inactivo
-    # -------------------------------------------------------------------------
+    def test_usuario_inactivo_no_puede_hacer_login(self):
+        """Usuario con state=INACTIVE no puede obtener tokens (no retorna 200)."""
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        user = User.objects.create_user(username=f'inact2_{u}', password='pass1234')
+        user.state = 'INACTIVE'
+        user.save(update_fields=['state'])
 
-    def test_usuario_inactivo_retorna_403(self):
-        """Usuario con is_active=False retorna 403 Forbidden."""
-        user = UserTestData(is_active=False)
-        user.set_password('pass1234')
-        user.save()
+        resp = self.client.post(self.url,
+            {'username': f'inact2_{u}', 'password': 'pass1234'}, format='json')
 
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
+        # Cualquier respuesta de error es correcta — lo importante es que no hay tokens
+        assert resp.status_code != 200 or 'tokens' not in resp.data
 
-        assert response.status_code in (200, 403)
-
-    @pytest.mark.xfail(reason="LoginView API v2 cambió estructura de respuesta: session_key→session_id, error_code→error.code, details→user, id→user_id. Test legacy — actualización pendiente post-FASE6.", strict=False)
-    def test_usuario_inactivo_retorna_error_code_user_inactive(self):
-        """Usuario inactivo retorna error_code USER_INACTIVE."""
-        user = UserTestData(is_active=False)
-        user.set_password('pass1234')
-        user.save()
-
-        response = self.client.post(
-            self.url,
-            {'username': user.username, 'password': 'pass1234'},
-            format='json'
-        )
-
-        assert response.data.get('error', response.data)['error_code'] == 'USER_INACTIVE'
-
-    # -------------------------------------------------------------------------
-    # A4 — Campos vacios (validacion de serializer)
-    # -------------------------------------------------------------------------
+    # --- Validación de campos ---
 
     def test_username_vacio_retorna_400(self):
-        """Username vacio retorna 400 Bad Request."""
-        response = self.client.post(
-            self.url,
-            {'username': '', 'password': 'pass1234'},
-            format='json'
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        resp = self.client.post(self.url,
+            {'username': '', 'password': 'pass1234'}, format='json')
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_password_vacio_retorna_400(self):
-        """Password vacio retorna 400 Bad Request."""
-        response = self.client.post(
-            self.url,
-            {'username': 'john', 'password': ''},
-            format='json'
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        resp = self.client.post(self.url,
+            {'username': 'john', 'password': ''}, format='json')
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_username_ausente_retorna_400(self):
-        """Sin campo username retorna 400 Bad Request."""
-        response = self.client.post(
-            self.url,
-            {'password': 'pass1234'},
-            format='json'
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
+        resp = self.client.post(self.url, {'password': 'pass1234'}, format='json')
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_password_ausente_retorna_400(self):
-        """Sin campo password retorna 400 Bad Request."""
-        response = self.client.post(
-            self.url,
-            {'username': 'john'},
-            format='json'
-        )
-
-        assert response.status_code == status.HTTP_400_BAD_REQUEST
-
-    def test_campos_vacios_no_consultan_base_de_datos(self):
-        """Campos vacios no generan LoginAttempt (falla en serializer, antes de llegar al servicio)."""
-        count_antes = LoginAttempt.objects.count()
-
-        self.client.post(
-            self.url,
-            {'username': '', 'password': ''},
-            format='json'
-        )
-
-        assert LoginAttempt.objects.count() == count_antes
-
-    # -------------------------------------------------------------------------
-    # Seguridad — el endpoint es publico
-    # -------------------------------------------------------------------------
-
-    def test_endpoint_es_publico_sin_token(self):
-        """El endpoint no requiere autenticacion previa."""
-        # Sin credenciales en el cliente
-        response = self.client.post(
-            self.url,
-            {'username': 'cualquiera', 'password': 'cualquiera'},
-            format='json'
-        )
-
-        # No debe retornar 401 por falta de auth del cliente (puede ser 401 por credenciales)
-        assert response.status_code != status.HTTP_405_METHOD_NOT_ALLOWED
+        resp = self.client.post(self.url, {'username': 'john'}, format='json')
+        assert resp.status_code == status.HTTP_400_BAD_REQUEST
 
     def test_get_no_permitido(self):
-        """GET al endpoint de login retorna 405 Method Not Allowed."""
-        response = self.client.get(self.url)
-
-        assert response.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
+        """GET al endpoint de login retorna 405."""
+        resp = self.client.get(self.url)
+        assert resp.status_code == status.HTTP_405_METHOD_NOT_ALLOWED
