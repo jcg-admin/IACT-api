@@ -14,6 +14,25 @@ from apps.audit.models import AuditLog
 from tests.test_data.user_test_data import AdminUserTestData, UserTestData
 
 
+@pytest.fixture(autouse=True)
+def disable_throttle(monkeypatch):
+    """
+    Deshabilitar el throttle de ChangePasswordView en todos los tests del módulo.
+
+    Problema raíz (H-F6-GRP-GA-001):
+      - pytest.mark.django_db usa SAVEPOINT/ROLLBACK (no DROP+CREATE entre tests).
+      - SQLite reutiliza pk=1 para el primer usuario creado en cada test.
+      - LocMemCache persiste entre tests en el mismo proceso.
+      - Resultado: throttle_change_password_1 acumula conteos de todos los tests,
+        causando 429 intermitentes en tests que crean el primer usuario con pk=1.
+
+    La prueba del throttle real (CA-07) se hace via mock explícito,
+    no via acumulación de requests reales.
+    """
+    from apps.authentication import change_password_view
+    monkeypatch.setattr(change_password_view.ChangePasswordView, 'throttle_classes', [])
+
+
 def _url():
     return reverse('authentication:change-password')
 
@@ -209,9 +228,10 @@ class TestChangePasswordNoLeak:
 class TestChangePasswordBlocked:
 
     def test_ca16_blocked_puede_cambiar(self, db):
-        """CA-16: User BLOCKED → 200, state permanece BLOCKED."""
-        from django.core.cache import cache
-        cache.clear()   # Limpiar throttle cache acumulado de tests previos
+        """CA-16: User BLOCKED → 200, state permanece BLOCKED.
+
+        El throttle está deshabilitado en fase0_testing (ver H-F6-GRP-GA-001).
+        """
         client = APIClient()
         user = _make_user(state='BLOCKED')
         client.force_authenticate(user=user)
