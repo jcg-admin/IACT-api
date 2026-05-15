@@ -101,7 +101,6 @@ class TestUserSerializer:
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="API cambió — pendiente actualización post-FASE 6", strict=False)
 class TestUserCreateSerializer:
     """Tests para UserCreateSerializer."""
     
@@ -110,8 +109,8 @@ class TestUserCreateSerializer:
         data = {
             'username': 'newuser',
             'email': 'new@example.com',
-            'password': 'SecurePass123',
-            'password_confirm': 'SecurePass123',
+            'password': 'SecureP@ss1!',
+            'password_confirm': 'SecureP@ss1!',
             'first_name': 'New',
             'last_name': 'User'
         }
@@ -122,7 +121,7 @@ class TestUserCreateSerializer:
         user = serializer.save()
         
         assert user.username == 'newuser'
-        assert user.check_password('SecurePass123')
+        assert user.check_password('SecureP@ss1!')
     
     def test_create_user_password_mismatch(self):
         """Test: Error cuando passwords no coinciden."""
@@ -161,8 +160,8 @@ class TestChangePasswordSerializer:
         """Test: Cambio de password válido."""
         data = {
             'old_password': 'OldPass123',
-            'new_password': 'NewPass456',
-            'new_password_confirmation': 'NewPass456'
+            'new_password': 'T3stP@ssw0rd!',
+            'new_password_confirmation': 'T3stP@ssw0rd!'
         }
         
         serializer = ChangePasswordSerializer(data=data)

@@ -114,7 +114,7 @@ class UserViewSet(viewsets.ModelViewSet):
     - me: Authenticated
     """
     
-    queryset = User.objects.filter(is_deleted=False).order_by('-date_joined')
+    queryset = User.objects.filter(state='ACTIVE').order_by('-date_joined')
     permission_classes = [IsAuthenticated, RequiresFunctionPermission]
     
     # F1-H-006/F1-H-007: códigos canónicos v5.4.0 (antes namespaces Django legacy)

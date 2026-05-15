@@ -6,11 +6,11 @@ from rest_framework.test import APIClient
 from rest_framework_simplejwt.tokens import RefreshToken
 from apps.audit.models import AuditLog
 from apps.audit.middleware.session_security import SessionSecurityPolicy
+from apps.utils import get_client_ip
 
 
 @pytest.mark.unit
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="API cambió — pendiente actualización post-FASE 6", strict=False)
 class TestSessionSecurityMiddleware:
     """Tests middleware de seguridad de sesion."""
     
@@ -109,7 +109,7 @@ class TestSessionSecurityMiddleware:
         request = factory.get('/', HTTP_X_FORWARDED_FOR='10.0.0.1, 192.168.1.1')
         
         middleware = SessionSecurityPolicy(lambda r: None)
-        ip = middleware.get_client_ip(request)
+        ip = get_client_ip(request)
         
         # Debe tomar la primera IP
         assert ip == '10.0.0.1'
@@ -121,6 +121,6 @@ class TestSessionSecurityMiddleware:
         request.META['REMOTE_ADDR'] = '192.168.1.50'
         
         middleware = SessionSecurityPolicy(lambda r: None)
-        ip = middleware.get_client_ip(request)
+        ip = get_client_ip(request)
         
         assert ip == '192.168.1.50'

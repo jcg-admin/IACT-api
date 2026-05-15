@@ -37,11 +37,15 @@ def user_factory(db):
     def _make_user(username='testuser', **kwargs):
         if 'email' not in kwargs:
             kwargs['email'] = f'{username}@example.com'
-        
+
         password = kwargs.pop('password', 'testpass123')
-        
-        # Al ser CustomUser, acepta los campos extra definidos en tu models.py
-        user = User.objects.create_user(username=username, **kwargs)
+
+        # Filtrar campos que no existen en el modelo User actual
+        valid_fields = {f.name for f in User._meta.fields}
+        valid_fields.update({'state', 'first_login', 'phone'})
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in valid_fields}
+
+        user = User.objects.create_user(username=username, **filtered_kwargs)
         user.set_password(password)
         user.save()
         return user

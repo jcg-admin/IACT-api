@@ -20,7 +20,7 @@ _TAG = 'Alertas'
 
 
 class SubCreateSerializer(serializers.Serializer):
-    rule_id          = serializers.IntegerField()
+    rule_id          = serializers.UUIDField()
     severity_filter  = serializers.CharField(default='warning')
     muted            = serializers.BooleanField(default=False)
 
@@ -82,9 +82,9 @@ class AlertSubscriptionListView(APIView):
         AuditLogService.emit(
             event_type='ALERT_SUBSCRIPTION_CREATED',
             actor_user_id=request.user.pk,
-            payload={'subscription_id': sub.pk, 'rule_id': rule.pk},
+            payload={'subscription_id': str(sub.pk), 'rule_id': str(rule.pk)},
         )
-        return Response({'id': sub.pk, 'rule_id': sub.rule_id, 'state': sub.state}, status=201)
+        return Response({'id': str(sub.pk), 'rule_id': str(sub.rule_id), 'state': sub.state}, status=201)
 
 
 @extend_schema_view(
@@ -108,6 +108,6 @@ class AlertSubscriptionDetailView(APIView):
         AuditLogService.emit(
             event_type='ALERT_SUBSCRIPTION_CANCELLED',
             actor_user_id=request.user.pk,
-            payload={'subscription_id': sub.pk},
+            payload={'subscription_id': str(sub.pk)},
         )
         return Response({'id': sub.pk, 'state': sub.state})

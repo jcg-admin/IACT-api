@@ -23,7 +23,6 @@ from tests.test_data.access_test_data import (
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="API cambió — pendiente actualización post-FASE 6", strict=False)
 class TestSeparationRuleCodeConstraint:
     """N-001-A: el campo code tiene unique=True."""
 

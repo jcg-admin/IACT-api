@@ -193,7 +193,7 @@ class ExportService:
         from django.contrib.auth import get_user_model
         User = get_user_model()
         
-        queryset = User.objects.filter(is_deleted=False)
+        queryset = User.objects.filter(state='ACTIVE')
         
         # Aplicar filtros
         if 'is_active' in filters:
@@ -306,7 +306,7 @@ class ReportService:
         from django.contrib.auth import get_user_model
         User = get_user_model()
         
-        queryset = User.objects.filter(is_deleted=False)
+        queryset = User.objects.filter(state='ACTIVE')
         
         if 'is_active' in filters:
             queryset = queryset.filter(is_active=filters['is_active'])

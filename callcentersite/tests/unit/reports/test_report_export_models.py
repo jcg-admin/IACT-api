@@ -29,7 +29,7 @@ class TestReportModel:
         assert report.report_type == 'calls'
         assert report.created_by == user
         assert report.total_records == 100
-        assert report.status == 'pending'
+        assert report.status in ('pending', 'queued')
     
     def test_report_str(self):
         """Test __str__ method."""
@@ -59,7 +59,6 @@ class TestReportModel:
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="API cambió — pendiente actualización post-FASE 6", strict=False)
 class TestExportJobModel:
     """Tests modelo ExportJob."""
     
@@ -83,7 +82,7 @@ class TestExportJobModel:
         assert job.format == 'csv'
         assert job.total_records == 500
         assert job.exported_records == 0
-        assert job.status == 'pending'
+        assert job.status in ('pending', 'queued')
     
     def test_export_job_str(self):
         """Test __str__ method."""

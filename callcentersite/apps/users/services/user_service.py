@@ -175,7 +175,7 @@ class UserService(BaseService):
         """
         self.log_info(f"Buscando usuario ID: {user_id}")
         
-        user = User.objects.filter(id=user_id, is_deleted=False).first()
+        user = User.objects.filter(id=user_id, state='ACTIVE').first()
         if not user:
             raise UserNotFoundError(f"Usuario {user_id} no encontrado")
         
@@ -202,7 +202,7 @@ class UserService(BaseService):
         """
         self.log_info(f"Buscando usuario: {username}")
         
-        user = User.objects.filter(username=username, is_deleted=False).first()
+        user = User.objects.filter(username=username, state='ACTIVE').first()
         if not user:
             raise UserNotFoundError(f"Usuario '{username}' no encontrado")
         
@@ -231,7 +231,7 @@ class UserService(BaseService):
         """
         self.log_info("Listando usuarios")
         
-        queryset = User.objects.filter(is_deleted=False)
+        queryset = User.objects.filter(state='ACTIVE')
         
         if is_active is not None:
             queryset = queryset.filter(is_active=is_active)

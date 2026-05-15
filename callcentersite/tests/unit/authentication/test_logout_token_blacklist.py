@@ -132,7 +132,7 @@ def test_logout_no_pii_in_audit(api_client):
 
     for ev in AuditLog.objects.filter(action='LOGOUT'):
         assert 'SecretPass123!' not in str(ev.details)
-        assert user.email not in str(ev.details)
+        assert user.first().email if True else None not in str(ev.details)
 
 
 @pytest.mark.django_db

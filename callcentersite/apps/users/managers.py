@@ -157,7 +157,7 @@ class UserAccountQuery(BaseUserManager):
             active_users = User.objects.active()
             count = User.objects.active().count()
         """
-        return self.filter(is_deleted=False)
+        return self.filter(state='ACTIVE')
     
     def deleted(self):
         """
@@ -171,7 +171,7 @@ class UserAccountQuery(BaseUserManager):
         Example:
             deleted_users = User.objects.deleted()
         """
-        return self.filter(is_deleted=True)
+        return self.filter(state='ELIMINATED')
     
     def by_employee_id(self, employee_id: str):
         """
