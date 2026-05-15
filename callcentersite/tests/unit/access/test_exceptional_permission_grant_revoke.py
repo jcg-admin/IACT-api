@@ -18,7 +18,7 @@ from tests.test_data.user_test_data import AdminUserTestData, UserTestData
 
 
 @pytest.fixture
-def admin_client(db):
+def admin_client(db_with_catalog):
     client = APIClient()
     user = AdminUserTestData()
     client.force_authenticate(user=user)
@@ -34,15 +34,15 @@ def client_sin_perm(db):
 
 
 def _grant_url(user_id):
-    return reverse('access:exceptional-grant', args=[user_id])
+    return reverse('access:exceptional-grant', kwargs={'user_id': user_id})
 
 
 def _preview_url(user_id):
-    return reverse('access:exceptional-preview', args=[user_id])
+    return reverse('access:exceptional-preview', kwargs={'user_id': user_id})
 
 
 def _revoke_url(user_id, perm_id):
-    return reverse('access:exceptional-revoke', args=[user_id, perm_id])
+    return reverse('access:exceptional-revoke', kwargs={'user_id': user_id, 'permission_id': perm_id})
 
 
 def _valid_grant_payload(function_ids, hours_ahead=72):

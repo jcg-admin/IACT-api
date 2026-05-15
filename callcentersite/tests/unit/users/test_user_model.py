@@ -142,47 +142,70 @@ class TestUserModelRBAC:
 
 
 @pytest.mark.django_db
-@pytest.mark.skip(reason="Modelo User no tiene is_deleted/deleted_at — usa state=ELIMINATED (BR-009)")
+@pytest.mark.django_db
 class TestUserSoftDelete:
     """
-    Tests para el Mixin de borrado lógico.
-    Asegura que delete() no destruya el registro SQL.
+    Tests para el soft delete de User (BR-009).
+
+    User usa state=ELIMINATED + eliminated_at (no is_deleted/deleted_at).
+    El delete() lógico se aplica via EliminateUserView (UC_USR_04),
+    no via User.delete() directamente.
     """
 
-    def test_soft_delete_sets_is_deleted_true(self, basic_user):
-        """Verifica que el flag is_deleted cambie tras llamar a delete()."""
-        assert basic_user.state is False
-        basic_user.delete()
-        basic_user.refresh_from_db()
-        assert basic_user.state is True
+    def test_user_can_be_set_to_eliminated_state(self, user_factory):
+        """Verificar que state puede setearse a ELIMINATED sin eliminar el registro."""
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        from django.utils import timezone
+        user = user_factory(username=f'todel_{u}')
+        user_id = user.id
 
-    def test_soft_delete_sets_timestamp(self, basic_user):
-        """Verifica que se registre la fecha y hora del borrado."""
-        assert basic_user.deleted_at is None
-        basic_user.delete()
-        basic_user.refresh_from_db()
-        assert basic_user.deleted_at is not None
+        # Soft delete via state field
+        user.state = 'ELIMINATED'
+        user.eliminated_at = timezone.now()
+        user.save(update_fields=['state', 'eliminated_at'])
 
-    def test_soft_deleted_user_still_exists_in_db(self, basic_user):
-        """Verifica que el registro SQL persiste (Integridad de datos)."""
-        user_id = basic_user.id
-        basic_user.delete()
-        
-        # Consultamos directamente a la base de datos
-        exists = User.objects.filter(id=user_id).exists()
-        assert exists is True
+        # El registro persiste en BD
+        user.refresh_from_db()
+        assert user.state == 'ELIMINATED'
+        assert user.eliminated_at is not None
+        assert User.objects.filter(id=user_id).exists()
 
-    def test_restore_soft_deleted_user(self, deleted_user):
-        """Verifica que un usuario borrado puede ser restaurado manualmente."""
-        assert deleted_user.state is True
-        
-        deleted_user.state = False
-        deleted_user.deleted_at = None
-        deleted_user.save()
-        
-        deleted_user.refresh_from_db()
-        assert deleted_user.state is False
-        assert deleted_user.deleted_at is None
+    def test_eliminated_user_still_exists_in_db(self, user_factory):
+        """Registro SQL persiste tras soft delete (integridad de datos)."""
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        from django.utils import timezone
+        user = user_factory(username=f'todel2_{u}')
+        user_id = user.id
+
+        User.objects.filter(pk=user_id).update(
+            state='ELIMINATED',
+            eliminated_at=timezone.now(),
+        )
+
+        # Existe en la BD aun siendo ELIMINATED
+        assert User.objects.filter(id=user_id).exists()
+
+    def test_restore_eliminated_user(self, user_factory):
+        """Un usuario ELIMINATED puede reactivarse seteando state=ACTIVE."""
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        from django.utils import timezone
+        user = user_factory(username=f'todel3_{u}')
+
+        user.state = 'ELIMINATED'
+        user.eliminated_at = timezone.now()
+        user.save(update_fields=['state', 'eliminated_at'])
+
+        # Restaurar
+        user.state = 'ACTIVE'
+        user.eliminated_at = None
+        user.save(update_fields=['state', 'eliminated_at'])
+        user.refresh_from_db()
+
+        assert user.state == 'ACTIVE'
+        assert user.eliminated_at is None
 
 @pytest.mark.django_db
 class TestGetFullName:

@@ -161,7 +161,7 @@ class Command(BaseCommand):
 
             agr, created = AccessGroup.objects.update_or_create(
                 code=code,
-                defaults={'name': name, 'description': description},
+                defaults={'name': name, 'description': description, 'is_predefined': True},
             )
 
             # Asignar funciones

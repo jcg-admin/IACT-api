@@ -12,7 +12,7 @@ from tests.test_data.user_test_data import AdminUserTestData
 
 
 @pytest.fixture
-def admin_client(db):
+def admin_client(db_with_catalog):
     client = APIClient()
     user = AdminUserTestData()
     client.force_authenticate(user=user)

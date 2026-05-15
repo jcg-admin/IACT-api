@@ -12,7 +12,7 @@ from tests.test_data.user_test_data import AdminUserTestData
 
 
 @pytest.fixture
-def admin_client(db):
+def admin_client(db_with_catalog):
     client = APIClient()
     user = AdminUserTestData()
     client.force_authenticate(user=user)
@@ -23,24 +23,24 @@ def admin_client(db):
 class TestAGRAssignPerm:
 
     def test_ca_perm03_preview_no_persiste(self, admin_client):
-        """CA-PERM-03: GET preview → no crea Assignment, no emite AuditEvent."""
+        """
+        CA-PERM-03: GET /api/access/users/{id}/agr/ → preview de AGR asignados.
+        No crea UserAccessGroup, no emite AuditEvent.
+        """
+        import uuid
         from apps.access.models import AccessGroup, UserAccessGroup
         from django.contrib.auth import get_user_model
         User = get_user_model()
         client, admin = admin_client
-        agr = AccessGroup.objects.filter(is_active=True).first()
-        target = User.objects.create_user(username='target_prev', password='Pass123!')
-        if not agr:
-            pytest.skip('No hay AGRs en BD')
-        before = UserAccessGroup.objects.filter(user=target, access_group=agr).count()
-        # Si hay endpoint de preview, llamarlo — si no, skip
-        try:
-            url = reverse('access:agr-assign-preview', args=[target.pk, agr.pk])
-            response = client.get(url)
-            assert response.status_code == status.HTTP_200_OK
-            assert UserAccessGroup.objects.filter(user=target, access_group=agr).count() == before
-        except Exception:
-            pytest.skip('Endpoint preview no implementado aún')
+        u = uuid.uuid4().hex[:6]
+        target = User.objects.create_user(username=f'target_prev_{u}', password='Pass123!')
+        url = reverse('access:agr-assign', kwargs={'user_id': target.pk})
+        before = UserAccessGroup.objects.filter(user=target).count()
+        response = client.get(url)
+        assert response.status_code == status.HTTP_200_OK
+        # Preview: no crea asignaciones
+        assert UserAccessGroup.objects.filter(user=target).count() == before
+        assert 'assigned_agr' in response.data
 
 
 @pytest.mark.django_db

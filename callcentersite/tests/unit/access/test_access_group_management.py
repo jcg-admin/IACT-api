@@ -12,7 +12,7 @@ from tests.test_data.user_test_data import AdminUserTestData
 
 
 @pytest.fixture
-def admin_client(db):
+def admin_client(db_with_catalog):
     client = APIClient()
     user = AdminUserTestData()
     client.force_authenticate(user=user)
@@ -99,11 +99,18 @@ class TestAccessGroupComposition:
 
     def test_ca01_add_functions_200(self, admin_client):
         """CA-01: POST functions/ con add_function_ids → 200 + COMPOSITION_CHANGED."""
-        client, _ = admin_client
-        agr = self._get_custom_agr()
+        import uuid
+        from apps.access.models import AccessGroup
+        client, admin = admin_client
+        # Crear AGR custom para el test (is_predefined=False)
+        u = uuid.uuid4().hex[:6]
+        agr = AccessGroup.objects.create(
+            code=f'TST-{u}', name=f'Test Custom AGR {u}',
+            description='Test', is_predefined=False,
+        )
         fns = self._get_functions(2)
-        if not agr or not fns:
-            pytest.skip('No hay AGR custom o funciones en BD')
+        if not fns:
+            pytest.skip('No hay funciones en BD')
         response = client.post(
             reverse('access:access-group-functions', args=[agr.pk]),
             {'function_ids': [f.pk for f in fns], 'change_reason': 'Test de integración FASE 6'},
@@ -113,11 +120,17 @@ class TestAccessGroupComposition:
 
     def test_ca04_add_duplicado_idempotente(self, admin_client):
         """CA-04: add función ya en AGR → 200 sin error (idempotente)."""
-        client, _ = admin_client
-        agr = self._get_custom_agr()
+        import uuid
+        from apps.access.models import AccessGroup
+        client, admin = admin_client
+        u = uuid.uuid4().hex[:6]
+        agr = AccessGroup.objects.create(
+            code=f'TST-{u}', name=f'Test Custom AGR {u}',
+            description='Test', is_predefined=False,
+        )
         fns = self._get_functions(1)
-        if not agr or not fns:
-            pytest.skip('No hay AGR custom o funciones en BD')
+        if not fns:
+            pytest.skip('No hay funciones en BD')
         # Primera vez
         client.post(
             reverse('access:access-group-functions', args=[agr.pk]),

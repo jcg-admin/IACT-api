@@ -91,14 +91,17 @@ class TestSessionClose:
 
     def _make_session(self, user):
         from apps.authentication.models import Session
-        session_id = uuid.uuid4()
+        from django.utils import timezone
         try:
             s = Session.objects.create(
-                user=user, token=f'tok_{session_id}',
-                state='ACTIVE', ip_address='10.0.0.1',
+                user=user,
+                state='ACTIVE',
+                ip_address='10.0.0.1',
+                expires_at=timezone.now() + timezone.timedelta(hours=8),
+                scope='full',
             )
             return s
-        except Exception:
+        except Exception as exc:
             return None
 
     def test_ca04_cierre_individual_retorna_200(self, admin_client):

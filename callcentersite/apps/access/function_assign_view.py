@@ -345,9 +345,33 @@ class AGRAssignSerializer(serializers.Serializer):
 )
 class AGRAssignView(APIView):
     serializer_class = AccessGroupSerializer
-    """POST /api/access/users/{user_id}/groups/  — ACC-004 assign_function_groups."""
+    """
+    GET  /api/access/users/{user_id}/agr/          — preview: muestra AGR ya asignados.
+    POST /api/access/users/{user_id}/agr/          — ACC-004 assign_function_groups.
+    """
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-004'
+
+    def get(self, request, user_id):
+        """
+        CA-PERM-03: Preview — retorna los AGR ya asignados al usuario sin modificar BD.
+        No emite AuditEvent.
+        """
+        from apps.access.models import UserAccessGroup
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        try:
+            target = User.objects.get(pk=user_id)
+        except User.DoesNotExist:
+            return Response({'error': 'USER_NOT_FOUND'}, status=404)
+        assignments = UserAccessGroup.objects.filter(user=target).select_related('access_group')
+        return Response({
+            'user_id': user_id,
+            'assigned_agr': [
+                {'agr_id': a.access_group.pk, 'code': a.access_group.code}
+                for a in assignments
+            ],
+        })
 
     def post(self, request, user_id):
         from apps.access.models import AccessGroup, UserAccessGroup, Function

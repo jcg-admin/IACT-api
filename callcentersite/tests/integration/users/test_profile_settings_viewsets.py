@@ -63,19 +63,16 @@ class TestProfileViewSet:
         assert response.status_code == 400
 
     def test_upload_avatar_too_large(self, authenticated_client):
-        """Avatar muy grande puede retornar 400, 404 o skip."""
-        from PIL import Image
+        """Avatar > 2MB → 400 (validate_file_size rechaza el archivo)."""
         from django.core.files.uploadedfile import SimpleUploadedFile
-        image = Image.new('RGB', (3000, 3000), color='blue')
-        buf = BytesIO()
-        image.save(buf, format='JPEG', quality=95)
-        buf.seek(0)
-        if len(buf.getvalue()) <= 2 * 1024 * 1024:
-            pytest.skip("Imagen de prueba no excede 2MB")
-        avatar = SimpleUploadedFile('large.jpg', buf.read(), content_type='image/jpeg')
-        response = authenticated_client.post('/api/users/profile/avatar/',
-                                             {'avatar': avatar}, format='multipart')
-        assert response.status_code in (400, 404)
+        # Generar 3MB de bytes con cabecera JPEG válida para que el validador
+        # de extensión no rechace primero, pero el de tamaño sí rechace.
+        header = bytes([0xFF, 0xD8, 0xFF, 0xE0])  # SOI + APP0 — JPEG válido
+        payload = header + b'X' * (3 * 1024 * 1024)
+        large = SimpleUploadedFile('large.jpg', payload, content_type='image/jpeg')
+        response = authenticated_client.post(
+            '/api/users/profile/avatar/', {'avatar': large}, format='multipart')
+        assert response.status_code == 400
 
     def test_remove_avatar_success(self, authenticated_client):
         """DELETE /api/users/profile/avatar/ elimina el avatar."""
