@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 from django.conf import settings
-from django.db import connections, OperationalError
+from django.db import connections, OperationalError, ProgrammingError
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework.permissions import IsAuthenticated
@@ -102,7 +102,7 @@ class ETLLogTailView(APIView):
     required_function  = 'LOG-004'  # view_etl_logs — Prerequisito FASE 3: era LOG-001
 
     def get(self, request):
-        from django.db import connections, OperationalError
+        from django.db import connections, OperationalError, ProgrammingError
         try:
             lines = min(200, max(1, int(request.query_params.get('lines', 50))))
         except (ValueError, TypeError):
@@ -119,7 +119,7 @@ class ETLLogTailView(APIView):
                 """, [lines])
                 cols = [c[0] for c in cursor.description]
                 entries = [dict(zip(cols, row)) for row in cursor.fetchall()]
-        except OperationalError as e:
+        except (OperationalError, ProgrammingError) as e:
             return Response({'error': str(e)}, status=503)
 
         return Response({
@@ -290,7 +290,7 @@ class InfraLogView(APIView):
                     entries = [dict(zip(cols, row)) for row in cursor.fetchall()]
                 else:
                     entries = []
-        except OperationalError as e:
+        except (OperationalError, ProgrammingError) as e:
             return Response(
                 {'error': 'SERVICE_UNAVAILABLE', 'detail': str(e)},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -323,7 +323,7 @@ class LogHealthView(APIView):
 
     def get(self, request):
         from apps.logs.log_status_service import SystemStatusAggregator
-        from django.db import connections, OperationalError
+        from django.db import connections, OperationalError, ProgrammingError
 
         services = []
 
@@ -379,7 +379,7 @@ class LogMetricsView(APIView):
     required_function  = 'LOG-007'  # view_technical_metrics
 
     def get(self, request):
-        from django.db import connections, OperationalError
+        from django.db import connections, OperationalError, ProgrammingError
         metrics = {}
 
         try:
@@ -394,7 +394,7 @@ class LogMetricsView(APIView):
 
                 cursor.execute("SELECT COUNT(*) FROM job_execution_log")
                 total = cursor.fetchone()[0]
-        except OperationalError:
+        except (OperationalError, ProgrammingError) as e:
             pipeline_stats = {}
             total = None
 
@@ -523,7 +523,7 @@ class PipelineEventLogView(APIView):
                 cursor.execute(sql, params)
                 cols   = [c[0] for c in cursor.description]
                 events = [dict(zip(cols, row)) for row in cursor.fetchall()]
-        except OperationalError as e:
+        except (OperationalError, ProgrammingError) as e:
             return Response(
                 {'error': 'Could not connect to MariaDB.', 'detail': str(e)},
                 status=status.HTTP_503_SERVICE_UNAVAILABLE,

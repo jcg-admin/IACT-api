@@ -47,7 +47,7 @@ DATABASES['ivr'] = {
     'TEST': {
         'NAME':      'test_ivr_legacy',
         'MIGRATE':   False,
-        'CREATE_DB': True,
+        'CREATE_DB': False,   # H-INFRA-001: usar BD real — no crear test_ivr_legacy
     },
     'AUTOCOMMIT':         True,
     'ATOMIC_REQUESTS':    False,

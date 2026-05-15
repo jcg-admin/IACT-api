@@ -29,7 +29,7 @@ del pipeline (job_execution_log).
 from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
-from django.db import connections, OperationalError
+from django.db import connections, OperationalError, ProgrammingError
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from apps.access.permissions.function_permissions import HasFunction
@@ -209,7 +209,7 @@ def etl_status(request):
     """
     try:
         runs = _get_pipeline_runs(limit=20)
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response(
             {'error': 'Could not connect to the IVR database.',
              'detail': str(e)},
@@ -326,7 +326,7 @@ def etl_errors(request):
             cursor.execute(sql, params)
             cols = [c[0] for c in cursor.description]
             errors = [dict(zip(cols, row)) for row in cursor.fetchall()]
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response({'error': 'Could not connect to MariaDB.', 'detail': str(e)},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
@@ -396,7 +396,7 @@ def etl_data_availability(request):
         with connections['ivr'].cursor() as cursor:
             cursor.execute(sql, [quarter])
             row = cursor.fetchone()
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response({'error': 'Could not connect to MariaDB.', 'detail': str(e)},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
@@ -549,7 +549,7 @@ def etl_retry(request):
             cursor.callproc('sp_etl_historico', [year, quarter_num])
             result = cursor.fetchone()
 
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response(
             {'error': 'SERVICE_UNAVAILABLE', 'detail': str(e)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
@@ -622,7 +622,7 @@ def ivr_health(request):
             cursor.execute("SELECT VERSION()")
             version = cursor.fetchone()[0]
         return Response({'status': 'ok', 'mariadb_version': version})
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response(
             {'status': 'error', 'detail': str(e)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE
@@ -702,7 +702,7 @@ def etl_performance(request):
             cursor.execute(sql, params)
             cols  = [c[0] for c in cursor.description]
             steps = [dict(zip(cols, row)) for row in cursor.fetchall()]
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response(
             {'error': 'Could not connect to MariaDB.', 'detail': str(e)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE,
