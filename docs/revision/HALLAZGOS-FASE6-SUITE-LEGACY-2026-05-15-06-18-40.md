@@ -1,6 +1,6 @@
 # Hallazgos — FASE 6: Corrección masiva suite legacy tests/unit/
 
-**Artefacto:** HALLAZGOS-FASE6-SUITE-LEGACY-20260515
+**Artefacto:** HALLAZGOS-FASE6-SUITE-LEGACY-2026-05-15-06-18-40
 **Versión:** 1.0.0
 **Fecha:** 2026-05-15
 **Commits:** `532a73d` (batch 1), `3bd1c8a` (batch 2) en `develop`
