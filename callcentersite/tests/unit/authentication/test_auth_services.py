@@ -257,7 +257,7 @@ class TestAuthenticationService:
                 password='pass1234'
             )
 
-    @pytest.mark.xfail(reason="django.authenticate() retorna None para usuarios inactivos — el servicio lanza InvalidCredentialsError en lugar de UserInactiveError", strict=False)
+    @pytest.mark.xfail(reason="django.authenticate() retorna None para is_active=False: el servicio lanza InvalidCredentialsError en lugar de AccountInactiveError. Requiere detectar state=INACTIVE, no is_active.", strict=True)
     def test_login_user_inactive_lanza_user_inactive_error(self):
         """Test login con usuario inactivo lanza UserInactiveError."""
         from apps.authentication.exceptions import UserInactiveError
@@ -344,7 +344,7 @@ class TestRecoveryService:
         """Test que hereda de BaseService."""
         assert hasattr(self.service, 'log_info')
     
-    @pytest.mark.xfail(reason="SecurityQuestion.delete() usa soft-delete pero .active() puede incluir is_deleted=True", strict=False)
+    @pytest.mark.xfail(reason="SecurityQuestion.active() filtra is_deleted=True correctamente, pero la factory no setea is_deleted. Verificar si el fallo es por factory o por el queryset.", strict=True)
     def test_get_available_questions_uses_active(self):
         """Test get_available_questions() usa active()."""
         # Crear 10 preguntas

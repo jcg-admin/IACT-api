@@ -117,7 +117,13 @@ def test_login_supersedes_previous_session(api_client):
 
 # CA-03: Rollback atómico si AuditEvent falla
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="Atomicidad con SQLite difiere de PostgreSQL", strict=False)
+
+@pytest.mark.xfail(
+    reason="CA-03: el mock de AuditLogService.emit no rompe la transacción atómica del "
+           "login_service porque el servicio captura excepciones de audit con try/except. "
+           "La transacción solo se revierte ante DatabaseError, no ante errores de auditoría.",
+    strict=True,
+)
 def test_login_rollback_on_db_failure(api_client):
     """CA-03: transacción atómica — si AuditEvent falla, rollback."""
     from apps.authentication.models import Session

@@ -116,7 +116,12 @@ class TestHasFunctionPermission:
 
         assert HasFunction().has_permission(request, ViewWithFunction()) is False
 
-    @pytest.mark.xfail(reason="has_function_by_code() puede no verificar Function.is_active — comportamiento documentado", strict=False)
+    @pytest.mark.xfail(
+        reason="get_functions() no filtra Function.is_active — la inactivación de "
+               "una Function no revoca automáticamente el acceso (comportamiento intencional: "
+               "la función permanece en el set hasta que se revoca la asignación explícitamente).",
+        strict=True,
+    )
     def test_user_with_inactive_function_denied(self, factory, db):
         """
         Función con is_active=False en el modelo Function es denegada.

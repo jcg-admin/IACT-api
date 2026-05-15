@@ -56,7 +56,7 @@ class TestUserModelFields:
         # delete_avatar() requiere implementación en el modelo — se verifica existencia
         assert True  # avatar presente
 
-    @pytest.mark.xfail(reason="Storage local no disponible en suite de tests", strict=False)
+    @pytest.mark.xfail(reason="ImageField storage local no disponible en entorno CI — requiere configuración de MEDIA_ROOT con backend de almacenamiento real", strict=True)
     def test_delete_avatar_physical_cleanup(self, user_factory, valid_avatar_file):
         """Verifica que el archivo físico sea eliminado del storage."""
         user = user_factory(username='fileuser', avatar=valid_avatar_file)
@@ -105,20 +105,20 @@ class TestUserModelRBAC:
         user = user_with_function.user
         assert user.has_function('delete_everything_perm') is False
 
-    @pytest.mark.xfail(reason="User.has_any_function/has_all_functions no implementados", strict=False)
+    @pytest.mark.xfail(reason="User.has_any_function() y User.has_all_functions() no están implementados en el modelo (FASE pendiente)", strict=True)
     def test_has_any_function_logic_match(self, user_with_function):
         """Prueba lógica de OR (Intersection). Éxito si tiene al menos una."""
         user = user_with_function.user
         # Tiene 'create_user', pedimos 'create_user' o 'other'
         assert user.has_any_function(['create_user', 'other_perm']) is True
 
-    @pytest.mark.xfail(reason="User.has_any_function/has_all_functions no implementados", strict=False)
+    @pytest.mark.xfail(reason="User.has_any_function() y User.has_all_functions() no están implementados en el modelo (FASE pendiente)", strict=True)
     def test_has_any_function_logic_no_match(self, user_with_function):
         """Prueba lógica de OR. Falla si ninguna coincide."""
         user = user_with_function.user
         assert user.has_any_function(['invalid_1', 'invalid_2']) is False
 
-    @pytest.mark.xfail(reason="User.has_any_function/has_all_functions no implementados", strict=False)
+    @pytest.mark.xfail(reason="User.has_any_function() y User.has_all_functions() no están implementados en el modelo (FASE pendiente)", strict=True)
     def test_has_all_functions_complete_match(self, user_with_function, func_factory, sample_admin):
         """Prueba lógica de AND (Subset). Éxito si tiene TODAS las pedidas."""
         user = user_with_function.user
@@ -130,7 +130,7 @@ class TestUserModelRBAC:
         
         assert user.has_all_functions(['create_user', 'view_reports']) is True
 
-    @pytest.mark.xfail(reason="User.has_any_function/has_all_functions no implementados", strict=False)
+    @pytest.mark.xfail(reason="User.has_any_function() y User.has_all_functions() no están implementados en el modelo (FASE pendiente)", strict=True)
     def test_has_all_functions_partial_match_fails(self, user_with_function):
         """Prueba lógica de AND. Falla si le falta aunque sea una de la lista."""
         user = user_with_function.user

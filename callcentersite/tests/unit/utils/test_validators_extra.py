@@ -61,7 +61,7 @@ class TestPhoneValidator:
         validate_phone_number('2223456789')  # válido si no lanza
         validate_phone_number('3223456789')  # válido si no lanza
 
-    @pytest.mark.xfail(reason="validate_phone_number retorna None en lugar de False para inválidos", strict=False)
+    @pytest.mark.xfail(reason="validate_phone_number levanta ValidationError para inválidos (Django-style), no retorna False", strict=True)
     def test_invalid_phone(self):
         """Teléfonos inválidos."""
         assert not validate_phone_number('12345')
@@ -108,7 +108,7 @@ class TestService800Validator:
         validate_service_800('800 123 4567')  # válido si no lanza
         validate_service_800('8001234567')  # válido si no lanza
 
-    @pytest.mark.xfail(reason="validate_service_800 retorna None en lugar de False para inválidos", strict=False)
+    @pytest.mark.xfail(reason="validate_service_800 levanta ValidationError para inválidos (Django-style), no retorna False", strict=True)
     def test_invalid_service_800(self):
         """Servicios 800 inválidos."""
         assert not validate_service_800('900123456')  # No empieza con 800
@@ -117,7 +117,7 @@ class TestService800Validator:
 
 
 @pytest.mark.unit
-@pytest.mark.xfail(reason="API cambió — pendiente actualización post-FASE 6", strict=False)
+@pytest.mark.xfail(reason="validate_codigo_center levanta ValidationError para inválidos (Django-style), no retorna False", strict=True)
 class TestCodigoCenterValidator:
     """Tests para validate_codigo_center."""
     

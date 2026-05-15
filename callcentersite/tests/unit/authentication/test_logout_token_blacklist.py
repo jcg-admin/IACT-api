@@ -118,7 +118,7 @@ def test_logout_atomicity_session_stays_active_on_audit_failure(api_client):
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="Formato response del logout cambió en FASE 2", strict=False)
+
 def test_logout_no_pii_in_audit(api_client):
     """CA-14: CNST-026 — no PII en AuditEvent."""
     from apps.users.models import User
@@ -132,7 +132,8 @@ def test_logout_no_pii_in_audit(api_client):
 
     for ev in AuditLog.objects.filter(action='LOGOUT'):
         assert 'SecretPass123!' not in str(ev.details)
-        assert user.first().email if True else None not in str(ev.details)
+        if user.email:
+            assert user.email not in str(ev.details)
 
 
 @pytest.mark.django_db

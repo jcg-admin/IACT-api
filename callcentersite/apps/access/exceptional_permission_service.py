@@ -265,11 +265,11 @@ class GrantPreviewService:
 
         # Evaluar SoD conflicts (stub — count reglas que apliquen)
         sod_count = SeparationRule.objects.filter(
-            function_a__in=functions,
-            status='ACTIVE',
+            functions_set_a__in=functions,
+            state='ACTIVE',
         ).count() + SeparationRule.objects.filter(
-            function_b__in=functions,
-            status='ACTIVE',
+            functions_set_b__in=functions,
+            state='ACTIVE',
         ).count()
 
         warnings = []

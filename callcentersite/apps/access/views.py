@@ -291,8 +291,8 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
             conflict = SeparationRule.objects.filter(
                 status="active"
             ).filter(
-                dj_models.Q(function_a=fn, function_b__code__in=existing_codes) |
-                dj_models.Q(function_b=fn, function_a__code__in=existing_codes)
+                dj_models.Q(functions_set_a=fn, functions_set_b__code__in=existing_codes) |
+                dj_models.Q(functions_set_b=fn, functions_set_a__code__in=existing_codes)
             ).first()
 
             if conflict:
@@ -300,11 +300,7 @@ class UserAccessGroupViewSet(viewsets.ModelViewSet):
                     "error":         "Separation rule conflict detected.",
                     "conflict_rule": conflict.name,
                     "function":      fn.code,
-                    "conflicts_with": (
-                        conflict.function_b.code
-                        if conflict.function_a == fn
-                        else conflict.function_a.code
-                    ),
+                    "conflicts_with": "see separation rule",
                 })
 
         serializer.save(granted_by=self.request.user)
@@ -614,10 +610,10 @@ class FunctionAssignView(APIView):
         # Verificar conflicto de SeparationRule
         existing_codes = user.get_functions() if hasattr(user, 'get_functions') else []
         conflict = SeparationRule.objects.filter(
-            status='active'
+            state='ACTIVE'
         ).filter(
-            dj_models.Q(function_a=function, function_b__code__in=existing_codes) |
-            dj_models.Q(function_b=function, function_a__code__in=existing_codes)
+            dj_models.Q(functions_set_a=function, functions_set_b__code__in=existing_codes) |
+            dj_models.Q(functions_set_b=function, functions_set_a__code__in=existing_codes)
         ).first()
 
         if conflict:
@@ -958,10 +954,10 @@ class UserFunctionAssignView(APIView):
         # Verify SeparationRule
         existing_codes = target_user.get_functions()
         conflict = SeparationRule.objects.filter(
-            status="active"
+            state="ACTIVE"
         ).filter(
-            dj_models.Q(function_a=function, function_b__code__in=existing_codes) |
-            dj_models.Q(function_b=function, function_a__code__in=existing_codes)
+            dj_models.Q(functions_set_a=function, functions_set_b__code__in=existing_codes) |
+            dj_models.Q(functions_set_b=function, functions_set_a__code__in=existing_codes)
         ).first()
 
         if conflict:
@@ -976,8 +972,6 @@ class UserFunctionAssignView(APIView):
             return Response({
                 "error":         "Separation rule conflict detected.",
                 "conflict_rule": conflict.name,
-                "function_a":    conflict.function_a.code,
-                "function_b":    conflict.function_b.code,
             }, status=409)
 
         # Create UserPermission

@@ -229,6 +229,7 @@ class ExportWorker:
     @staticmethod
     def _fail(job, error_code: str) -> None:
         from apps.audit.services import AuditLogService
+        from apps.reports.models import ExportJob
         job.status = ExportJob.STATUS_FAILED
         job.error_code = error_code
         job.completed_at = timezone.now()

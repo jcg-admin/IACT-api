@@ -163,7 +163,7 @@ class TestPipelineRetryEndpoint:
         payload_str = str(audit.details)
         assert 'reason' in payload_str or 'quarter' in payload_str
 
-    @pytest.mark.xfail(reason="Con BD real, el mock de connections no intercepta correctamente. Comportamiento documentado.", strict=False)
+    @pytest.mark.xfail(reason="django.db.connections mock no intercepta la conexión cuando ya está inicializada por la BD de test. Requiere mocking en el punto de uso, no a nivel de connections.", strict=True)
     def test_it05_doble_retry_mismo_run_id_retorna_409(self, client_pip004):
         """CA-05: idempotencia — doble retry del mismo run_id → 409"""
         client, _ = client_pip004

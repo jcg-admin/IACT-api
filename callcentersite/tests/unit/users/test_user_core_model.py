@@ -6,7 +6,7 @@ User = get_user_model()
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="UserProfile model no existe en versión actual", strict=False)
+@pytest.mark.xfail(reason="UserProfile model fue eliminado — la funcionalidad de perfil está integrada en User directamente", strict=True)
 def test_create_user_with_profile_and_settings():
     """Test: Crear usuario con profile y settings auto-creados."""
     # Crear usuario

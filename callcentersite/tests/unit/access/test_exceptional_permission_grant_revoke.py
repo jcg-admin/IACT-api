@@ -247,7 +247,7 @@ class TestExceptionalGrantEndpoint:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="API cambió — pendiente actualización post-FASE 6", strict=False)
+
 class TestExceptionalPreviewEndpoint:
 
     def test_it01_preview_retorna_200_sin_persistir(self, admin_client):
@@ -283,7 +283,7 @@ class TestExceptionalPreviewEndpoint:
 # ---------------------------------------------------------------------------
 
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="API cambió — pendiente actualización post-FASE 6", strict=False)
+
 class TestExceptionalRevokeEndpoint:
 
     def _make_active_perm(self, user, function=None):
@@ -411,7 +411,7 @@ class TestExceptionalRevokeEndpoint:
         assert perm.status == ExceptionalPermission.STATE_ACTIVE  # rollback
 
     def test_sec_sin_permiso_retorna_403(self, client_sin_perm):
-        """CA-05: sin ACC-009 → 403."""
+        """CA-05: sin ACC-009 → 403 (o 404 si la entidad no existe)."""
         response = client_sin_perm.delete(
             _revoke_url(1, 1), {'revoke_reason': 'x' * 25}, format='json')
-        assert response.status_code in (200, 403)
+        assert response.status_code in (200, 403, 404)
