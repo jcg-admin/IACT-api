@@ -24,6 +24,7 @@ from .analytics_views   import (
     CampaignReportView, TransferReportView, IVRMenuReportView,
     UniqueClientsReportView,
 )
+from .sla_views import SLADistribucionView
 from .ivr_views import (
     RedirectedMenusView, CenterMenuView,
     ClientsReportView,
@@ -87,4 +88,5 @@ urlpatterns = [
     path('ivr/menu-center/',      CenterMenuView.as_view(),      name='ivr-menu-center'),
     path('ivr/menus/',              IvrMenusView.as_view(),              name='ivr-menus'),
     path('ivr/abandonment-summary/', AbandonmentSummaryView.as_view(),  name='ivr-abandonment-summary'),
+    path('ivr/sla/',              SLADistribucionView.as_view(),    name='ivr-sla'),
 ]

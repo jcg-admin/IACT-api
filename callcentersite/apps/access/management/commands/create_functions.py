@@ -69,6 +69,7 @@ FUNCTIONS_V540 = [
     ('PIP-002', 'view_pipeline_errors',   'MOD_PIP', 'Ver errores de ejecución del ETL (PIP-002)'),
     ('PIP-003', 'view_data_availability', 'MOD_PIP', 'Ver disponibilidad de datos por período (PIP-003)'),
     ('PIP-004', 'request_pipeline_retry', 'MOD_PIP', 'Solicitar reintento de pipeline fallido (PIP-004)'),
+    ('PIP-005', 'manage_pipeline_config', 'MOD_PIP', 'Habilitar/deshabilitar jobs del pipeline ETL (UC_PIP_05).'),
 
     # =========================================
     # MOD_RPT — 11 funciones

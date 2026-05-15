@@ -6,10 +6,23 @@ UC_OPR/UC_SUP/UC_CLI están fuera del scope analítico de IACT-api.
 """
 from django.urls import path
 from .views import etl_status, etl_errors, etl_data_availability, etl_retry, ivr_health, etl_performance
+from .job_config_views import JobConfigListView, JobConfigDetailView
+from .pipeline_event_views import PipelineEventListView
+from .monitor_weekday_views import MonitorWeekdayView
 
 app_name = 'pipeline'
 
 urlpatterns = [
+    # UC_PIP_05 — configuracion de jobs ETL
+    # UC_PIP_02 extension — eventos recientes del pipeline
+    # Monitor de dias de semana — vw_monitor_dias_semana
+    path('monitor/weekdays/', MonitorWeekdayView.as_view(), name='monitor-weekdays'),
+
+    path('events/', PipelineEventListView.as_view(), name='events-list'),
+
+    path('job-config/',              JobConfigListView.as_view(),   name='job-config-list'),
+    path('job-config/<str:job_name>/', JobConfigDetailView.as_view(), name='job-config-detail'),
+
     # UC_PIP_01 — estado del ETL
     path('status/',            etl_status,            name='etl-status'),
 
