@@ -16,6 +16,7 @@ Principios aplicados:
 
 from rest_framework import serializers
 from apps.access.models import Module
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 
 class ModuleSerializer(serializers.ModelSerializer):
@@ -47,6 +48,7 @@ class ModuleSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
     
+    @extend_schema_field(OpenApiTypes.INT)
     def get_children_count(self, obj):
         """Contar hijos directos activos."""
         return obj.children.filter(is_active=True).count()

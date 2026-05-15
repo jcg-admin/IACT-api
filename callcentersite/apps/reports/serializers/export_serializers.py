@@ -17,6 +17,7 @@ Principios aplicados:
 
 from rest_framework import serializers
 from apps.reports.models import ExportJob
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 
 class ExportJobSerializer(serializers.ModelSerializer):
@@ -79,6 +80,7 @@ class ExportJobSerializer(serializers.ModelSerializer):
             'error_message',
         ]
     
+    @extend_schema_field(OpenApiTypes.FLOAT)
     def get_progress(self, obj):
         """
         Obtener porcentaje de progreso.

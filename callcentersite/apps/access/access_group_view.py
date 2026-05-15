@@ -22,6 +22,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.access.permissions.function_permissions import HasFunction
+from apps.access.serializers.access_group_serializers import AccessGroupSerializer
+
 
 
 # ---------------------------------------------------------------------------
@@ -75,6 +77,7 @@ class AccessGroupRetireSerializer(serializers.Serializer):
                       tags=['Control de Acceso']),
 )
 class AccessGroupListCreateView(APIView):
+    serializer_class = AccessGroupSerializer
     """GET/POST /api/access/groups/"""
 
     def get_permissions(self):
@@ -177,6 +180,7 @@ class AccessGroupListCreateView(APIView):
     tags=['Control de Acceso'],
 )
 class AccessGroupDetailView(APIView):
+    serializer_class = AccessGroupSerializer
     """PATCH/DELETE /api/access/groups/{agr_id}/"""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-006'

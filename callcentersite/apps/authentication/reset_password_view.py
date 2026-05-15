@@ -17,6 +17,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.access.permissions.function_permissions import HasFunction
+from apps.authentication.serializers.recovery import ResetPasswordSerializer
+
 
 
 def _gen_temp_password() -> str:
@@ -49,6 +51,7 @@ def _gen_temp_password() -> str:
     tags=['Autenticacion'],
 )
 class ResetPasswordView(APIView):
+    serializer_class = ResetPasswordSerializer
     """POST /api/users/{user_id}/reset-password/ — AUTH-003."""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'AUTH-003'

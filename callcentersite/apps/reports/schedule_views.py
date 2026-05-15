@@ -14,6 +14,8 @@ from apps.access.permissions.function_permissions import HasFunction
 from apps.audit.services import AuditLogService
 from apps.reports.models import ScheduledReport
 from apps.reports.schedule_service import ScheduleValidator, ScheduleService
+from apps.reports.serializers.scheduled_report_serializers import ScheduledReportSerializer
+
 
 _TAG = 'Reportes Programados'
 
@@ -64,6 +66,7 @@ def _sched_to_dict(s: ScheduledReport) -> dict:
     ),
 )
 class ScheduledReportListCreateView(APIView):
+    serializer_class = ScheduledReportSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-009'
 
@@ -142,6 +145,7 @@ class ScheduledReportListCreateView(APIView):
     ),
 )
 class ScheduledReportDetailView(APIView):
+    serializer_class = ScheduledReportSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-009'
 

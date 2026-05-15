@@ -20,6 +20,7 @@ Principios aplicados:
 
 from rest_framework import serializers
 from apps.audit.models import AuditLog
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
@@ -56,6 +57,7 @@ class AuditLogSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields  # Todos readonly (inmutable)
     
+    @extend_schema_field(OpenApiTypes.STR)
     def get_user_full_name(self, obj):
         """
         Obtener nombre completo del usuario.

@@ -11,6 +11,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
 from apps.users.validators import validate_password_strength
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 User = get_user_model()
 
@@ -69,6 +70,7 @@ class UserSerializer(serializers.ModelSerializer):
             'last_login',
         ]
     
+    @extend_schema_field(OpenApiTypes.STR)
     def get_avatar_url(self, obj):
         """
         Obtiene URL del avatar.

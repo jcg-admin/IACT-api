@@ -21,6 +21,7 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 
 from apps.alerts.models import InternalMessage, MessageRecipient
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 User = get_user_model()
 
@@ -83,6 +84,7 @@ class InternalMessageListSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
     
+    @extend_schema_field(OpenApiTypes.INT)
     def get_recipient_count(self, obj):
         """Contar destinatarios del mensaje."""
         return obj.recipients.count()

@@ -15,6 +15,8 @@ from apps.access.permissions.function_permissions import HasFunction
 from apps.alerts.alert_subscription_service import SubscriptionValidator
 from apps.alerts.models import AlertSubscription, AlertRule
 from apps.audit.services import AuditLogService
+from apps.alerts.serializers.alert_serializers import AlertSubscriptionSerializer
+
 
 _TAG = 'Alertas'
 
@@ -42,6 +44,7 @@ class SubCreateSerializer(serializers.Serializer):
     ),
 )
 class AlertSubscriptionListView(APIView):
+    serializer_class = AlertSubscriptionSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ALR-008'
 
@@ -95,6 +98,7 @@ class AlertSubscriptionListView(APIView):
     ),
 )
 class AlertSubscriptionDetailView(APIView):
+    serializer_class = AlertSubscriptionSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ALR-009'
 

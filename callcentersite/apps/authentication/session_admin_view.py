@@ -23,6 +23,8 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.access.permissions.function_permissions import HasFunction
+from apps.authentication.serializers.session import SessionLogSerializer
+
 
 
 # ---------------------------------------------------------------------------
@@ -152,6 +154,7 @@ class SessionListView(APIView):
     tags=['Autenticacion'],
 )
 class SessionCloseView(APIView):
+    serializer_class = SessionLogSerializer
     """POST /api/auth/sessions/{session_id}/close/ — AUTH-002."""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'AUTH-002'
@@ -237,6 +240,7 @@ class SessionCloseView(APIView):
     tags=['Autenticacion'],
 )
 class SessionCloseAllView(APIView):
+    serializer_class = SessionLogSerializer
     """POST /api/auth/sessions/close-all/ — AUTH-002."""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'AUTH-002'
@@ -315,6 +319,7 @@ class SessionCloseAllView(APIView):
     tags=['Autenticacion'],
 )
 class SessionOwnView(APIView):
+    serializer_class = SessionLogSerializer
     """GET /api/auth/sessions/own/ — AUTH-001."""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'AUTH-001'

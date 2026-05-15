@@ -17,6 +17,10 @@ from apps.access.permissions.function_permissions import HasFunction
 from apps.audit.audit_query_service import AuditFilterValidator, AuditResponseSanitizer
 from apps.audit.models import AuditLog
 from apps.audit.services import AuditLogService
+from apps.audit.serializers.auditlog_serializers import AuditLogSerializer
+from apps.audit.serializers.auditlog_serializers import AuditLogSummarySerializer
+
+
 
 _TAG = 'Auditoría'
 
@@ -100,12 +104,13 @@ class AuditEventListView(APIView):
         return Response({'results': results, 'cursor': None, 'estimated_total': len(results)})
 
 
-@extend_schema(
-    operation_id='audit_event_detail',
+@extend_schema_view(
+    get=extend_schema(operation_id='audit_event_detail',
     summary='UC_PERM_10 — Detalle de evento de auditoría',
-    tags=[_TAG],
+    tags=[_TAG],)
 )
 class AuditEventDetailView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'AUD-001'
 
@@ -129,12 +134,13 @@ class AuditEventDetailView(APIView):
         })
 
 
-@extend_schema(
-    operation_id='audit_event_aggregate',
+@extend_schema_view(
+    get=extend_schema(operation_id='audit_event_aggregate',
     summary='UC_PERM_10 — Agregaciones de auditoría',
-    tags=[_TAG],
+    tags=[_TAG],)
 )
 class AuditEventAggregateView(APIView):
+    serializer_class = AuditLogSummarySerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'AUD-001'
 
@@ -165,6 +171,7 @@ class AuditEventAggregateView(APIView):
     )
 )
 class AuditEventExportView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'AUD-003'
 
@@ -213,6 +220,7 @@ class AuditEventExportView(APIView):
     )
 )
 class AuditSearchView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'AUD-002'
 
@@ -281,6 +289,7 @@ class AuditSearchView(APIView):
     ),
 )
 class AuditLegacyExportView(AuditEventExportView):
+    serializer_class = AuditLogSerializer
     """
     Ruta alias /api/audit/export/ — misma lógica que AuditEventExportView.
     Existe únicamente para resolver DT-SPECTACULAR-001.

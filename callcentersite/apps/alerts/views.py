@@ -196,6 +196,8 @@ class AlertSubscriptionViewSet(viewsets.ModelViewSet):
     http_method_names = ['get', 'post', 'delete']  # No PUT/PATCH
     
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):
+            return self.queryset.none() if self.queryset is not None else AlertSubscriptionViewSet.queryset.model.objects.none()
         """Solo suscripciones del usuario actual"""
         return AlertSubscription.objects.filter(
             user=self.request.user,

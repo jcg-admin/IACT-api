@@ -13,6 +13,8 @@ from rest_framework.views import APIView
 
 from apps.access.permissions.function_permissions import HasFunction
 from apps.audit.services import AuditLogService
+from apps.reports.serializers.export_serializers import ExportJobSerializer
+
 
 _TAG = 'Logs'
 
@@ -46,6 +48,7 @@ class LogExportSerializer(serializers.Serializer):
     ),
 )
 class LogExportView(APIView):
+    serializer_class = ExportJobSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'LOG-002'
 

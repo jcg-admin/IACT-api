@@ -16,6 +16,10 @@ from apps.audit.access_audit_service import AccessScopeFilter, AccessFilterValid
 from apps.audit.audit_query_service import AuditResponseSanitizer
 from apps.audit.models import AuditLog
 from apps.audit.services import AuditLogService
+from apps.audit.serializers.auditlog_serializers import AuditLogSerializer
+from apps.audit.serializers.auditlog_serializers import AuditLogSummarySerializer
+
+
 
 _TAG = 'Auditoría de Acceso'
 
@@ -77,12 +81,15 @@ class AccessAuditListView(APIView):
         return Response({'count': len(results), 'results': results})
 
 
-@extend_schema(
+@extend_schema_view(
+    get=extend_schema(
     operation_id='access_audit_detail',
     summary='UC_ACC_09 — Detalle de evento de acceso (solo scope ACCESS)',
     tags=[_TAG],
 )
+)
 class AccessAuditDetailView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-013'
 
@@ -110,12 +117,15 @@ class AccessAuditDetailView(APIView):
         })
 
 
-@extend_schema(
+@extend_schema_view(
+    get=extend_schema(
     operation_id='access_audit_aggregations',
     summary='UC_ACC_09 — Agregaciones de eventos de acceso (sin audit)',
     tags=[_TAG],
 )
+)
 class AccessAuditAggregationsView(APIView):
+    serializer_class = AuditLogSummarySerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-013'
 

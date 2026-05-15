@@ -21,6 +21,8 @@ from apps.access.exceptional_permission_service import (
     ExceptionalPermissionService, GrantPreviewService,
 )
 from apps.access.models import ExceptionalPermission
+from apps.access.serializers.exceptional_permission_serializers import ExceptionalPermissionSerializer
+
 
 _TAG = 'Permisos Excepcionales'
 
@@ -70,6 +72,7 @@ class ExceptionalRevokeSerializer(serializers.Serializer):
     ),
 )
 class ExceptionalGrantView(APIView):
+    serializer_class = ExceptionalPermissionSerializer
     """POST/GET /api/users/{user_id}/exceptional-permissions/ — UC_ACC_08"""
 
     permission_classes = [IsAuthenticated, HasFunction]
@@ -131,12 +134,14 @@ class ExceptionalGrantView(APIView):
         return Response(result, status=201)
 
 
-@extend_schema(
+@extend_schema_view(
+    get=extend_schema(
     operation_id='access_exceptional_preview',
     summary='UC_PERM_03 — Preview de permiso excepcional (sin persistir)',
     description='CA-PERM-01: ZERO ExceptionalPermission, ZERO AuditEvent.',
     responses={200: OpenApiResponse(description='Preview con SoD impact + duration')},
     tags=[_TAG],
+)
 )
 class ExceptionalPreviewView(APIView):
     """GET /api/users/{user_id}/exceptional-permissions/preview/ — UC_PERM_03"""
@@ -180,7 +185,8 @@ class ExceptionalPreviewView(APIView):
 # UC_PERM_04 — Revocar
 # ---------------------------------------------------------------------------
 
-@extend_schema(
+@extend_schema_view(
+    delete=extend_schema(
     operation_id='access_exceptional_revoke',
     summary='UC_PERM_04 — Revocar permiso excepcional',
     description=(
@@ -196,6 +202,7 @@ class ExceptionalPreviewView(APIView):
         500: OpenApiResponse(description='MAILBOX_FAILED — rollback total'),
     },
     tags=[_TAG],
+)
 )
 class ExceptionalRevokeView(APIView):
     """DELETE /api/users/{user_id}/exceptional-permissions/{permission_id}/ — UC_PERM_04"""

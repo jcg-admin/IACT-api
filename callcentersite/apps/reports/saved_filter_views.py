@@ -14,6 +14,10 @@ from apps.audit.services import AuditLogService
 from apps.reports.models import SavedFilter, SavedView
 from apps.reports.saved_filter_service import SavedFilterValidator
 from apps.reports.saved_view_service import SavedViewValidator
+from apps.reports.serializers.report_serializers import ReportSerializer
+from apps.reports.serializers.scheduled_report_serializers import SavedViewSerializer
+
+
 
 _TAG = 'Reportes'
 
@@ -63,6 +67,7 @@ def _filter_to_dict(sf: SavedFilter) -> dict:
     ),
 )
 class SavedFilterListView(APIView):
+    serializer_class = ReportSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -125,6 +130,7 @@ class SavedFilterListView(APIView):
     ),
 )
 class SavedFilterDetailView(APIView):
+    serializer_class = ReportSerializer
     permission_classes = [IsAuthenticated]
 
     def _get(self, pk, user):
@@ -210,6 +216,7 @@ def _view_to_dict(sv: SavedView) -> dict:
     ),
 )
 class SavedViewListView(APIView):
+    serializer_class = SavedViewSerializer
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
@@ -256,6 +263,7 @@ class SavedViewListView(APIView):
     delete=extend_schema(operation_id='saved_view_delete', summary='UC_RPT_10 — Eliminar vista', tags=[_TAG]),
 )
 class SavedViewDetailView(APIView):
+    serializer_class = SavedViewSerializer
     permission_classes = [IsAuthenticated]
 
     def _get(self, pk, user):
@@ -299,12 +307,13 @@ class SavedViewDetailView(APIView):
         return Response({'deleted': sv_id})
 
 
-@extend_schema(
-    operation_id='saved_view_clone',
+@extend_schema_view(
+    post=extend_schema(operation_id='saved_view_clone',
     summary='UC_RPT_10 CA-07 — Clonar vista guardada',
-    tags=[_TAG],
+    tags=[_TAG],)
 )
 class SavedViewCloneView(APIView):
+    serializer_class = SavedViewSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):

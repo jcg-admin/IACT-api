@@ -8,6 +8,7 @@ SOLID SRP: Cada serializer una responsabilidad.
 from rest_framework import serializers
 
 from apps.authentication.models import SessionLog
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 
 class SessionLogSerializer(serializers.ModelSerializer):
@@ -47,6 +48,7 @@ class SessionLogSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = fields
     
+    @extend_schema_field(OpenApiTypes.INT)
     def get_duration_seconds(self, obj):
         """
         Calcula duración en segundos.

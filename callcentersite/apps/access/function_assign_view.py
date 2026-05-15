@@ -24,6 +24,14 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.access.permissions.function_permissions import HasFunction
+from apps.access.serializers.function_serializers import FunctionSerializer
+from apps.access.serializers.access_group_serializers import AccessGroupSerializer
+from apps.access.serializers.function_assignment_serializers import AssignFunctionSerializer
+from apps.access.serializers.function_assignment_serializers import RevokeFunctionSerializer
+
+
+
+
 
 
 # ---------------------------------------------------------------------------
@@ -92,6 +100,7 @@ class FunctionAssignSerializer(serializers.Serializer):
     tags=['Control de Acceso'],
 )
 class FunctionAssignView(APIView):
+    serializer_class = AssignFunctionSerializer
     """POST /api/access/users/{user_id}/functions/  — ACC-001 assign_functions."""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-001'
@@ -237,6 +246,7 @@ class FunctionRevokeSerializer(serializers.Serializer):
     tags=['Control de Acceso'],
 )
 class FunctionRevokeView(APIView):
+    serializer_class = RevokeFunctionSerializer
     """DELETE /api/access/users/{user_id}/functions/  — ACC-002 revoke_functions."""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-002'
@@ -334,6 +344,7 @@ class AGRAssignSerializer(serializers.Serializer):
     tags=['Control de Acceso'],
 )
 class AGRAssignView(APIView):
+    serializer_class = AccessGroupSerializer
     """POST /api/access/users/{user_id}/groups/  — ACC-004 assign_function_groups."""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-004'
@@ -429,6 +440,7 @@ class AGRAssignView(APIView):
     tags=['Control de Acceso'],
 )
 class AGRRevokeView(APIView):
+    serializer_class = AccessGroupSerializer
     """DELETE /api/access/users/{user_id}/groups/{agr_id}/  — ACC-010 revoke_function_group."""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-010'
@@ -498,6 +510,7 @@ class GroupFnSerializer(serializers.Serializer):
     tags=['Control de Acceso'],
 )
 class FunctionGroupFnView(APIView):
+    serializer_class = FunctionSerializer
     """POST /api/access/groups/{agr_id}/functions/  — ACC-007 assign_functions_to_group."""
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-007'

@@ -27,6 +27,8 @@ from apps.access.permissions.function_permissions import HasFunction
 from apps.alerts.alert_service import RuleValidator, AlertAckValidator, DryRunEngine
 from apps.alerts.models import AlertRule, AlertRuleHistory, Alert
 from apps.audit.services import AuditLogService
+from apps.alerts.serializers.alert_serializers import AlertConfigurationSerializer
+
 
 _TAG_ALR = 'Alertas'
 
@@ -100,6 +102,7 @@ def _alert_to_dict(alert: Alert) -> dict:
     ),
 )
 class AlertRuleListCreateView(APIView):
+    serializer_class = AlertConfigurationSerializer
     """GET/POST /api/alerts/rules/ — UC_ALR_01"""
 
     def get_permissions(self):
@@ -160,6 +163,7 @@ class AlertRuleListCreateView(APIView):
     ),
 )
 class AlertRuleDetailView(APIView):
+    serializer_class = AlertConfigurationSerializer
     """GET/PATCH/DELETE /api/alerts/rules/{id}/ — UC_ALR_01"""
 
     def get_permissions(self):
@@ -228,6 +232,7 @@ class AlertRuleDetailView(APIView):
 
 @extend_schema(tags=[_TAG_ALR])
 class AlertRulePauseView(APIView):
+    serializer_class = AlertConfigurationSerializer
     """POST /api/alerts/rules/{id}/pause/ — UC_ALR_01 CA-06"""
 
     permission_classes = [IsAuthenticated, HasFunction]
@@ -250,6 +255,7 @@ class AlertRulePauseView(APIView):
 
 @extend_schema(tags=[_TAG_ALR])
 class AlertRuleResumeView(APIView):
+    serializer_class = AlertConfigurationSerializer
     """POST /api/alerts/rules/{id}/resume/ — UC_ALR_01 CA-06"""
 
     permission_classes = [IsAuthenticated, HasFunction]
@@ -272,6 +278,7 @@ class AlertRuleResumeView(APIView):
 
 @extend_schema(tags=[_TAG_ALR])
 class AlertRuleDryRunView(APIView):
+    serializer_class = AlertConfigurationSerializer
     """POST /api/alerts/rules/dry-run/ — UC_ALR_01 CA-08"""
 
     permission_classes = [IsAuthenticated, HasFunction]
@@ -298,6 +305,7 @@ class AlertRuleDryRunView(APIView):
 
 @extend_schema(tags=[_TAG_ALR])
 class ActiveAlertsView(APIView):
+    serializer_class = AlertConfigurationSerializer
     """GET /api/alerts/active/ — UC_ALR_02"""
 
     permission_classes = [IsAuthenticated, HasFunction]
@@ -332,6 +340,7 @@ class ActiveAlertsView(APIView):
 
 @extend_schema(tags=[_TAG_ALR])
 class AlertAcknowledgeView(APIView):
+    serializer_class = AlertConfigurationSerializer
     """POST /api/alerts/{id}/acknowledge/ — UC_ALR_03"""
 
     permission_classes = [IsAuthenticated, HasFunction]
@@ -387,6 +396,7 @@ class AlertAcknowledgeView(APIView):
 
 @extend_schema(tags=[_TAG_ALR])
 class AlertBulkAcknowledgeView(APIView):
+    serializer_class = AlertConfigurationSerializer
     """POST /api/alerts/bulk-acknowledge/ — UC_ALR_03 CA-08"""
 
     permission_classes = [IsAuthenticated, HasFunction]

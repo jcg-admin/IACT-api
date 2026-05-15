@@ -6,8 +6,10 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from .builders import NavigationMenuAssembler
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 
+@extend_schema(tags=['navegacion'], responses={200: None})
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def navigation_menu_view(request):
@@ -24,6 +26,7 @@ def navigation_menu_view(request):
         return Response({'error': str(exc)}, status=500)
 
 
+@extend_schema(tags=['navegacion'], responses={200: None})
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def navigation_modules_view(request):

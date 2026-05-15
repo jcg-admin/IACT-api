@@ -69,18 +69,15 @@ class TestIvrTestDatabaseConfig:
     Ambas configuraciones previenen que Django intente crear test_ivr_legacy.
     """
 
-    def test_ivr_test_name_is_none_in_fase0_settings(self):
+    def test_ivr_test_name_is_real_db_in_fase0_settings(self):
         """
-        En settings de FASE 0: ivr TEST NAME es None.
-        Django no intenta crear test_ivr_legacy al correr los tests.
+        Desde la migración a BDs reales (H-INT-007): ivr TEST NAME es
+        'test_ivr_legacy'. fase0_testing ya no usa SQLite en memoria.
         """
         ivr_test = settings.DATABASES.get('ivr', {}).get('TEST', {})
-        assert ivr_test.get('NAME') is None, (
-            "settings.DATABASES['ivr']['TEST']['NAME'] debe ser None. "
-            "Sin esto Django intenta crear test_ivr_legacy en MariaDB "
-            "lo que falla en entornos sin MariaDB de test."
+        assert ivr_test.get('NAME') == 'test_ivr_legacy', (
+            "fase0_testing usa test_ivr_legacy desde H-INT-007."
         )
-
     def test_ivr_database_engine_is_defined(self):
         """La BD 'ivr' tiene ENGINE configurado."""
         assert 'ivr' in settings.DATABASES

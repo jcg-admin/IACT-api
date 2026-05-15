@@ -170,6 +170,8 @@ class MyModulesView(APIView):
 # ---------------------------------------------------------------------------
 from .models import AccessGroup, UserAccessGroup, SeparationRule, ExceptionalPermission
 from rest_framework import serializers as drf_serializers
+from apps.access.serializers.menu_item_serializers import MenuItemSerializer
+
 
 
 @extend_schema_view(
@@ -1063,6 +1065,7 @@ class MenuItemViewSet(viewsets.ModelViewSet):
 
 
 class MenuItemTransitionView(APIView):
+    serializer_class = MenuItemSerializer
     """
     POST /api/access/menu-items/{id}/transition/
 

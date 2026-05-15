@@ -44,6 +44,12 @@ class UserDetailDispatcher:
         from drf_spectacular.utils import extend_schema, OpenApiResponse
 
         @extend_schema_view(
+            get=extend_schema(
+                operation_id='user_detail',
+                summary='UC_USR_01 — Ver detalle de usuario',
+                tags=['Usuarios'],
+                responses={200: OpenApiResponse(description='Detalle')},
+            ),
             patch=extend_schema(
                 operation_id='user_modify',
                 summary='UC_USR_03 — Modificar usuario (PATCH parcial)',
@@ -68,6 +74,8 @@ class UserDetailDispatcher:
             ),
         )
         class _Dispatcher(APIView):
+            from apps.users.serializers.user_serializer import UserSerializer  # schema
+            serializer_class = UserSerializer
             # GET → UserViewSet.retrieve (USR-009 view_users)
             # PATCH → ModifyUserView (USR-002 modify_users)
             # DELETE → EliminateUserView (USR-003 deactivate_users)

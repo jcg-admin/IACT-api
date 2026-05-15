@@ -16,6 +16,7 @@ Principios aplicados:
 
 from rest_framework import serializers
 from apps.alerts.models import AlertConfiguration, AlertSubscription
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 
 class AlertConfigurationSerializer(serializers.ModelSerializer):
@@ -52,6 +53,7 @@ class AlertConfigurationSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'last_evaluated_at', 'last_triggered_at', 'created_at', 'updated_at']
     
+    @extend_schema_field(OpenApiTypes.INT)
     def get_subscriber_count(self, obj):
         """Contar suscriptores activos."""
         return obj.subscriptions.filter(is_active=True, deleted_at__isnull=True).count()
@@ -119,6 +121,7 @@ class AlertSubscriptionSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'user', 'subscribed_at']
     
+    @extend_schema_field(OpenApiTypes.STR)
     def get_user(self, obj):
         """
         Serializar información básica del usuario.

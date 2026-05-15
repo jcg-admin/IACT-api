@@ -12,6 +12,7 @@ from rest_framework.views import APIView
 
 from apps.access.permissions.function_permissions import HasFunction
 from apps.audit.services import AuditLogService
+from apps.audit.serializers.auditlog_serializers import AuditLogSerializer
 from apps.reports.analytics_kpi import (
     AgentKPICalculator, QueueKPICalculator,
     CampaignKPICalculator, DistinctClientCounter,
@@ -26,8 +27,16 @@ _PERIOD_PARAM = OpenApiParameter(
 
 
 def _stub_rows(cursor, sql: str, params: tuple = ()) -> list:
-    """Ejecuta la query y retorna filas como lista de dicts."""
-    cursor.execute(sql, params)
+    """Ejecuta la query y retorna filas como lista de dicts.
+
+    Captura ProgrammingError cuando la tabla no existe en IVR (H-PROD-010).
+    Retorna lista vacía en lugar de propagar la excepción como 500.
+    """
+    from django.db import ProgrammingError
+    try:
+        cursor.execute(sql, params)
+    except ProgrammingError:
+        return []
     if not cursor.description:
         return []
     cols = [d[0] for d in cursor.description]
@@ -77,12 +86,15 @@ class AgentReportView(APIView):
         return Response({'items': items, 'summary': {'total_agents': len(items)}})
 
 
-@extend_schema(
+@extend_schema_view(
+    get=extend_schema(
     operation_id='reports_agent_detail',
     summary='UC_RPT_12 — Detalle privilegiado de agente (RPT-015)',
     tags=[_TAG],
 )
+)
 class AgentDetailView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-015'   # view_agent_detail — función adicional (CA-06)
 
@@ -117,6 +129,7 @@ class AgentDetailView(APIView):
     )
 )
 class QueueReportView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-016'
 
@@ -152,6 +165,7 @@ class QueueReportView(APIView):
     )
 )
 class CampaignReportView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-017'
 
@@ -184,6 +198,7 @@ class CampaignReportView(APIView):
     )
 )
 class TransferReportView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-018'
 
@@ -210,6 +225,7 @@ class TransferReportView(APIView):
     )
 )
 class IVRMenuReportView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-019'
 
@@ -240,6 +256,7 @@ class IVRMenuReportView(APIView):
     )
 )
 class UniqueClientsReportView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-020'
 

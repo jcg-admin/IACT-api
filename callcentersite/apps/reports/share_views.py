@@ -15,6 +15,8 @@ from rest_framework.views import APIView
 from apps.access.permissions.function_permissions import HasFunction
 from apps.audit.services import AuditLogService
 from apps.reports.share_service import ShareValidator
+from apps.reports.serializers.export_serializers import ExportJobSerializer
+
 
 _TAG = 'Reportes'
 
@@ -40,6 +42,7 @@ class ShareCreateSerializer(serializers.Serializer):
     )
 )
 class ShareCreateView(APIView):
+    serializer_class = ExportJobSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-011'
 
@@ -90,6 +93,7 @@ class ShareCreateView(APIView):
     )
 )
 class ShareDetailView(APIView):
+    serializer_class = ExportJobSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-011'
 

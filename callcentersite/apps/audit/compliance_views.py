@@ -14,6 +14,8 @@ from rest_framework.views import APIView
 from apps.access.permissions.function_permissions import HasFunction
 from apps.audit.compliance_service import ComplianceTemplateValidator, HMACSigner
 from apps.audit.services import AuditLogService
+from apps.audit.serializers.auditlog_serializers import AuditLogSerializer
+
 
 _TAG = 'Auditoría'
 
@@ -42,6 +44,7 @@ class ComplianceVerifySerializer(serializers.Serializer):
     )
 )
 class ComplianceReportView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'AUD-004'
 
@@ -89,6 +92,7 @@ class ComplianceReportView(APIView):
     )
 )
 class ComplianceVerifyView(APIView):
+    serializer_class = AuditLogSerializer
     permission_classes = [IsAuthenticated]
 
     def post(self, request):

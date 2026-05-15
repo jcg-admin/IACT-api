@@ -25,6 +25,8 @@ from apps.reports.export_service import (
     ExportWorker, JobLimiter, PayloadValidator,
 )
 from apps.reports.models import ExportJob
+from apps.reports.serializers.export_serializers import ExportJobSerializer
+
 
 _TAG = 'Reportes'
 
@@ -89,6 +91,7 @@ def _job_to_dict(job: ExportJob) -> dict:
     ),
 )
 class ExportView(APIView):
+    serializer_class = ExportJobSerializer
     """POST/GET /api/reports/export/ — UC_RPT_04"""
 
     permission_classes = [IsAuthenticated, HasFunction]
