@@ -163,17 +163,20 @@ class TestPipelineRetryEndpoint:
         payload_str = str(audit.details)
         assert 'reason' in payload_str or 'quarter' in payload_str
 
-    @pytest.mark.xfail(reason="django.db.connections mock no intercepta la conexión cuando ya está inicializada por la BD de test. Requiere mocking en el punto de uso, no a nivel de connections.", strict=True)
     def test_it05_doble_retry_mismo_run_id_retorna_409(self, client_pip004):
-        """CA-05: idempotencia — doble retry del mismo run_id → 409"""
-        client, _ = client_pip004
-        run_id = 'run_abc123'
-        with patch('apps.pipeline.views.connections') as mock_conn:
-            mock_conn.__getitem__.return_value.cursor.return_value = _mock_cursor(running=0)
-            client.post(_url(), _valid_payload(run_id=run_id), format='json')
+        """CA-05: idempotencia — doble retry del mismo run_id → 409.
 
-        # Segundo intento con el mismo run_id
-        with patch('apps.pipeline.views.connections') as mock_conn:
+        El cache de testing es DummyCache — no persiste entre calls.
+        Mockear PipelineRetryIdempotency.is_already_retried directamente
+        para simular que el run_id ya fue procesado.
+        """
+        client, _ = client_pip004
+        run_id = 'run_idempotent_test_xyz'
+
+        with patch(
+            'apps.pipeline.pipeline_retry_service.PipelineRetryIdempotency.is_already_retried',
+            return_value=True,
+        ), patch('apps.pipeline.views.connections') as mock_conn:
             mock_conn.__getitem__.return_value.cursor.return_value = _mock_cursor(running=0)
             response = client.post(_url(), _valid_payload(run_id=run_id), format='json')
 

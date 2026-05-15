@@ -32,19 +32,14 @@ User = get_user_model()
 @pytest.mark.django_db
 class TestUserProfileSerializer:
     """
-    Tests para UserProfileSerializer.
+    Tests para el serializer de perfil de usuario.
 
-    NOTA: El modelo UserProfile fue integrado directamente en User (FASE 4).
-    User no tiene atributo .profile. ProfileSerializer serializa el objeto User.
+    Usa UserProfileSerializer de apps.users.profile_view — serializa el modelo User
+    directamente (UserProfile fue eliminado en FASE 4).
     """
 
-    @pytest.mark.xfail(
-        reason="ProfileSerializer usa UserProfile que no existe (modelo integrado en User en FASE 4). "
-               "UserProfile fue eliminado — la serialización de perfil ocurre via UserSerializer.",
-        strict=True,
-    )
     def test_serialize_profile_avatar(self):
-        """ProfileSerializer incluye el campo avatar_url del usuario."""
+        """UserProfileSerializer incluye el campo avatar_url del usuario."""
         import uuid
         u = uuid.uuid4().hex[:6]
         user = User.objects.create_user(
@@ -52,17 +47,13 @@ class TestUserProfileSerializer:
             email=f'u_{u}@example.com',
             password='Pass123',
         )
-        from apps.users.serializers.profile_serializer import ProfileSerializer as PS
+        from apps.users.profile_view import UserProfileSerializer as PS
         serializer = PS(user)
         data = serializer.data
-        assert 'avatar_url' in data or 'avatar' in data
+        assert 'avatar_url' in data
 
-    @pytest.mark.xfail(
-        reason="UserSettingsSerializer usa UserSettings que no existe (modelo integrado en User en FASE 4).",
-        strict=True,
-    )
     def test_update_profile(self):
-        """UserSettingsSerializer acepta datos parciales."""
+        """UserProfileSerializer acepta actualización parcial de first_name."""
         import uuid
         u = uuid.uuid4().hex[:6]
         user = User.objects.create_user(
@@ -70,7 +61,8 @@ class TestUserProfileSerializer:
             email=f'u_{u}@example.com',
             password='Pass123',
         )
-        serializer = UserSettingsSerializer(user, data={}, partial=True)
+        from apps.users.profile_view import UserProfileSerializer as PS
+        serializer = PS(user, data={'first_name': 'Updated'}, partial=True)
         assert serializer.is_valid(), serializer.errors
 
 

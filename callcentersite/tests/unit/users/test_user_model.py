@@ -56,20 +56,30 @@ class TestUserModelFields:
         # delete_avatar() requiere implementación en el modelo — se verifica existencia
         assert True  # avatar presente
 
-    @pytest.mark.xfail(reason="ImageField storage local no disponible en entorno CI — requiere configuración de MEDIA_ROOT con backend de almacenamiento real", strict=True)
     def test_delete_avatar_physical_cleanup(self, user_factory, valid_avatar_file):
-        """Verifica que el archivo físico sea eliminado del storage."""
-        user = user_factory(username='fileuser', avatar=valid_avatar_file)
-        file_path = user.avatar.path
-        
-        # Simular existencia física si el storage es local
+        """
+        Verifica que delete() elimina el archivo físico del storage.
+        Crea el archivo manualmente si el storage no lo persiste en CI.
+        """
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        user = user_factory(username=f'fileuser_{u}', avatar=valid_avatar_file)
+
+        # Si avatar no tiene path (storage en memoria/dummy), el test no aplica
+        try:
+            file_path = user.avatar.path
+        except (NotImplementedError, AttributeError, ValueError):
+            pytest.skip("Storage sin soporte de .path() en este entorno")
+
+        # Crear el archivo físico si no existe (storage puede no haberlo guardado)
         if not os.path.exists(file_path):
             os.makedirs(os.path.dirname(file_path), exist_ok=True)
+            valid_avatar_file.seek(0)
             with open(file_path, 'wb') as f:
                 f.write(valid_avatar_file.read())
-        
+
         assert os.path.exists(file_path)
-        user.avatar.delete(save=True) if user_with_avatar.avatar else None
+        user.avatar.delete(save=True)
         assert not os.path.exists(file_path)
 
 from apps.access.models import UserPermission

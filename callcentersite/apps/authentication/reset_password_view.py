@@ -109,6 +109,9 @@ class ResetPasswordView(APIView):
                 )
         except DatabaseError:
             return Response({'error': 'DB_TIMEOUT'}, status=500)
+        except Exception as exc:
+            # CA-11: fallo de mailbox u otro error no-BD → rollback (atomic) + 500
+            return Response({'error': 'INTERNAL_ERROR', 'detail': str(exc)}, status=500)
 
         return Response({
             'message':         'Contraseña reseteada.',

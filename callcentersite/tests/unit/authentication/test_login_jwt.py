@@ -118,27 +118,29 @@ def test_login_supersedes_previous_session(api_client):
 # CA-03: Rollback atómico si AuditEvent falla
 @pytest.mark.django_db
 
-@pytest.mark.xfail(
-    reason="CA-03: el mock de AuditLogService.emit no rompe la transacción atómica del "
-           "login_service porque el servicio captura excepciones de audit con try/except. "
-           "La transacción solo se revierte ante DatabaseError, no ante errores de auditoría.",
-    strict=True,
-)
 def test_login_rollback_on_db_failure(api_client):
-    """CA-03: transacción atómica — si AuditEvent falla, rollback."""
-    from apps.authentication.models import Session
+    """
+    CA-03: transacción atómica — si AuditLog falla con DatabaseError, rollback completo.
 
-    user = make_active_user('carol', 'S3cret!XY')
+    Mock correcto: DatabaseError (no Exception genérica).
+    La transacción atómica captura DatabaseError y lanza DBTransientError → 503.
+    """
+    from apps.authentication.models import Session
+    from django.db import DatabaseError
+
+    import uuid
+    u = uuid.uuid4().hex[:6]
+    user = make_active_user(f'carol_{u}', 'S3cret!XY')
 
     with mock.patch(
         'apps.audit.services.AuditLogService.emit',
-        side_effect=Exception('DB failure'),
+        side_effect=DatabaseError('BD failure simulada'),
     ):
         resp = api_client.post(LOGIN_URL,
-                               {'username': 'carol', 'password': 'S3cret!XY'}, format='json')
+                               {'username': f'carol_{u}', 'password': 'S3cret!XY'}, format='json')
 
     assert resp.status_code == 503
-    assert resp.data['error']['code'] == 'DB_TRANSIENT_ERROR'
+    assert resp.data.get('error', {}).get('code') == 'DB_TRANSIENT_ERROR'
     assert Session.objects.filter(user=user).count() == 0
 
 

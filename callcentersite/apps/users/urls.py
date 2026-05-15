@@ -17,6 +17,7 @@ from apps.users.viewsets.user_viewset import UserViewSet as CanonicalUserViewSet
 from apps.users.create_user_view import CreateUserView
 from apps.users.modify_user_view import ModifyUserView, EliminateUserView
 from apps.authentication.reset_password_view import ResetPasswordView
+from apps.users.profile_view import ProfileView, SettingsView, AvatarUploadView
 
 router = DefaultRouter()
 router.register(r'', UserViewSet, basename='user')
@@ -96,6 +97,13 @@ class UserDetailDispatcher:
 
 
 urlpatterns = [
+    # ────────────────────────────────────────────────────────────────────
+    # Perfil y configuraciones del usuario autenticado
+    # ────────────────────────────────────────────────────────────────────
+    path('profile/', ProfileView.as_view(), name='user-profile'),
+    path('profile/avatar/', AvatarUploadView.as_view(), name='user-avatar'),
+    path('settings/', SettingsView.as_view(), name='user-settings'),
+
     # ────────────────────────────────────────────────────────────────────
     # UC_USR_03 + UC_USR_04 — PATCH|DELETE deben ir ANTES del router
     # (H-F6-GRP-GB-001: fix routing, _Dispatcher limitado a PATCH/DELETE)

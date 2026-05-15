@@ -74,7 +74,7 @@ class ProfileService(BaseService):
         self.log_info(f"Obteniendo perfil de usuario ID: {user_id}")
         
         try:
-            user = User.objects.get(id=user_id, is_deleted=False)
+            user = User.objects.get(id=user_id)
             return user.profile
         except User.DoesNotExist:
             raise UserNotFoundError(f"Usuario {user_id} no encontrado")
@@ -179,7 +179,7 @@ class ProfileService(BaseService):
         self.log_info(f"Subiendo avatar para usuario ID: {user_id}")
         
         try:
-            user = User.objects.get(id=user_id, is_deleted=False)
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             raise UserNotFoundError(f"Usuario {user_id} no encontrado")
         
@@ -249,7 +249,7 @@ class ProfileService(BaseService):
         self.log_info(f"Eliminando avatar de usuario ID: {user_id}")
         
         try:
-            user = User.objects.get(id=user_id, is_deleted=False)
+            user = User.objects.get(id=user_id)
         except User.DoesNotExist:
             raise UserNotFoundError(f"Usuario {user_id} no encontrado")
         

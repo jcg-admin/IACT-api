@@ -146,7 +146,6 @@ class TestResetPasswordEndpoint:
         if hasattr(target, 'state'):
             assert target.state == 'BLOCKED'
 
-    @pytest.mark.xfail(reason="El sistema usa preguntas de seguridad (no email) para reset. La funcionalidad de envío de email no está implementada ni configurada en test.", strict=True)
     def test_it08_mailbox_falla_hace_rollback(self, admin_client):
         """CA-11: Mailbox HARD — si falla, rollback total."""
         from django.contrib.auth import get_user_model
