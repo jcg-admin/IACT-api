@@ -113,10 +113,47 @@ class Migration(migrations.Migration):
             name='format',
             field=models.CharField(choices=[('csv', 'CSV'), ('xlsx', 'Excel'), ('json', 'JSON'), ('pdf', 'PDF')], default='csv', max_length=10, verbose_name='Formato'),
         ),
-        migrations.AlterField(
-            model_name='exportjob',
-            name='id',
-            field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, verbose_name='ID'),
+        migrations.SeparateDatabaseAndState(
+            database_operations=[
+                # Convierte id de bigint/identity a uuid solo si todavía es bigint.
+                # En iact_analytics (producción) el campo ya es uuid — no-op.
+                # En test_iact_analytics (limpio) el campo viene de 0001_initial
+                # como BigAutoField (bigint identity) y debe convertirse a uuid.
+                # PostgreSQL no permite ALTER COLUMN TYPE en identity columns;
+                # se debe eliminar la identity antes de cambiar el tipo.
+                migrations.RunSQL(
+                    sql="""
+                        DO $$
+                        DECLARE col_type text; col_identity text;
+                        BEGIN
+                            SELECT data_type, identity_generation
+                              INTO col_type, col_identity
+                              FROM information_schema.columns
+                             WHERE table_name = 'reports_exportjob'
+                               AND column_name = 'id';
+                            IF col_type IN ('integer', 'bigint') THEN
+                                IF col_identity IS NOT NULL THEN
+                                    ALTER TABLE reports_exportjob
+                                        ALTER COLUMN id DROP IDENTITY;
+                                END IF;
+                                ALTER TABLE reports_exportjob
+                                    ALTER COLUMN id TYPE uuid
+                                    USING gen_random_uuid();
+                                ALTER TABLE reports_exportjob
+                                    ALTER COLUMN id SET DEFAULT gen_random_uuid();
+                            END IF;
+                        END $$;
+                    """,
+                    reverse_sql=migrations.RunSQL.noop,
+                ),
+            ],
+            state_operations=[
+                migrations.AlterField(
+                    model_name='exportjob',
+                    name='id',
+                    field=models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False, verbose_name='ID'),
+                ),
+            ],
         ),
         migrations.AlterField(
             model_name='exportjob',

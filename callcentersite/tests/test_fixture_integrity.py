@@ -5,7 +5,7 @@ import pytest
 @pytest.mark.unit
 def test_user_data_fixture(user_data):
     """Fixture user_data funciona."""
-    assert user_data['username'] == 'testuser'
+    assert user_data['username'] == 'newuser'
     assert 'password' in user_data
 
 

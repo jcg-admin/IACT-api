@@ -103,7 +103,7 @@ CREATE TABLE IF NOT EXISTS base_ivr_clientes (
 # SP sin prefijo de schema (Escenario A).
 # Se recrea en test_ivr_legacy en cada sesión via ensure_mariadb → ivr_schema.
 _SP_BODY = """\
-CREATE PROCEDURE sp_rpt_clientes(IN p_quarter VARCHAR(10))
+CREATE PROCEDURE sp_rpt_clientes(IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT
         c.trimestre,
@@ -127,8 +127,8 @@ END"""
 
 _SP_MENU_REDIRIGIDOS = """\
 CREATE PROCEDURE sp_rpt_menu_redirigidos(
-    IN p_quarter VARCHAR(10),
-    IN p_segmento VARCHAR(20)
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     SELECT
@@ -145,8 +145,8 @@ END"""
 
 _SP_MENU_CENTRO = """\
 CREATE PROCEDURE sp_rpt_menu_centro(
-    IN p_quarter VARCHAR(10),
-    IN p_segmento VARCHAR(20)
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     SELECT
@@ -162,7 +162,8 @@ END"""
 
 
 _SP_CENTROS_TRANSFERENCIA = """CREATE PROCEDURE sp_rpt_centros_transferencia(
-    IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT trimestre, fecha, segmento, centro_transferencia,
            menu, opcion, total_llamadas,
@@ -178,7 +179,8 @@ BEGIN
 END"""
 
 _SP_LLAMADAS_ABANDONADAS = """CREATE PROCEDURE sp_rpt_llamadas_abandonadas(
-    IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT trimestre, segmento, menu,
            SUM(total_llamadas) AS total_abandonadas
@@ -191,7 +193,8 @@ BEGIN
 END"""
 
 _SP_CMENU_ERROR = """CREATE PROCEDURE sp_rpt_cMENU_ERROR(
-    IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT trimestre, segmento, menu, centro_transferencia,
            SUM(total_llamadas) AS total_llamadas
@@ -204,7 +207,7 @@ BEGIN
 END"""
 
 _SP_CENTROS_XSEGMENTO = """CREATE PROCEDURE sp_rpt_centros_xsegmento(
-    IN p_quarter VARCHAR(10))
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT trimestre, segmento, centro_transferencia,
            SUM(total_llamadas) AS total_llamadas,

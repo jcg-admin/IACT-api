@@ -39,7 +39,7 @@ class Migration(migrations.Migration):
                 db_index=True,
             ),
         ),
-        migrations.AddField(
+        migrations.AlterField(
             model_name='accessgroup',
             name='is_active',
             field=models.BooleanField(

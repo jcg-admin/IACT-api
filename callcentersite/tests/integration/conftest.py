@@ -186,11 +186,18 @@ def permitted_client(api_client, user_with_permissions):
 # ============================================================================
 
 
-# ─── Fix de migraciones para integration tests ───────────────────────────────
+# ─── Fix de migraciones para la BD de producción ─────────────────────────────
 # Las columnas de access_group.is_active, reports.ExportJob.id (uuid) y
 # users.PasswordHistory ya existen en iact_analytics por evolución manual
-# del schema. Django intenta añadirlas de nuevo al crear test_iact_analytics.
-# Solución: monkey-patch del executor de migraciones para hacer fake de 0007.
+# del schema anterior a las migraciones correspondientes. Si esas migraciones
+# se ejecutan contra iact_analytics, fallan con "column already exists".
+#
+# Solución: monkey-patch del executor de migraciones que aplica fake SOLO
+# cuando la conexión apunta a la BD de producción (iact_analytics).
+# La BD de test (test_iact_analytics) se crea limpia desde cero — no tiene
+# columnas preexistentes, así que sus migraciones deben ejecutarse normalmente.
+#
+# Criterio de discriminación: la BD de test siempre comienza con "test_".
 
 import django.db.migrations.executor as _executor_mod
 _orig_run_migration = _executor_mod.MigrationExecutor.apply_migration
@@ -210,7 +217,12 @@ _FAKE_MIGRATIONS = {
 def _patched_apply_migration(self, state, migration, fake=False, fake_initial=False):
     key = (migration.app_label, migration.name)
     if key in _FAKE_MIGRATIONS:
-        fake = True
+        # Solo forzar fake en la BD de producción.
+        # En test_iact_analytics las migraciones deben correr para que el
+        # schema quede correcto (constraints, nullable, etc.).
+        db_name = self.connection.settings_dict.get('NAME', '')
+        if not db_name.startswith('test_'):
+            fake = True
     return _orig_run_migration(self, state, migration, fake=fake, fake_initial=fake_initial)
 
 _executor_mod.MigrationExecutor.apply_migration = _patched_apply_migration
