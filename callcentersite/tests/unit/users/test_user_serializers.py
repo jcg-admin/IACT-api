@@ -148,17 +148,16 @@ class TestLoginSerializer:
 
 
 @pytest.mark.django_db
-@pytest.mark.xfail(reason="API cambió — pendiente actualización post-FASE 6", strict=False)
 class TestChangePasswordSerializer:
-    """Tests para ChangePasswordSerializer."""
-    
+    """Tests para ChangePasswordSerializer (authentication.serializers.auth)."""
+
     def test_change_password_valid(self):
-        """Test: Cambio de password válido."""
+        """Test: Cambio de password válido con campos reales: current/new/confirm."""
         data = {
-            'old_password': 'OldPass123',
+            'current_password': 'OldPass123',
             'new_password': 'T3stP@ssw0rd!',
-            'new_password_confirmation': 'T3stP@ssw0rd!'
+            'confirm_password': 'T3stP@ssw0rd!'
         }
-        
+
         serializer = ChangePasswordSerializer(data=data)
-        assert serializer.is_valid()
+        assert serializer.is_valid(), serializer.errors

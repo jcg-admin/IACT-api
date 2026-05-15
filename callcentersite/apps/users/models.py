@@ -227,6 +227,39 @@ class User(AbstractUser):
             return True
         return function_code in self.get_functions()
 
+    def has_any_function(self, function_codes: list[str]) -> bool:
+        """
+        Retorna True si el usuario tiene al menos una de las funciones indicadas.
+
+        ADR-BACK-006: verificación por Function.code canónico v5.4.0.
+
+        Args:
+            function_codes: Lista de códigos canónicos (ej: ['RPT-001', 'RPT-002']).
+
+        Returns:
+            bool: True si tiene al menos una, False si ninguna.
+        """
+        if self.is_superuser:
+            return True
+        user_functions = set(self.get_functions())
+        return any(code in user_functions for code in function_codes)
+
+    def has_all_functions(self, function_codes: list[str]) -> bool:
+        """
+        Retorna True si el usuario tiene todas las funciones indicadas.
+
+        ADR-BACK-006: verificación por Function.code canónico v5.4.0.
+
+        Args:
+            function_codes: Lista de códigos canónicos.
+
+        Returns:
+            bool: True si tiene todas, False si falta alguna.
+        """
+        if self.is_superuser:
+            return True
+        user_functions = set(self.get_functions())
+        return all(code in user_functions for code in function_codes)
 
 
 class PasswordHistory(models.Model):

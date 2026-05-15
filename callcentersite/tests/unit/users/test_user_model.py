@@ -105,32 +105,25 @@ class TestUserModelRBAC:
         user = user_with_function.user
         assert user.has_function('delete_everything_perm') is False
 
-    @pytest.mark.xfail(reason="User.has_any_function() y User.has_all_functions() no están implementados en el modelo (FASE pendiente)", strict=True)
     def test_has_any_function_logic_match(self, user_with_function):
         """Prueba lógica de OR (Intersection). Éxito si tiene al menos una."""
         user = user_with_function.user
         # Tiene 'create_user', pedimos 'create_user' o 'other'
         assert user.has_any_function(['create_user', 'other_perm']) is True
 
-    @pytest.mark.xfail(reason="User.has_any_function() y User.has_all_functions() no están implementados en el modelo (FASE pendiente)", strict=True)
     def test_has_any_function_logic_no_match(self, user_with_function):
         """Prueba lógica de OR. Falla si ninguna coincide."""
         user = user_with_function.user
         assert user.has_any_function(['invalid_1', 'invalid_2']) is False
 
-    @pytest.mark.xfail(reason="User.has_any_function() y User.has_all_functions() no están implementados en el modelo (FASE pendiente)", strict=True)
     def test_has_all_functions_complete_match(self, user_with_function, func_factory, sample_admin):
         """Prueba lógica de AND (Subset). Éxito si tiene TODAS las pedidas."""
         user = user_with_function.user
-        # Añadimos una segunda función manualmente para la prueba
         f2 = func_factory(code='view_reports')
-        UserPermission.objects.create(
-            user=user, function=f2, assigned_by=sample_admin
-        )
-        
+        UserPermission.objects.create(user=user, function=f2)
+
         assert user.has_all_functions(['create_user', 'view_reports']) is True
 
-    @pytest.mark.xfail(reason="User.has_any_function() y User.has_all_functions() no están implementados en el modelo (FASE pendiente)", strict=True)
     def test_has_all_functions_partial_match_fails(self, user_with_function):
         """Prueba lógica de AND. Falla si le falta aunque sea una de la lista."""
         user = user_with_function.user

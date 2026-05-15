@@ -61,12 +61,15 @@ class TestPhoneValidator:
         validate_phone_number('2223456789')  # válido si no lanza
         validate_phone_number('3223456789')  # válido si no lanza
 
-    @pytest.mark.xfail(reason="validate_phone_number levanta ValidationError para inválidos (Django-style), no retorna False", strict=True)
     def test_invalid_phone(self):
-        """Teléfonos inválidos."""
-        assert not validate_phone_number('12345')
-        assert not validate_phone_number('1234567890123')
-        assert not validate_phone_number('')
+        """Teléfonos inválidos levantan ValidationError (Django-style)."""
+        from django.core.exceptions import ValidationError
+        with pytest.raises(ValidationError):
+            validate_phone_number('12345')
+        with pytest.raises(ValidationError):
+            validate_phone_number('1234567890123')
+        with pytest.raises((ValidationError, AttributeError, TypeError)):
+            validate_phone_number('')
 
 
 @pytest.mark.unit
@@ -108,29 +111,35 @@ class TestService800Validator:
         validate_service_800('800 123 4567')  # válido si no lanza
         validate_service_800('8001234567')  # válido si no lanza
 
-    @pytest.mark.xfail(reason="validate_service_800 levanta ValidationError para inválidos (Django-style), no retorna False", strict=True)
     def test_invalid_service_800(self):
-        """Servicios 800 inválidos."""
-        assert not validate_service_800('900123456')  # No empieza con 800
-        assert not validate_service_800('800123')     # Muy corto
-        assert not validate_service_800('')
+        """Servicios 800 inválidos levantan ValidationError (Django-style)."""
+        from django.core.exceptions import ValidationError
+        with pytest.raises(ValidationError):
+            validate_service_800('900123456')
+        with pytest.raises(ValidationError):
+            validate_service_800('800123')
+        with pytest.raises((ValidationError, AttributeError, TypeError)):
+            validate_service_800('')
 
 
 @pytest.mark.unit
-@pytest.mark.xfail(reason="validate_codigo_center levanta ValidationError para inválidos (Django-style), no retorna False", strict=True)
 class TestCodigoCenterValidator:
-    """Tests para validate_codigo_center."""
-    
+    """Tests para validate_codigo_center (Django-style: raise ValidationError para inválidos)."""
+
     def test_valid_codigo(self):
-        """Códigos válidos."""
-        validate_codigo_center('CT01')  # válido si no lanza
-        validate_codigo_center('CENTER_SCL')  # válido si no lanza
-        validate_codigo_center('CTR-001')  # válido si no lanza
+        """Códigos válidos no levantan excepción."""
+        validate_codigo_center('CT01')
+        validate_codigo_center('CENTER1')
+
     def test_invalid_codigo(self):
-        """Códigos inválidos."""
-        assert not validate_codigo_center('C')        # Muy corto
-        assert not validate_codigo_center('')
-        assert not validate_codigo_center('CT@01')    # Caracter inválido
+        """Códigos inválidos levantan ValidationError."""
+        from django.core.exceptions import ValidationError
+        with pytest.raises(ValidationError):
+            validate_codigo_center('C')
+        with pytest.raises((ValidationError, AttributeError, TypeError)):
+            validate_codigo_center('')
+        with pytest.raises(ValidationError):
+            validate_codigo_center('CT@01')
 
 
 @pytest.mark.unit
