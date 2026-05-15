@@ -68,8 +68,15 @@ class UserDetailDispatcher:
             ),
         )
         class _Dispatcher(APIView):
-            # No permission_classes aquí — cada view hija los tiene propios (CNST-010)
+            # GET → UserViewSet.retrieve (USR-009 view_users)
+            # PATCH → ModifyUserView (USR-002 modify_users)
+            # DELETE → EliminateUserView (USR-003 deactivate_users)
+            # H-F6-GRP-GB-001: dispatcher centralizado para /api/users/{user_id}/
             permission_classes = [IsAuthenticated]
+
+            def get(self, request, user_id):
+                rv = CanonicalUserViewSet.as_view({'get': 'retrieve'})
+                return rv(request._request, pk=user_id)
 
             def patch(self, request, user_id):
                 return patch_view(request._request, user_id=user_id)
@@ -82,21 +89,17 @@ class UserDetailDispatcher:
 
 urlpatterns = [
     # ────────────────────────────────────────────────────────────────────
-    # FASE 2 — Rutas canónicas (declaradas antes del router)
+    # UC_USR_03 + UC_USR_04 — PATCH|DELETE deben ir ANTES del router
+    # (H-F6-GRP-GB-001: fix routing, _Dispatcher limitado a PATCH/DELETE)
     # ────────────────────────────────────────────────────────────────────
-
-    # UC_USR_01 — Crear usuario (POST /api/users/)
-    path('', CreateUserView.as_view(), name='user-create'),
-
-    # UC_USR_03 + UC_USR_04 — Modificar / Eliminar (PATCH|DELETE /api/users/{id}/)
     path('<int:user_id>/', UserDetailDispatcher.as_view(), name='user-detail'),
-
-    # UC_AUTH_03 — Resetear contraseña por admin (POST /api/users/{id}/reset-password/)
     path('<int:user_id>/reset-password/',
          ResetPasswordView.as_view(), name='user-reset-password'),
 
-    # ────────────────────────────────────────────────────────────────────
-    # Legacy router (compatibilidad UC_USR_02 list/retrieve existente)
-    # ────────────────────────────────────────────────────────────────────
+    # Router — UserViewSet: GET /api/users/ (list) y GET /api/users/{pk}/ (retrieve)
+    # el router también registra POST create — pero CreateUserView lo cubre explícitamente
     path('', include(router.urls)),
+
+    # UC_USR_01 alias — CreateUserView canónica en /api/users/create/
+    path('create/', CreateUserView.as_view(), name='user-create'),
 ]

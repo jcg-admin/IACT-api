@@ -240,14 +240,15 @@ class ChangePasswordView(APIView):
             sess.close(reason='PASSWORD_CHANGED')
 
         # FA-01: si la sesión actual era restricted, promoverla a full
-        scope_upgraded = False
+        # CA-08: scope_upgraded=True si el usuario venía de first_login=True
+        # (independientemente de si hay sesión activa con scope restrictido)
+        scope_upgraded = bool(prior_first_login)
         if prior_first_login and current_session_id:
-            updated = Session.objects.filter(
+            Session.objects.filter(
                 session_id=current_session_id,
                 state='ACTIVE',
                 scope='restricted',
             ).update(scope='full')
-            scope_upgraded = updated > 0
 
         # PASO 13: AuditEvent PASSWORD_CHANGED (CNST-026: sin contraseña en payload)
         AuditLogService.emit(

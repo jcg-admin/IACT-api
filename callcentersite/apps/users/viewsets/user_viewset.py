@@ -58,9 +58,45 @@ class UserViewSet(viewsets.ModelViewSet):
     search_fields = ['username', 'email', 'first_name', 'last_name']
     ordering_fields = ['username', 'email', 'date_joined']
     ordering = ['-date_joined']
+    _VALID_ORDERING = frozenset({'username', 'email', 'date_joined', '-username', '-email', '-date_joined'})
     
     # F1-H-006: function_map con códigos canónicos v5.4.0 (antes: namespaces Django legacy)
     # list_users=USR-004, view_users=USR-009, create_users=USR-001, update_users=USR-002
+
+    def list(self, request, *args, **kwargs):
+        """CA-11/12: Validar ordering whitelist (UC_USR_02). CA-07: audit selectivo."""
+        from rest_framework.response import Response
+        from apps.audit.services import AuditLogService
+        ordering = request.query_params.get('ordering', '')
+        if ordering and ordering not in self._VALID_ORDERING:
+            return Response(
+                {'error': 'BAD_FILTER', 'detail': f'Ordering inválido: {ordering!r}'},
+                status=400,
+            )
+        response = super().list(request, *args, **kwargs)
+        # CA-07: solo auditar si hay filtro user_id (UC_USR_02 P-16 audit selectivo)
+        user_id_filter = request.query_params.get('user_id')
+        if user_id_filter:
+            AuditLogService.emit(
+                event_type='USERS_VIEWED_FOR_USER',
+                actor_user_id=request.user.pk,
+                payload={'target_user_id': user_id_filter},
+            )
+        # CA-08: listado sin filtro → ZERO USERS_VIEWED_FOR_USER (no emitir)
+        return response
+
+    def retrieve(self, request, *args, **kwargs):
+        """CA-09: GET /users/{id}/ → USER_DETAIL_VIEWED siempre. CA-10: self_view."""
+        from apps.audit.services import AuditLogService
+        response = super().retrieve(request, *args, **kwargs)
+        target_pk = kwargs.get('pk')
+        self_view = str(request.user.pk) == str(target_pk)
+        AuditLogService.emit(
+            event_type='USER_DETAIL_VIEWED',
+            actor_user_id=request.user.pk,
+            payload={'target_user_id': target_pk, 'self_view': self_view},
+        )
+        return response
     # deactivate_users=USR-003 (baja lógica BR-009)
     function_map = {
         'list':           'USR-004',  # list_users

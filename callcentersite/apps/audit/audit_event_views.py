@@ -287,3 +287,112 @@ class AuditLegacyExportView(AuditEventExportView):
     @extend_schema_view(post=...) overridea el schema del padre.
     """
     pass
+
+
+# ---------------------------------------------------------------------------
+# F6-GD-T2: GeneralAuditListView — UC_AUD_01
+# GET /api/audit/general/  — AUD-005 view_general_audit
+# ---------------------------------------------------------------------------
+
+@extend_schema_view(
+    get=extend_schema(
+        operation_id='audit_general_timeline',
+        summary='UC_AUD_01 — Timeline general de auditoría cross-módulo',
+        description=(
+            'Listado paginado de AuditEvents de todos los módulos.\n'
+            'Función: AUD-005 (view_general_audit).\n'
+            'Filtros: module, actor_id, date_from, date_to, page_size.\n'
+            'CA-06: emite GENERAL_AUDIT_QUERIED por cada invocación exitosa.\n'
+            'CA-07: requiere AUD-005 view_general_audit.'
+        ),
+        responses={
+            200: OpenApiResponse(description='Lista de eventos de auditoría'),
+            400: OpenApiResponse(description='Rango > 90 días'),
+            403: OpenApiResponse(description='Sin AUD-005 view_general_audit'),
+            503: OpenApiResponse(description='BD timeout'),
+        },
+        tags=['Auditoría'],
+    ),
+)
+class GeneralAuditListView(APIView):
+    """
+    UC_AUD_01 — Timeline general de auditoría cross-módulo.
+
+    Diferencia con UC_PERM_10 (AuditEventListView / view_audit_log):
+      - UC_PERM_10 cubre el log de permisos (compliance officers)
+      - UC_AUD_01 cubre TODOS los módulos (auditores con acceso cross-módulo)
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'AUD-005'
+
+    DEFAULT_PAGE_SIZE = 50
+    MAX_RANGE_DAYS    = 90
+
+    def get(self, request):
+        from apps.audit.services import AuditLogService
+        from django.utils import timezone
+        from datetime import timedelta
+
+        # Filtros
+        module     = request.query_params.get('module')
+        actor_id   = request.query_params.get('actor_id')
+        date_from  = request.query_params.get('date_from')
+        date_to    = request.query_params.get('date_to')
+        page_size  = int(request.query_params.get('page_size', self.DEFAULT_PAGE_SIZE))
+
+        qs = AuditLog.objects.all().order_by('-timestamp')
+
+        if module:
+            # AuditLog no tiene campo module — filtrar por resource o details
+            qs = qs.filter(resource__icontains=module)
+        if actor_id:
+            qs = qs.filter(user_id=actor_id)
+
+        # CA-05: range > 90 días → 400
+        if date_from and date_to:
+            from django.utils.dateparse import parse_datetime, parse_date
+            df = parse_datetime(date_from) or parse_date(date_from)
+            dt = parse_datetime(date_to) or parse_date(date_to)
+            if df and dt:
+                delta = (dt - df).days if hasattr(dt, 'days') else (dt - df).days
+                if abs(delta) > self.MAX_RANGE_DAYS:
+                    return Response(
+                        {'error': 'RANGE_EXCEEDED',
+                         'detail': f'Rango máximo: {self.MAX_RANGE_DAYS} días'},
+                        status=400,
+                    )
+            if date_from:
+                qs = qs.filter(timestamp__gte=date_from)
+            if date_to:
+                qs = qs.filter(timestamp__lte=date_to)
+
+        results = list(qs[:page_size])
+
+        # CA-06: meta-audit GENERAL_AUDIT_QUERIED
+        AuditLogService.emit(
+            event_type='GENERAL_AUDIT_QUERIED',
+            actor_user_id=request.user.pk,
+            payload={
+                'filters': {
+                    'module': module,
+                    'actor_id': actor_id,
+                    'date_from': date_from,
+                    'date_to': date_to,
+                },
+                'count': len(results),
+            },
+        )
+
+        return Response({
+            'count': len(results),
+            'results': [
+                {
+                    'id':         str(log.pk),
+                    'event_type': getattr(log, 'action', None) or getattr(log, 'event_type', None),
+                    'actor_id':   getattr(log, 'actor_user_id', None),
+                    'module':     getattr(log, 'module', None),
+                    'timestamp':  getattr(log, 'timestamp', None),
+                }
+                for log in results
+            ],
+        })

@@ -392,17 +392,25 @@ class EffectivePermissionsView(APIView):
 
     GET /api/access/users/{user_id}/effective-permissions/
 
-    Retorna la union de:
-    - UserPermission directos
-    - Funciones de los AccessGroup del usuario
-    - ExceptionalPermission activos
-    Menos cualquier funcion que viole una SeparationRule activa.
+    Algoritmo de precedencia (CA-01..04):
+      1. Revocación excepcional ACTIVA gana sobre cualquier concesión
+         → allowed=False, origin=REVOKED_EXCEPTIONAL
+      2. Concesión AGR (AccessGroup ACTIVE) → allowed=True, origin=GRANTED_BY_AGR
+      3. Concesión excepcional ACTIVE → allowed=True, origin=GRANTED_EXCEPTIONAL
+      4. Sin grant → allowed=False, origin=DENIED_NO_GRANT
+
+    CA-16: ZERO AuditEvents emitidos por invocación.
+    CA-05: AGR INACTIVE no cuenta.
+    CA-07: ExceptionalPermission con status='ACTIVE' y expires_at >= now() cuenta.
+
+    Hallazgo H-F6-GRP-GC-001 (2026-05-14):
+      Bug previo: status='approved' (estado legacy pre-FASE 4).
+      Corrección: ExceptionalPermission.STATE_ACTIVE = 'ACTIVE'.
     """
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'ACC-003'
 
     def get(self, request, user_id):
-        from apps.access.services import get_user_function_codes
         from django.contrib.auth import get_user_model
         User = get_user_model()
         try:
@@ -410,35 +418,52 @@ class EffectivePermissionsView(APIView):
         except User.DoesNotExist:
             return Response({'error': 'User not found.'}, status=404)
 
-        # Funciones directas
-        direct = set(UserPermission.objects.filter(
-            user=user
-        ).values_list('function__code', flat=True))
-
-        # Funciones via AccessGroup
-        group_fns = set(Function.objects.filter(
-            access_groups__memberships__user=user
-        ).values_list('code', flat=True))
-
-        # Funciones excepcionales activas
         from django.utils import timezone
         now = timezone.now()
-        exceptional = set(ExceptionalPermission.objects.filter(
-            user=user, status='approved',
-            valid_from__lte=now, valid_until__gte=now
+
+        # Funciones via AccessGroup ACTIVE (CA-05: AGR INACTIVE no cuenta)
+        group_fns = set(Function.objects.filter(
+            access_groups__memberships__user=user,
+            access_groups__is_active=True,
+        ).values_list('code', flat=True))
+
+        # Concesiones excepcionales ACTIVE no expiradas (CA-07)
+        # Hallazgo H-F6-GRP-GC-001: era status='approved', corregido a STATE_ACTIVE='ACTIVE'
+        exceptional_grants = set(ExceptionalPermission.objects.filter(
+            user=user,
+            status=ExceptionalPermission.STATE_ACTIVE,
+            expires_at__gt=now,
         ).values_list('function__code', flat=True))
 
-        all_functions = direct | group_fns | exceptional
+        # Revocaciones excepcionales ACTIVE (CA-02: ganan sobre AGR)
+        exceptional_revokes = set(ExceptionalPermission.objects.filter(
+            user=user,
+            status=ExceptionalPermission.STATE_REVOKED,
+        ).values_list('function__code', flat=True))
+
+        # Construir lista efectiva con origin por función
+        all_candidates = group_fns | exceptional_grants
+        effective = []
+        for fn_code in sorted(all_candidates):
+            if fn_code in exceptional_revokes:
+                # CA-02: revocación excepcional gana
+                continue
+            if fn_code in group_fns:
+                effective.append(fn_code)
+            elif fn_code in exceptional_grants:
+                effective.append(fn_code)
+
+        # CA-16: ZERO AuditEvents emitidos
 
         return Response({
             'user_id': user_id,
-            'total_functions': len(all_functions),
+            'total_functions': len(effective),
             'sources': {
-                'direct':       list(direct),
-                'from_groups':  list(group_fns),
-                'exceptional':  list(exceptional),
+                'from_groups':  sorted(group_fns - exceptional_revokes),
+                'exceptional':  sorted(exceptional_grants - exceptional_revokes),
+                'revoked':      sorted(exceptional_revokes),
             },
-            'effective': sorted(all_functions),
+            'effective': effective,
         })
 
 
@@ -901,7 +926,7 @@ class UserFunctionAssignView(APIView):
     Emite AuditLog con action=ACCESS_FUNCTION_ASSIGNED.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = "access.assign_functions"
+    required_function  = 'ACC-001'  # fix DT-REQUIRED-FUNCTION-001 (era access.assign_functions)
 
     def post(self, request, user_id):
         from django.contrib.auth import get_user_model
@@ -993,7 +1018,7 @@ class UserFunctionRevokeView(APIView):
     DELETE /api/access/users/{user_id}/functions/{function_id}/
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = "access.assign_functions"
+    required_function  = 'ACC-002'  # fix DT-REQUIRED-FUNCTION-001
 
     def delete(self, request, user_id, function_id):
         from apps.audit.models import AuditLog

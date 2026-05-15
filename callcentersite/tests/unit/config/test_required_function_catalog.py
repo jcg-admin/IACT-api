@@ -45,6 +45,15 @@ def _extract_views_with_required_function():
     return results
 
 
+@pytest.fixture(autouse=True)
+def setup_function_catalog(db):
+    """Poblar el catálogo de funciones antes de cada test."""
+    from django.core.management import call_command
+    from io import StringIO
+    call_command('create_functions', stdout=StringIO())
+    call_command('create_access_groups', stdout=StringIO())
+
+
 @pytest.mark.django_db
 class TestRequiredFunctionCatalog:
 

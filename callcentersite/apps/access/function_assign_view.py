@@ -453,7 +453,15 @@ class AGRRevokeView(APIView):
         ).first()
 
         if not membership:
-            return Response({'message': 'Usuario no tenía este AGR asignado.', 'noop': True})
+            # CA-PERM-01 (UC_PERM_02): 404 AGR_NOT_ASSIGNED cuando el AGR
+            # nunca fue asignado al usuario. Anti-info-leak: no exponer si
+            # el AGR existe o no, solo que no está asignado.
+            # Hallazgo H-F6-GRP-GC-002 (2026-05-14): antes devolvía 200 noop.
+            return Response(
+                {'error': 'AGR_NOT_ASSIGNED',
+                 'detail': 'El AGR no está asignado al usuario.'},
+                status=404,
+            )
 
         with transaction.atomic():
             membership.delete()   # UserAccessGroup no tiene estado — DELETE físico permitido
@@ -471,7 +479,13 @@ class AGRRevokeView(APIView):
 # UC_PERM_06 — FunctionGroupFnView: asignar funciones a AGR custom
 # ---------------------------------------------------------------------------
 class GroupFnSerializer(serializers.Serializer):
-    function_ids = serializers.ListField(child=serializers.IntegerField(), min_length=1)
+    function_ids = serializers.ListField(
+        child=serializers.IntegerField(), min_length=1
+    )
+    change_reason = serializers.CharField(
+        min_length=5,
+        help_text='CA-09 (UC_PERM_06): obligatorio para trazabilidad.',
+    )
 
 
 @extend_schema(
@@ -500,12 +514,17 @@ class FunctionGroupFnView(APIView):
         if agr.is_predefined:
             return Response({'error': 'PREDEFINED_NOT_MUTABLE'}, status=400)
 
+        # CA-07: AGR RETIRED bloqueado
+        if not agr.is_active:
+            return Response({'error': 'ACCESS_GROUP_RETIRED'}, status=400)
+
         ser = GroupFnSerializer(data=request.data)
         if not ser.is_valid():
             return Response({'error': 'VALIDATION_ERROR', 'fields': ser.errors}, status=400)
 
-        fn_ids = ser.validated_data['function_ids']
-        fns    = list(Function.objects.filter(pk__in=fn_ids, is_active=True))
+        fn_ids      = ser.validated_data['function_ids']
+        change_reason = ser.validated_data['change_reason']
+        fns         = list(Function.objects.filter(pk__in=fn_ids, is_active=True))
 
         if len(fns) < len(fn_ids):
             missing = set(fn_ids) - {f.pk for f in fns}
@@ -513,10 +532,23 @@ class FunctionGroupFnView(APIView):
 
         already = set(agr.functions.values_list('pk', flat=True))
         new     = [f for f in fns if f.pk not in already]
+        skipped = [f for f in fns if f.pk in already]
         agr.functions.add(*new)
+
+        # CA-01: COMPOSITION_CHANGED audit (F6-GC-T8 fix)
+        AuditLogService.emit(
+            event_type='COMPOSITION_CHANGED',
+            actor_user_id=request.user.pk,
+            payload={
+                'agr_id': agr_id,
+                'added': [f.code for f in new],
+                'skipped': [f.code for f in skipped],
+                'change_reason': change_reason,
+            },
+        )
 
         return Response({
             'agr_code':          agr.code,
             'functions_added':   len(new),
-            'functions_skipped': len(fns) - len(new),
+            'functions_skipped': len(skipped),
         }, status=201 if new else 200)
