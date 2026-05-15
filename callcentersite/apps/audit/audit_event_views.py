@@ -70,7 +70,7 @@ class AuditEventListView(APIView):
         actor_id   = request.query_params.get('actor_id')
         event_type = request.query_params.get('event_type')
 
-        qs = AuditLog.objects.order_by('-created_at')
+        qs = AuditLog.objects.order_by('-timestamp')
         if actor_id:
             qs = qs.filter(user_id=actor_id)
         if event_type:
@@ -234,7 +234,7 @@ class AuditSearchView(APIView):
             except ValueError:
                 return Response({'error': 'VALIDATION_ERROR', 'detail': 'Fechas inválidas.'}, status=400)
 
-        qs = AuditLog.objects.order_by('-created_at')
+        qs = AuditLog.objects.order_by('-timestamp')
         if q:
             from django.db.models import Q
             qs = qs.filter(Q(action__icontains=q) | Q(resource__icontains=q))

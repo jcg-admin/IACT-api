@@ -13,20 +13,49 @@ if TYPE_CHECKING:
 def get_user_function_codes(user: 'User') -> list[str]:
     """
     Return a list of function codes that the given user has access to.
-    Combines direct permissions. Superusers get all functions.
+    Combina: UserPermission + AccessGroup + ExceptionalPermission ACTIVE.
+    Superusers obtienen todas las funciones activas.
+
+    Fix H-F6-GRP-GC-001 (2026-05-14): incluye AGR y ExceptionalPermission ACTIVE.
     """
     if user.is_superuser:
         from apps.access.models import Function
         return list(Function.objects.filter(is_active=True).values_list('code', flat=True))
 
-    from apps.access.models import UserPermission
-    codes = UserPermission.objects.filter(
+    from apps.access.models import UserPermission, ExceptionalPermission
+    from django.utils import timezone
+
+    # Fuente 1: permisos directos via UserPermission
+    direct = set(UserPermission.objects.filter(
         user=user,
         function__is_active=True,
         function__module__is_active=True,
-    ).values_list('function__code', flat=True)
+    ).values_list('function__code', flat=True))
 
-    return list(codes)
+    # Fuente 2: funciones via AccessGroup ACTIVE
+    from apps.access.models import Function
+    group_fns = set(Function.objects.filter(
+        access_groups__memberships__user=user,
+        access_groups__is_active=True,
+        is_active=True,
+    ).values_list('code', flat=True))
+
+    # Fuente 3: concesiones excepcionales ACTIVE no expiradas
+    now = timezone.now()
+    exceptional_grants = set(ExceptionalPermission.objects.filter(
+        user=user,
+        status=ExceptionalPermission.STATE_ACTIVE,
+        expires_at__gt=now,
+    ).values_list('function__code', flat=True))
+
+    # Revocaciones excepcionales ACTIVE (tienen precedencia)
+    exceptional_revokes = set(ExceptionalPermission.objects.filter(
+        user=user,
+        status=ExceptionalPermission.STATE_REVOKED,
+    ).values_list('function__code', flat=True))
+
+    all_codes = (direct | group_fns | exceptional_grants) - exceptional_revokes
+    return sorted(all_codes)
 
 
 def get_navigation_modules(user: 'User') -> list:

@@ -194,29 +194,27 @@ class ExceptionalPermissionTestData(DjangoModelFactory):
     user          = factory.SubFactory(UserTestData)
     function      = factory.SubFactory(FunctionTestData)
     justification = factory.Faker('paragraph', nb_sentences=5)
-    status        = 'pending'
-    valid_from    = factory.LazyFunction(timezone.now)
-    valid_until   = factory.LazyFunction(
+    status        = ExceptionalPermission.STATE_ACTIVE  # 'ACTIVE'
+    # granted_at / expires_at — campos actuales del modelo
+    granted_at    = factory.LazyFunction(timezone.now)
+    expires_at    = factory.LazyFunction(
         lambda: timezone.now() + timedelta(days=7))
-    granted_by    = None
 
     class Meta:
         model = ExceptionalPermission
 
 
 class ApprovedExceptionalPermissionTestData(ExceptionalPermissionTestData):
-    """Pre-approved ExceptionalPermission, currently active."""
-    status     = 'approved'
-    granted_by = factory.SubFactory(UserTestData)
+    """Pre-approved ExceptionalPermission, currently active (alias legacy)."""
+    status     = ExceptionalPermission.STATE_ACTIVE
 
 
 class ExpiredExceptionalPermissionTestData(ExceptionalPermissionTestData):
-    """Expired ExceptionalPermission — valid_until in the past."""
-    status      = 'approved'
-    granted_by  = factory.SubFactory(UserTestData)
-    valid_from  = factory.LazyFunction(
+    """Expired ExceptionalPermission — expires_at in the past."""
+    status     = ExceptionalPermission.STATE_EXPIRED
+    granted_at = factory.LazyFunction(
         lambda: timezone.now() - timedelta(days=10))
-    valid_until = factory.LazyFunction(
+    expires_at = factory.LazyFunction(
         lambda: timezone.now() - timedelta(days=3))
 
 

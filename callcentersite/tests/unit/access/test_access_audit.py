@@ -67,7 +67,7 @@ class TestAccessAuditEndpoint:
         AuditLog.objects.create(action='LOGIN', user=None, resource='test', result='SUCCESS')
         response = client.get(_acc_audit_url())
         for item in response.data.get('results', []):
-            assert item.get('action') in ACCESS_EVENT_TYPES or item.get('event_type') in ACCESS_EVENT_TYPES
+            assert item.get('action') in ACCESS_EVENT_TYPES or item.get('action') in ACCESS_EVENT_TYPES
 
     def test_it03_target_user_id_emite_audit(self, client_acc09):
         """CA-03: ?target_user_id=42 → ACCESS_AUDIT_VIEWED emitido."""
@@ -93,7 +93,7 @@ class TestAccessAuditEndpoint:
         """CA-10: aggregations → 200, ZERO AuditEvent generado."""
         client, _ = client_acc09
         before = AuditLog.objects.count()
-        response = client.get(_acc_audit_agg_url(), {'group_by': 'event_type'})
+        response = client.get(_acc_audit_agg_url(), {'group_by': 'action'})
         assert response.status_code == status.HTTP_200_OK
         assert AuditLog.objects.count() == before
 

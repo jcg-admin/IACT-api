@@ -320,7 +320,7 @@ class TestAcknowledgeEndpoint:
             self._ack_url(alert.id), {'note': 'Revisado'}, format='json',
         )
         assert AuditLog.objects.count() > before
-        assert AuditLog.objects.filter(event_type='ALERT_ACKNOWLEDGED').exists()
+        assert AuditLog.objects.filter(action='ALERT_ACKNOWLEDGED').exists()
 
     def test_sec01_sin_permiso_retorna_403(self, client_sin_alr):
         """CA-09: sin ALR-007 → 403"""

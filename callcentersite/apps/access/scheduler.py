@@ -15,21 +15,21 @@ logger = logging.getLogger(__name__)
 def expire_exceptional_permissions() -> int:
     """
     Marks ExceptionalPermissions as 'expired' when their valid_until
-    date has passed and their status is still 'approved'.
+    date has passed and their status is still STATE_ACTIVE ('ACTIVE').
 
     Runs every hour via AccessScheduler.
 
     Returns:
-        int: number of permissions updated to 'expired'.
+        int: number of permissions updated to STATE_EXPIRED ('EXPIRED').
     """
     from django.utils import timezone
     from apps.access.models import ExceptionalPermission
 
     now = timezone.now()
     updated = ExceptionalPermission.objects.filter(
-        status='approved',
-        valid_until__lt=now,
-    ).update(status='expired')
+        status=ExceptionalPermission.STATE_ACTIVE,
+        expires_at__lt=now,
+    ).update(status=ExceptionalPermission.STATE_EXPIRED)
 
     if updated:
         logger.info(

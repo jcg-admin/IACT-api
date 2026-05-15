@@ -168,16 +168,22 @@ class User(AbstractUser):
             ).values_list('code', flat=True)
         )
 
-        # 3. Active ExceptionalPermission
+        # 3. Active ExceptionalPermission (FASE 6 — usa STATE_ACTIVE + expires_at)
         now = timezone.now()
         function_codes.update(
             ExceptionalPermission.objects.filter(
                 user=self,
-                status='approved',
-                valid_from__lte=now,
-                valid_until__gte=now,
+                status=ExceptionalPermission.STATE_ACTIVE,
+                expires_at__gte=now,
             ).values_list('function__code', flat=True)
         )
+
+        # Revocaciones excepcionales tienen precedencia
+        revoked = ExceptionalPermission.objects.filter(
+            user=self,
+            status=ExceptionalPermission.STATE_REVOKED,
+        ).values_list('function__code', flat=True)
+        function_codes -= set(revoked)
 
         return sorted(function_codes)
 

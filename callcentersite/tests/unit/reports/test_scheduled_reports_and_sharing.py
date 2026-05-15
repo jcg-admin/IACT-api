@@ -97,7 +97,7 @@ class TestScheduledReportEndpoint:
         """CA-15: SCHEDULED_REPORT_CREATED emitido."""
         client, _ = client_rpt07
         client.post(_sched_url(), _valid_schedule_payload(), format='json')
-        assert AuditLog.objects.filter(event_type='SCHEDULED_REPORT_CREATED').exists()
+        assert AuditLog.objects.filter(action='SCHEDULED_REPORT_CREATED').exists()
 
     def test_it07_11a_schedule_retorna_429(self, client_rpt07):
         """CA-07: > 10 schedules → 429."""
@@ -251,7 +251,7 @@ class TestShareReportEndpoint:
         client, user = client_rpt11
         target = User.objects.create_user(username='share_audit', password='P@ss123!')
         client.post(_share_url(), self._payload(target.pk), format='json')
-        assert AuditLog.objects.filter(event_type='REPORT_SHARE_CREATED').exists()
+        assert AuditLog.objects.filter(action='REPORT_SHARE_CREATED').exists()
 
     def test_sec_no_email_externo(self, client_rpt11):
         """CA-14: CNST-001 — sin email externo."""

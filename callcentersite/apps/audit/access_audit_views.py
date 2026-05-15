@@ -47,7 +47,7 @@ class AccessAuditListView(APIView):
         except ValueError as e:
             return Response({'error': 'BAD_FILTER', 'detail': str(e)}, status=400)
 
-        qs = AccessScopeFilter.queryset(AuditLog.objects.all()).order_by('-created_at')
+        qs = AccessScopeFilter.queryset(AuditLog.objects.all()).order_by('-timestamp')
 
         if target_uid:
             from django.db.models import Q
@@ -60,7 +60,7 @@ class AccessAuditListView(APIView):
             AuditResponseSanitizer.sanitize_event({
                 'id': a.pk, 'action': a.action,
                 'user_id': a.user_id, 'resource': a.resource,
-                'result': a.result, 'created_at': str(a.created_at),
+                'result': a.result, 'timestamp': str(a.timestamp),
                 'details': a.details,
             })
             for a in qs[:200]
@@ -105,7 +105,7 @@ class AccessAuditDetailView(APIView):
         return Response({
             'id': audit.pk, 'action': audit.action,
             'user_id': audit.user_id, 'resource': audit.resource,
-            'result': audit.result, 'created_at': str(audit.created_at),
+            'result': audit.result, 'timestamp': str(audit.timestamp),
             'details': audit.details,
         })
 

@@ -10,17 +10,19 @@ from apps.access.models import Function, UserPermission
 def func_factory(db):
     """Factory para crear funciones bajo demanda."""
     def _create(code, module='MOD_DEFAULT', name='Test Function',
-                description='Test Description'):
+                description='Test Description', permission_django=None):
         from apps.access.models import Module
         mod, _ = Module.objects.get_or_create(
             code=module,
-            defaults={'name': module, 'description': module},
+            defaults={'name': module},
         )
         return Function.objects.create(
             code=code,
             module=mod,
             name=name,
             description=description,
+            # permission_django = code por defecto, para que has_function(code) funcione
+            permission_django=permission_django or code,
         )
     return _create
 

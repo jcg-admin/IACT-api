@@ -8,6 +8,27 @@ POST /api/auth/sessions/close-all/  — bulk (AUTH-002)
 GET  /api/auth/sessions/own/        — vista propia (view_own_sessions)
 """
 import pytest
+
+@pytest.fixture(autouse=True)
+def disable_view_throttles(monkeypatch):
+    """Deshabilitar throttle en vistas con throttle_classes explícito."""
+    try:
+        from apps.authentication.login_view import LoginView
+        monkeypatch.setattr(LoginView, 'throttle_classes', [])
+    except Exception: pass
+    try:
+        from apps.authentication.logout_view import LogoutView
+        monkeypatch.setattr(LogoutView, 'throttle_classes', [])
+    except Exception: pass
+    try:
+        from apps.users.create_user_view import CreateUserView
+        monkeypatch.setattr(CreateUserView, 'throttle_classes', [])
+    except Exception: pass
+    try:
+        from apps.authentication.change_password_view import ChangePasswordView
+        monkeypatch.setattr(ChangePasswordView, 'throttle_classes', [])
+    except Exception: pass
+
 from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APIClient

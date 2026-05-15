@@ -54,6 +54,15 @@ class SoftDeleteQuerySet(models.QuerySet):
         """
         return self.filter(is_deleted=False)
     
+    def active(self):
+        """
+        Alias de alive() — compatibilidad con código que usa .active().
+        
+        Returns:
+            QuerySet: Registros con is_deleted=False
+        """
+        return self.alive()
+    
     def deleted(self):
         """
         Filtrar solo registros eliminados.
@@ -112,6 +121,19 @@ class ActiveRecordQuery(models.Manager):
         return SoftDeleteQuerySet(self.model, using=self._db).filter(
             is_deleted=True
         )
+
+    def active(self):
+        """
+        Alias de get_queryset() — devuelve registros no eliminados.
+        Compatible con código que usa .active() en lugar de .filter(is_deleted=False).
+        Fix: DT-SOFT-DELETE-001 detectado durante FASE 6 (los services usaban
+        SecurityQuestion.objects.active() pero el Manager no lo exponía).
+        """
+        return self.get_queryset()
+
+    def alive(self):
+        """Alias de active() — compatibilidad adicional."""
+        return self.get_queryset()
 
 
 class SoftDeleteMixin(models.Model):

@@ -1,3 +1,4 @@
+from apps.reports.models import ExportJob
 """
 Tests unitarios para app reports.
 

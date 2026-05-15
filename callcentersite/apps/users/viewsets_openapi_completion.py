@@ -1,3 +1,4 @@
+"""
 # Código para completar decoradores de ProfileViewSet y SettingsViewSet
 
 # ProfileViewSet - update_profile
@@ -78,3 +79,5 @@
         tags=['Sesiones'],
     ),
 )
+"""
+# Este archivo es una referencia de decoradores, no un módulo ejecutable.
