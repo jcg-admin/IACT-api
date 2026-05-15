@@ -209,7 +209,6 @@ class TestUserPermission:
         assert '->' in str(perm)
         assert fn.code in str(perm)
 
-    @pytest.mark.xfail(reason="Catálogo precargado por create_functions interfiere con datos de test", strict=False)
     def test_unique_together_user_function(self):
         """Un usuario no puede tener la misma función asignada dos veces."""
         from django.db import transaction
