@@ -505,3 +505,49 @@ python3 -m pytest tests/integration/ --no-header -q --tb=no --reuse-db
 ```
 
 Commit: `4ebb474` en `develop`.
+
+---
+
+## Corrección — H-UC-STUB-002: Analytics ACD/CTI sin datos en ivr_legacy
+
+**Adición posterior a la emisión inicial del documento.**
+
+### Descripción
+
+Las vistas `AgentReportView`, `AgentDetailView`, `QueueReportView`,
+`CampaignReportView`, `TransferReportView`, `IVRMenuReportView` y
+`UniqueClientsReportView` (sección A de `apps/reports/urls.py`) acceden
+a tablas de MariaDB que **no existen en `ivr_legacy`**:
+
+| Vista | Tabla requerida | Existe en ivr_legacy |
+|---|---|---|
+| `AgentReportView` | `agent_performance_summary` | NO |
+| `AgentDetailView` | `agent_performance_detail` | NO |
+| `QueueReportView` | `queue_performance_summary` | NO |
+| `CampaignReportView` | `campaign_summary` | NO |
+| `TransferReportView` | `ivr_transfer_summary` | NO |
+| `IVRMenuReportView` | tabla IVR variante ACD | NO |
+| `UniqueClientsReportView` | `base_ivr_clientes` | SÍ (15 filas) |
+
+Estas tablas pertenecen a un sistema ACD/CTI externo que no forma parte del
+sandbox de IACT-db. Los UCs `UC_RPT_12..14` están documentados en IACT-docs
+como en scope, pero sus fuentes de datos no han sido provisionadas.
+
+A diferencia del Grupo A (sección B-01 de `urls.py`) que sí usa tablas reales:
+
+| Vista | Tabla | Filas reales |
+|---|---|---|
+| `ClientsReportView` | `base_ivr_clientes` | 15 |
+| `TransferCentersView`, `AbandonedCallsView`, `RedirectedMenusView`, etc. | `base_ivr_detalle` | 16,689 |
+
+### Estado actual
+
+Las vistas del Grupo B retornan `[]` en lugar de 500 gracias al fix
+`H-PROD-010` (`_stub_rows` captura `ProgrammingError`). No hay error en
+producción, pero tampoco hay datos reales.
+
+### Acción pendiente
+
+Provisionar las tablas ACD/CTI en `ivr_legacy` o reclasificar `UC_RPT_12..14`
+como fuera de scope en IACT-docs hasta que el sistema ACD esté disponible.
+Esto es una decisión de negocio, no un defecto de código.
