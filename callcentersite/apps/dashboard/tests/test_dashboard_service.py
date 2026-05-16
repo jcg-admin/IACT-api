@@ -65,10 +65,10 @@ class DashboardServiceTestCase(TestCase):
     def test_create_default_dashboard_already_exists(self):
         """Test crear dashboard cuando ya existe uno."""
         # Crear primer dashboard
-        dashboard1 = DashboardService.create_default_dashboard(self.user)
+        DashboardService.create_default_dashboard(self.user)
         
         # Crear segundo dashboard
-        dashboard2 = DashboardService.create_default_dashboard(self.user)
+        DashboardService.create_default_dashboard(self.user)
         
         # Ambos deberían existir
         self.assertEqual(

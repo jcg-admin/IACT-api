@@ -78,13 +78,13 @@ class MessageServiceTest(TestCase):
     def test_get_inbox(self):
         """Test: Obtener inbox de usuario"""
         # Crear mensajes
-        message1 = MessageService.send_message(
+        MessageService.send_message(
             sender=self.sender,
             recipients=[self.recipient1],
             subject='Message 1',
             body='Body 1'
         )
-        message2 = MessageService.send_message(
+        MessageService.send_message(
             sender=self.sender,
             recipients=[self.recipient1],
             subject='Message 2',
@@ -105,7 +105,7 @@ class MessageServiceTest(TestCase):
             subject='Message 1',
             body='Body 1'
         )
-        message2 = MessageService.send_message(
+        MessageService.send_message(
             sender=self.sender,
             recipients=[self.recipient1],
             subject='Message 2',
