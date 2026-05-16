@@ -324,9 +324,11 @@ class SeparationRuleDetailView(APIView):
         data = ser.validated_data
         changed = []
         if 'name' in data:
-            rule.name = data['name']; changed.append('name')
+            rule.name = data['name']
+            changed.append('name')
         if 'description' in data:
-            rule.description = data['description']; changed.append('description')
+            rule.description = data['description']
+            changed.append('description')
         if changed:
             rule.save(update_fields=changed)
 

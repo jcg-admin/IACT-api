@@ -35,7 +35,7 @@ def _read_log_tail(filepath: Path, lines: int = 100) -> list[str]:
     try:
         with open(filepath, 'r', errors='replace') as f:
             all_lines = f.readlines()
-            return [l.rstrip() for l in all_lines[-lines:]]
+            return [line.rstrip() for line in all_lines[-lines:]]
     except FileNotFoundError:
         return []
     except Exception as e:

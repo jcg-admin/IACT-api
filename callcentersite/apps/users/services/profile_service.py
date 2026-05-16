@@ -187,14 +187,14 @@ class ProfileService(BaseService):
         allowed_formats = ['image/jpeg', 'image/png', 'image/gif']
         if avatar_file.content_type not in allowed_formats:
             raise UserServiceError(
-                f"Formato no permitido. Use: jpg, png, gif"
+                "Formato no permitido. Use: jpg, png, gif"
             )
         
         # Validar tamaño (2MB máximo)
         max_size = 2 * 1024 * 1024  # 2MB
         if avatar_file.size > max_size:
             raise UserServiceError(
-                f"Archivo muy grande. Máximo: 2MB"
+                "Archivo muy grande. Máximo: 2MB"
             )
         
         # Sanitizar nombre de archivo
