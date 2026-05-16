@@ -85,7 +85,7 @@ class TestExportJobModel:
         assert job.status in ('pending', 'queued')
     
     def test_export_job_str(self):
-        """Test __str__ method."""
+        """Test __str__ method — formato canónico ExportJob(report_type/format/status)."""
         user = User.objects.create_user(username='test', password='pass')
         report = Report.objects.create(
             name='My Report',
@@ -94,12 +94,15 @@ class TestExportJobModel:
         )
         job = ExportJob.objects.create(
             report=report,
+            report_type='users',
             format='excel',
             total_records=100
         )
-        
-        assert 'My Report' in str(job)
-        assert 'excel' in str(job)
+        # __str__ usa report_type/format/status (campos directos, sin FK nullable)
+        result = str(job)
+        assert 'users' in result
+        assert 'excel' in result
+        assert 'ExportJob(' in result
     
     def test_progress_percentage(self):
         """Test calcular porcentaje de progreso."""

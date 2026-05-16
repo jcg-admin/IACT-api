@@ -253,10 +253,7 @@ class ExportJob(SoftDeleteMixin, models.Model):
     def is_active(self) -> bool:
         """True si el job está en un estado que cuenta para el límite de 5 simultáneos."""
         return self.status in (self.STATUS_QUEUED, self.STATUS_RUNNING)
-    
-    def __str__(self):
-        return f"Export {self.id} - {self.report.name} ({self.format})"
-    
+
     @property
     def progress_percentage(self):
         """Calcular porcentaje de progreso."""

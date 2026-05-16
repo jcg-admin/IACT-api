@@ -249,10 +249,8 @@ class ExportJobViewSet(viewsets.ReadOnlyModelViewSet):
 # K-002 / K-003: ScheduledReport (UC_RPT_07/08)
 # ---------------------------------------------------------------------------
 from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiResponse
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
-from apps.access.permissions.function_permissions import HasFunction
-from apps.access.permissions.function_permissions import HasFunction
+from rest_framework.views import APIView
+from django.utils import timezone
 from .models import ScheduledReport, SavedView
 from .serializers import ScheduledReportSerializer, SavedViewSerializer
 
@@ -350,9 +348,7 @@ class SavedViewViewSet(viewsets.ModelViewSet):
 # ---------------------------------------------------------------------------
 # K-005: UC_RPT_02 — Real-time metrics stub (CNST-004)
 # ---------------------------------------------------------------------------
-from rest_framework.views import APIView
-from rest_framework.response import Response
-from django.utils import timezone
+
 
 
 @extend_schema(

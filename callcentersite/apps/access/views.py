@@ -30,6 +30,7 @@ from .serializers import (
     ExceptionalPermissionSerializer,
     FunctionSerializer,
 )
+from .serializers import MenuItemSerializer
 from .services import ModuleAccessService
 
 
@@ -167,8 +168,6 @@ class MyModulesView(APIView):
 # ---------------------------------------------------------------------------
 # B-05: AccessGroup ViewSet (UC_ACC_04, UC_PERM_01..06, UC_ADM_03)
 # ---------------------------------------------------------------------------
-from .models import AccessGroup, UserAccessGroup, SeparationRule, ExceptionalPermission
-from apps.access.serializers.menu_item_serializers import MenuItemSerializer
 
 
 

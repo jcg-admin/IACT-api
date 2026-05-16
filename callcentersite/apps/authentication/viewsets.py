@@ -14,7 +14,6 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from apps.core.permissions import RequiresFunctionPermission  # [SUCCESS] De apps.core
 from apps.core.mixins import AuditMixin  # [SUCCESS] De apps.core
 from apps.authentication.models import SessionLog
-from apps.authentication.serializers.auth import LoginSerializer
 from apps.authentication.serializers import (
     LoginSerializer,
     LogoutSerializer,
