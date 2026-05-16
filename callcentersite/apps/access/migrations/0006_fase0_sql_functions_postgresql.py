@@ -17,7 +17,7 @@ SQLite (testing local) las omite silenciosamente.
 
 Fuente: ADR-BACK-006 § 2.3, CNST-032, CNST-010.
 """
-from django.db import migrations, connection
+from django.db import migrations
 
 
 def create_sql_functions(apps, schema_editor):

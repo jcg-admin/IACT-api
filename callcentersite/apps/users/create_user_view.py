@@ -18,10 +18,10 @@ import secrets
 import string
 import unicodedata
 
-from django.db import transaction, DatabaseError, IntegrityError
+from django.db import transaction, DatabaseError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
@@ -156,7 +156,6 @@ class CreateUserView(APIView):
     def post(self, request):
         from django.contrib.auth import get_user_model
         User = get_user_model()
-        from apps.audit.services import AuditLogService
 
         ser = CreateUserRequestSerializer(data=request.data)
         if not ser.is_valid():

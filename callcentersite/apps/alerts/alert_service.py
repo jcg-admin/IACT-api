@@ -7,7 +7,6 @@ RuleValidator    — valida payload de AlertRule contra el contexto del usuario.
 AlertAckValidator — valida el note de UC_ALR_03.
 DryRunEngine     — evalúa una regla hipotética sin crear alertas reales.
 """
-from django.db import transaction
 
 VALID_METRICS = {
     'call_volume', 'avg_wait_time', 'sla_percentage',

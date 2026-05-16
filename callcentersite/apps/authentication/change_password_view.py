@@ -20,12 +20,11 @@ Flujo (transacción atómica en pasos 10-13):
 FA-01: si venía de first_login, Session actual pasa a scope='full' (scope_upgraded=True).
 """
 import re
-import uuid
 
 from django.db import transaction, DatabaseError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle

@@ -10,7 +10,7 @@ Fuentes:
 """
 from django.db import transaction, DatabaseError
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, OpenApiResponse
+from drf_spectacular.utils import extend_schema
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -59,7 +59,6 @@ class ModifyUserView(APIView):
     def patch(self, request, user_id):
         from django.contrib.auth import get_user_model
         from apps.audit.services import AuditLogService
-        from apps.authentication.models import Session, BlacklistedToken
         User = get_user_model()
 
         try:
@@ -178,7 +177,7 @@ class EliminateUserView(APIView):
         from django.contrib.auth import get_user_model
         from apps.audit.services import AuditLogService
         from apps.authentication.models import Session
-        from apps.access.models import UserFunctionAssignment, UserAccessGroup
+        from apps.access.models import UserFunctionAssignment
         User = get_user_model()
 
         # CA-03: auto-eliminación prohibida

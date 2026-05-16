@@ -9,9 +9,8 @@ POST   /api/users/{user_id}/exceptional-permissions/
 GET    /api/users/{user_id}/exceptional-permissions/preview/
 DELETE /api/users/{user_id}/exceptional-permissions/{permission_id}/
 """
-from datetime import datetime
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView

@@ -10,12 +10,12 @@ Pruebas de:
 FASE 7: Tests de permissions.
 """
 
-from django.test import TestCase, RequestFactory
+from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIRequestFactory
 
 from apps.dashboard.models import DashboardConfig, WidgetConfig, SavedFilter
-from apps.dashboard.permissions import (
+from apps.dashboard.permissions import (  # noqa: F401
     can_view_dashboard,
     can_edit_dashboard,
     can_delete_dashboard,
@@ -25,8 +25,8 @@ from apps.dashboard.permissions import (
     can_view_filter,
     can_edit_filter,
     IsDashboardOwnerOrReadOnly,
-    IsWidgetOwnerOrReadOnly,
-    IsFilterOwnerOrReadOnly
+    IsWidgetOwnerOrReadOnly,  # noqa: F401
+    IsFilterOwnerOrReadOnly  # noqa: F401
 )
 
 User = get_user_model()

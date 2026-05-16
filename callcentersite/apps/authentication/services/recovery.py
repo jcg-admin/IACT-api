@@ -9,7 +9,6 @@ CNST-001: SIN email externo, solo preguntas de seguridad.
 
 from typing import List, Dict
 from django.contrib.auth import get_user_model
-from django.contrib.auth.hashers import make_password
 
 from apps.core.services.base_service import BaseService  # [SUCCESS] BaseService
 from apps.authentication.models import SecurityQuestion, UserSecurityAnswer

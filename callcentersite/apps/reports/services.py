@@ -7,8 +7,7 @@ SIN AWS/S3 - Exportación local.
 import csv
 import io
 from datetime import datetime
-from typing import Dict, List, Any, Optional
-from django.conf import settings
+from typing import Dict, List, Any
 from django.utils import timezone
 from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill

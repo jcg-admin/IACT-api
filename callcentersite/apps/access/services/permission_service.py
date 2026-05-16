@@ -20,7 +20,6 @@ Fuente: uc-perm-07/, ADR-BACK-006 § 2.3, CNST-010
 """
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Optional
@@ -321,7 +320,7 @@ class PermissionService:
         Consulta BD para resolver permiso (cache miss).
         Una sola ronda a BD per CA-11.
         """
-        from apps.access.models import ExceptionalPermission, UserAccessGroup, Function
+        from apps.access.models import ExceptionalPermission, UserAccessGroup
         from django.utils import timezone
         now = timezone.now()
 

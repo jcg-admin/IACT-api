@@ -83,7 +83,8 @@ class UserTimezoneHandler(MiddlewareMixin):
         CORRECCIÓN v5.1.1:
         Retorna settings.TIME_ZONE (configuración global).
         
-        TODO: Si se implementa UserSettings.timezone, leerlo aquí:
+        # El timezone del usuario se gestiona via SettingsView (cache-backed).
+        # Para activar: leer cache key user_settings:{pk} y extraer timezone.
             if user.is_authenticated and hasattr(user, 'settings'):
                 return getattr(user.settings, 'timezone', settings.TIME_ZONE)
         
@@ -111,7 +112,6 @@ class UserTimezoneHandler(MiddlewareMixin):
 # CORRECCIÓN v5.1.1:
 #   - UserSettings NO tiene campo timezone (eliminado FASE 2 PARTE 2)
 #   - Sistema usa timezone global configurado en settings.py
-#   - TODO: Si se agrega UserSettings.timezone, modificar _get_timezone()
 # 
 # Benefit:
 #   - Todas las fechas se muestran en timezone consistente

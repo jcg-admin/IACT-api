@@ -1,7 +1,7 @@
 """
 Views para sistema de acceso y módulos.
 """
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from apps.access.permissions.function_permissions import HasFunction
 from apps.core.permissions import RequiresFunctionPermission
 from drf_spectacular.utils import (
@@ -24,7 +24,6 @@ from .serializers import (
     ModuleSerializer,
     ModuleTreeSerializer,
     UserModuleAccessSerializer,
-    MyModulesSerializer,
     AccessGroupSerializer,
     AccessGroupListSerializer,
     UserAccessGroupSerializer,
@@ -169,7 +168,6 @@ class MyModulesView(APIView):
 # B-05: AccessGroup ViewSet (UC_ACC_04, UC_PERM_01..06, UC_ADM_03)
 # ---------------------------------------------------------------------------
 from .models import AccessGroup, UserAccessGroup, SeparationRule, ExceptionalPermission
-from rest_framework import serializers as drf_serializers
 from apps.access.serializers.menu_item_serializers import MenuItemSerializer
 
 
@@ -1070,7 +1068,6 @@ class MenuItemTransitionView(APIView):
     """
 
     def post(self, request, pk):
-        from rest_framework.permissions import IsAuthenticated
         from rest_framework.response import Response
         from rest_framework import status as http_status
         from apps.access.models import MenuItem

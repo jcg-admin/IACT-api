@@ -5,9 +5,6 @@ CLEAN_CODE v3.0.1: Funciones auto-documentadas.
 SOLID: SRP (Single Responsibility), DRY (Don't Repeat Yourself).
 """
 
-import re
-from decimal import Decimal
-from typing import Optional
 
 
 # ============================================================================

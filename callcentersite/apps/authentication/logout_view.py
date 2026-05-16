@@ -20,11 +20,10 @@ CA-06/07: si blacklist o audit fallan → Session permanece ACTIVE (rollback).
 CA-09 (frontend): fuera del scope de este archivo.
 CA-15 (HTTPS): Apache / nginx — fuera del scope de este archivo.
 """
-import uuid
 from django.db import transaction, DatabaseError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse
-from rest_framework import status, serializers
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle

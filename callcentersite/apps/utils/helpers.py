@@ -3,11 +3,9 @@ import hashlib
 import os
 import secrets
 import uuid
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, Iterable, List, Optional, TypeVar
+from typing import Any, Dict, Iterable, List, TypeVar
 
-from apps.utils.request import is_ajax_request  # re-export para compatibilidad
+from apps.utils.request import is_ajax_request  # noqa: F401 — re-exportado para compatibilidad
 
 
 def generate_unique_filename(filename: str) -> str:

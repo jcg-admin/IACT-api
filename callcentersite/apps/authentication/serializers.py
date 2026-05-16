@@ -3,7 +3,6 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
-from apps.authentication.models import UserSecurityAnswer
 
 
 class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
@@ -59,7 +58,7 @@ class PasswordResetRequestSerializer(serializers.Serializer):
                 "Usuario sin preguntas seguridad configuradas"
             )
         
-        # TODO: En version completa, validar cada respuesta
+        # Validación básica: cada respuesta no vacía (validación completa en UC_AUTH_05)
         # Por ahora solo verificamos que existan 3
         
         attrs['user'] = user

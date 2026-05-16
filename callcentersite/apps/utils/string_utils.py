@@ -7,7 +7,6 @@ SOLID: SRP, DRY, OCP.
 
 import re
 import unicodedata
-from typing import Optional
 
 
 # ============================================================================

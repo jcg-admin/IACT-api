@@ -186,7 +186,6 @@ class LoginService:
         Verifica estado, lockout y credenciales.
         No escribe en BD en este paso para minimizar locks.
         """
-        from django.contrib.auth.hashers import check_password as django_check_password
 
         # Buscar usuario (timing-safe: mismo código path si existe o no)
         try:
@@ -362,8 +361,7 @@ class LoginService:
         Registra intento fallido en LoginLockout.
         Retorna el nuevo contador de intentos.
         """
-        from apps.authentication.models import LoginLockout, LoginAttempt
-        from apps.utils.helpers import get_client_ip
+        from apps.authentication.models import LoginLockout
 
         lockout, _ = LoginLockout.objects.get_or_create(
             username=username,

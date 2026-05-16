@@ -23,7 +23,6 @@ FASE 5: Implementación de permissions.
 """
 
 from rest_framework.permissions import BasePermission
-from apps.dashboard.models import DashboardConfig, WidgetConfig, SavedFilter
 
 
 # ==============================================================================

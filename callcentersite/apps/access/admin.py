@@ -4,7 +4,6 @@ apps/access/admin.py
 Django Admin registration for the access app models.
 """
 from django.contrib import admin
-from django.utils.html import format_html
 
 from apps.access.models import (
     Module, Function, UserPermission,

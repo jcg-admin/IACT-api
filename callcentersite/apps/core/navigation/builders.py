@@ -2,7 +2,7 @@
 Builders para el sistema de navegacion del menu principal.
 """
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 
 class MenuValidator:

@@ -24,10 +24,10 @@ from django.utils import timezone
 from apps.core.models import (
     TimeStampedModel,
     SoftDeleteMixin,
-    AuditedModel,
     CompleteBaseModel,
     ActiveRecordQuery
 )
+from apps.core.models import AuditedModel  # noqa: F401 — re-exportado, usado en herencia
 
 User = get_user_model()
 

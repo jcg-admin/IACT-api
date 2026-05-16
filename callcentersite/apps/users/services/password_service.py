@@ -7,7 +7,6 @@ Gestiona password reset con tokens.
 CLEAN_CODE v3.0.1: Service Layer Pattern, Single Responsibility.
 """
 
-from typing import Optional
 from django.db import transaction
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
@@ -18,7 +17,6 @@ from django.conf import settings
 
 from apps.core.services import BaseService
 from apps.users.exceptions import (
-    UserNotFoundError,
     PasswordValidationError,
     UserServiceError,
 )
@@ -266,7 +264,7 @@ class PasswordService(BaseService):
             >>> print(link)
             'https://example.com/reset-password/MQ/abc123/'
         """
-        # TODO: Configurar BASE_URL en settings
+        # BASE_URL se lee de settings.BASE_URL (valor por defecto en config/settings/base.py)
         base_url = getattr(settings, 'BASE_URL', 'http://localhost:8000')
         return f"{base_url}/api/v1/users/auth/reset-password/{uidb64}/{token}/"
     

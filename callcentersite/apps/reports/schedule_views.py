@@ -5,7 +5,7 @@ UC_RPT_07 — Programar Reporte. POST/PATCH/DELETE /api/reports/schedules/
 UC_RPT_08 — Ver Reportes Programados. GET /api/reports/schedules/
 """
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView

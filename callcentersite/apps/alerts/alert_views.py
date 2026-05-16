@@ -12,13 +12,12 @@ ActiveAlertsView         — GET /api/alerts/active/
 AlertAcknowledgeView     — POST /api/alerts/{id}/acknowledge/
 AlertBulkAcknowledgeView — POST /api/alerts/bulk-acknowledge/
 """
-import uuid
 from django.db import transaction
 from django.utils import timezone
 from drf_spectacular.utils import (
-    extend_schema, extend_schema_view, OpenApiResponse,
+    extend_schema, extend_schema_view,
 )
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView

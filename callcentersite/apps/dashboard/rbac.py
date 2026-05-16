@@ -22,7 +22,7 @@ FASE 8: Implementación de RBAC.
 """
 
 from functools import wraps
-from django.http import JsonResponse, HttpResponseForbidden
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404
 from django.contrib.auth.decorators import login_required
 
@@ -30,7 +30,6 @@ from apps.dashboard.models import (
     DashboardConfig,
     WidgetConfig,
     SavedFilter,
-    UserDashboardPreference
 )
 from apps.dashboard.permissions import (
     can_view_dashboard,
@@ -38,7 +37,6 @@ from apps.dashboard.permissions import (
     can_delete_dashboard,
     can_view_widget,
     can_edit_widget,
-    can_delete_widget,
     can_view_filter,
     can_edit_filter
 )

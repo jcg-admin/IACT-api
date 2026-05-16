@@ -7,8 +7,7 @@ GET/PATCH /api/users/settings/ — configuraciones del usuario autenticado.
 Los modelos UserProfile y UserSettings fueron integrados directamente en User
 (FASE 4). Estos endpoints exponen los campos disponibles en el modelo User.
 """
-from django.utils import timezone
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView

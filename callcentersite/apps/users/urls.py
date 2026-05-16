@@ -36,7 +36,6 @@ class UserDetailDispatcher:
     @staticmethod
     def as_view():
         from rest_framework.views import APIView
-        from rest_framework.response import Response
         from rest_framework.permissions import IsAuthenticated
 
         patch_view  = ModifyUserView.as_view()

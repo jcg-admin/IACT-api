@@ -14,7 +14,7 @@ CNST-001: notificación vía InternalMailbox (no email externo).
 from drf_spectacular.utils import (
     extend_schema, extend_schema_view, OpenApiResponse,
 )
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -22,7 +22,7 @@ from rest_framework.views import APIView
 from apps.access.permissions.function_permissions import HasFunction
 from apps.audit.services import AuditLogService
 from apps.reports.export_service import (
-    ExportWorker, JobLimiter, PayloadValidator,
+    JobLimiter, PayloadValidator,
 )
 from apps.reports.models import ExportJob
 from apps.reports.serializers.export_serializers import ExportJobSerializer

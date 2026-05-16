@@ -5,7 +5,7 @@ UC_RPT_09 — Configurar Filtros. POST/GET /api/me/filters/
 UC_RPT_10 — Guardar Vista.      POST/GET /api/me/views/
 """
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView

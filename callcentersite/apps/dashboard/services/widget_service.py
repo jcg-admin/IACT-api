@@ -19,7 +19,6 @@ Tipos de widgets soportados:
 FASE 2: Implementación de services.
 """
 
-from datetime import datetime, timedelta
 from django.core.cache import cache
 
 from apps.dashboard.models import WidgetConfig

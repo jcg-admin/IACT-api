@@ -9,7 +9,6 @@ PayloadSanitizer  — elimina PII de las filas antes de escribir.
 ExportWorker      — procesa el job (sync stub).
 """
 import csv
-import io
 import os
 import tempfile
 from django.utils import timezone

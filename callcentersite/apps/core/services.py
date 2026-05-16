@@ -5,9 +5,7 @@ CLEAN_CODE v3.0.1: Service Layer Pattern.
 SOLID: SRP - Cada service una responsabilidad.
 """
 
-from typing import Optional, Any, Dict
 from django.contrib.auth import get_user_model
-from django.db.models import QuerySet, Q
 import logging
 
 logger = logging.getLogger(__name__)

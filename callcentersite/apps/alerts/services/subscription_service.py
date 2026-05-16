@@ -1,7 +1,7 @@
 # apps/alerts/services/subscription_service.py
 
 from django.db import IntegrityError
-from apps.alerts.models import AlertSubscription, AlertConfiguration
+from apps.alerts.models import AlertSubscription
 import logging
 
 logger = logging.getLogger(__name__)

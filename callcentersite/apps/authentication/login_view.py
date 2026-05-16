@@ -16,16 +16,13 @@ Responsabilidades de esta view:
 La lógica de negocio vive exclusivamente en LoginService.
 """
 import uuid
-from datetime import datetime
 
 from django.utils import timezone
 from drf_spectacular.utils import (
     extend_schema,
     OpenApiResponse,
-    inline_serializer,
 )
 from rest_framework import serializers, status
-from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView

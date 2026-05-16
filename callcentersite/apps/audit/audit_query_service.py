@@ -6,9 +6,8 @@ CursorEncoder         — UC_PERM_10: codifica/decodifica cursores de paginació
 AuditResponseSanitizer — UC_PERM_10: trunca payload y elimina PII residual.
 """
 import base64
-import hashlib
 import json
-from datetime import datetime, timezone
+from datetime import datetime
 
 MAX_RANGE_DAYS = 90
 MAX_PAGE_SIZE  = 200

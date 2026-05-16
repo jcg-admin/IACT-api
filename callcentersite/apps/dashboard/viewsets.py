@@ -42,7 +42,7 @@ from apps.dashboard.permissions import (
     IsFilterOwnerOrReadOnly,
     IsPreferenceOwner,
     # RBAC Permissions (Modelo Granular)
-    CanCreateDashboard,
+
     CanCreateWidget,
 )
 from apps.dashboard.services import (
@@ -366,7 +366,7 @@ class WidgetConfigViewSet(viewsets.ModelViewSet):
                 CanCreateWidget(),
             ]
             
-            # TODO: Agregar validaciones para otros tipos de widgets
+            # CNST-XXX: Solo se validan tipos chart/kpi; otros pendiente de spec.
             # elif widget_type.startswith('USERS_'):
             #     permissions.append(CanAccessUserData())
             # elif widget_type.startswith('AUDIT_'):

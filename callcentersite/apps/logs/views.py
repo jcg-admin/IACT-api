@@ -14,9 +14,7 @@ UC_LOG_05: Logs de infraestructura.
 UC_LOG_06: Estado general del sistema de logs.
 UC_LOG_07: Metricas de logs.
 """
-import os
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
@@ -156,7 +154,7 @@ class LogSearchView(APIView):
 
     def get(self, request):
         from apps.logs.log_validators import LogPIIScanner
-        from datetime import datetime, timedelta, timezone as tz_
+        from datetime import datetime
 
         q         = request.query_params.get('q', '')
         date_from = request.query_params.get('date_from')
@@ -323,7 +321,7 @@ class LogHealthView(APIView):
 
     def get(self, request):
         from apps.logs.log_status_service import SystemStatusAggregator
-        from django.db import connections, OperationalError, ProgrammingError
+        from django.db import connections
 
         services = []
 

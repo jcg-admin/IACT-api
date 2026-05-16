@@ -2,7 +2,6 @@
 
 from django.test import TestCase
 from apps.alerts.scheduler import start_scheduler, stop_scheduler, get_scheduler
-import time
 
 
 class SchedulerTest(TestCase):
@@ -53,7 +52,6 @@ class SchedulerTest(TestCase):
     
     def test_no_celery_imports(self):
         """Test: ⭐ CNST-013 - NO hay imports de Celery/RabbitMQ/Kafka"""
-        import subprocess
         import os
         
         # Buscar imports prohibidos en todos los archivos de apps/alerts

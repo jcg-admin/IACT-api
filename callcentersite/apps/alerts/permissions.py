@@ -41,7 +41,7 @@ class MessagePermissions(RequiresFunctionPermission):
         Returns:
             bool: True si tiene permiso
         """
-        from apps.alerts.models import InternalMessage, MessageRecipient
+        from apps.alerts.models import MessageRecipient
         
         # Determinar objeto real
         if isinstance(obj, MessageRecipient):

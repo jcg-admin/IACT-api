@@ -7,7 +7,7 @@ Gestiona operaciones CRUD de usuarios.
 CLEAN_CODE v3.0.1: Service Layer Pattern, Single Responsibility.
 """
 
-from typing import Optional, Dict, List
+from typing import Optional, List
 from django.db import transaction
 from django.contrib.auth import get_user_model
 

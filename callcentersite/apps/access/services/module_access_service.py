@@ -126,7 +126,6 @@ class ModuleAccessService:
         Retorna los modulos de nivel raiz con sus hijos accesibles.
         Estructura: lista de modulos con atributo .children.
         """
-        from apps.access.models import Module
         modules = ModuleAccessService.get_user_modules(user)
         module_ids = set(modules.values_list('id', flat=True))
         root_modules = modules.filter(parent__isnull=True).prefetch_related('children')

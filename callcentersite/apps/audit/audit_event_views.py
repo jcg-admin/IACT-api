@@ -8,7 +8,6 @@ UC_AUD_03  — Exportar Auditoría.
 import uuid as _uuid
 from datetime import datetime, timezone as tz_
 from drf_spectacular.utils import extend_schema_view, extend_schema, OpenApiResponse
-from rest_framework import serializers, status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -339,8 +338,6 @@ class GeneralAuditListView(APIView):
 
     def get(self, request):
         from apps.audit.services import AuditLogService
-        from django.utils import timezone
-        from datetime import timedelta
 
         # Filtros
         module     = request.query_params.get('module')

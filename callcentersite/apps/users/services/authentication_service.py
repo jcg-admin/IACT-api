@@ -7,7 +7,7 @@ Gestiona login, logout y cambio de password.
 CLEAN_CODE v3.0.1: Service Layer Pattern, Single Responsibility.
 """
 
-from typing import Optional, Dict
+from typing import Optional
 from django.contrib.auth import authenticate, login, logout
 from django.contrib.auth import get_user_model
 from django.db import transaction
@@ -16,7 +16,6 @@ from apps.core.services import BaseService
 from apps.users.exceptions import (
     InvalidCredentialsError,
     UserInactiveError,
-    UserNotFoundError,
     PasswordValidationError,
 )
 from apps.audit.services import AuditLogService

@@ -8,7 +8,7 @@ Fuente: uc-auth-03/criterios-aceptacion.rst § 9
 Endpoint: POST /api/users/{user_id}/reset-password/
 Requiere: AUTH-003 reset_password (AGR-010 system_admin_group)
 """
-import secrets, string, unicodedata, re
+import secrets, string
 from django.db import transaction, DatabaseError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse

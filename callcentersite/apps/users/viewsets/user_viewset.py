@@ -4,7 +4,7 @@ ViewSet para gestión de usuarios.
 FASE 2 PARTE 4: UserViewSet con RBAC.
 """
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated

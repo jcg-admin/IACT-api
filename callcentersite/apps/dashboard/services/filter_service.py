@@ -11,7 +11,6 @@ FASE 2: Implementación de services.
 
 from datetime import datetime, timedelta
 from django.core.exceptions import ValidationError
-from django.db.models import Q
 
 
 class FilterService:

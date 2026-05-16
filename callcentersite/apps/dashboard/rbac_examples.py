@@ -15,7 +15,6 @@ from apps.dashboard.rbac import (
     require_dashboard_view,
     require_widget_owner,
     require_widget_view,
-    require_filter_owner,
     require_authenticated,
     check_dashboard_access,
     check_widget_access,

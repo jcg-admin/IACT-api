@@ -17,8 +17,8 @@ Fuentes:
 """
 from django.db import transaction, DatabaseError
 from django.utils import timezone
-from drf_spectacular.utils import extend_schema, OpenApiResponse
-from rest_framework import serializers, status
+from drf_spectacular.utils import extend_schema
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -374,7 +374,7 @@ class AGRAssignView(APIView):
         })
 
     def post(self, request, user_id):
-        from apps.access.models import AccessGroup, UserAccessGroup, Function
+        from apps.access.models import AccessGroup, UserAccessGroup
         from apps.audit.services import AuditLogService
         from apps.access.services.permission_service import PermissionCache
         from django.contrib.auth import get_user_model

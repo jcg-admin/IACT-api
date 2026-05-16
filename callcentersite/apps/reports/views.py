@@ -90,7 +90,7 @@ class ReportViewSet(viewsets.ModelViewSet):
                 from .permissions import CanAccessCallRecordData
                 permissions.append(CanAccessCallRecordData())
             
-            # TODO: Agregar validaciones para otros tipos
+            # CNST-XXX: Solo se procesan tipos IVR; otros tipos pendiente de spec.
             # elif report_type == 'users':
             #     permissions.append(CanAccessUserData())
             # elif report_type == 'audit':

@@ -11,13 +11,11 @@ Endpoints implementados:
   POST /api/auth/sessions/close-all/   — cierre masivo de usuario (AUTH-002)
   GET  /api/auth/sessions/own/         — sesiones propias (AUTH-001 view_own_sessions)
 """
-from datetime import timedelta
 from django.db import transaction, DatabaseError
-from django.utils import timezone
 from drf_spectacular.utils import (
-    extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
+    extend_schema, OpenApiParameter, OpenApiResponse
 )
-from rest_framework import serializers, status
+from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -160,7 +158,7 @@ class SessionCloseView(APIView):
     required_function  = 'AUTH-002'
 
     def post(self, request, session_id):
-        from apps.authentication.models import Session, BlacklistedToken
+        from apps.authentication.models import Session
         from apps.audit.services import AuditLogService
 
         try:

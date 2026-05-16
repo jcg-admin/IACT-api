@@ -9,7 +9,7 @@ CNST-001: Password reset SIN email, solo preguntas.
 
 from rest_framework import serializers
 
-from apps.authentication.models import SecurityQuestion, UserSecurityAnswer
+from apps.authentication.models import SecurityQuestion
 from apps.authentication.constants import (
     SECURITY_QUESTIONS_REQUIRED,
     PASSWORD_MIN_LENGTH,

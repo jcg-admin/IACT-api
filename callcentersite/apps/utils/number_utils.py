@@ -6,7 +6,7 @@ SOLID: SRP, DRY, OCP.
 """
 
 from decimal import Decimal, ROUND_HALF_UP, ROUND_DOWN, ROUND_UP
-from typing import Union, Optional
+from typing import Union
 
 
 # ============================================================================

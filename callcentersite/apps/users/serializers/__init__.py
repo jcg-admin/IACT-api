@@ -15,7 +15,6 @@ Estructura:
 from apps.users.serializers.user_serializer import (
     UserSerializer,
     UserListSerializer,
-    # UserDetailSerializer,  # TODO: No existe en user_serializer.py - comentado temporalmente
     UserCreateSerializer,
     UserUpdateSerializer,
 )
@@ -75,7 +74,6 @@ __all__ = [
     # User (5 -> 4 temporalmente)
     'UserSerializer',
     'UserListSerializer',
-    # 'UserDetailSerializer',  # TODO: No existe - comentado temporalmente
     'UserCreateSerializer',
     'UserUpdateSerializer',
     

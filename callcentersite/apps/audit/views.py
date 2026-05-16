@@ -104,7 +104,6 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 import hashlib
 import hmac
 from django.conf import settings
-from rest_framework.decorators import action
 
 
 @extend_schema(
@@ -131,7 +130,6 @@ class AuditIntegrityView(APIView):
 
     def _compute_signature(self, log) -> str:
         """Calcula HMAC-SHA256 del contenido del AuditLog."""
-        from apps.audit.models import AuditLog
         secret = getattr(settings, 'AUDIT_HMAC_SECRET', 'iact-audit-secret-key')
         payload = f"{log.id}|{log.user_id}|{log.action}|{log.resource}|{log.result}|{log.timestamp}"
         return hmac.new(

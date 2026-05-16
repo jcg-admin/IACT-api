@@ -355,7 +355,7 @@ class AuditLogService:
         Raises:
             AuditValidationError: Si event_type no está en VALID_EVENT_TYPES.
         """
-        from apps.audit.models import VALID_EVENT_TYPES, AuditValidationError, _PII_FIELDS, AuditLog
+        from apps.audit.models import VALID_EVENT_TYPES, AuditValidationError, AuditLog
         from django.contrib.auth import get_user_model
 
         # UC_PERM_09 CA-03: validar event_type

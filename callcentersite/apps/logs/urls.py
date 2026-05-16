@@ -4,7 +4,7 @@ URLs para logs app (UC_LOG_01..07).
 from django.urls import path
 from .views import (
     DjangoLogTailView, ETLLogTailView, LogSearchView,
-    LogExportView, InfraLogView, LogHealthView, LogMetricsView,
+    InfraLogView, LogHealthView, LogMetricsView,
     PipelineEventLogView,
 )
 # UC_LOG_04 canónico (FASE 4) — vista con audit LOG_EXPORT_QUEUED
