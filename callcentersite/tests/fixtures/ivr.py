@@ -7,6 +7,7 @@ Arquitectura (MIGRATE=False, CREATE_DB=False en testing_local.py):
 
     ensure_mariadb  — proceso mariadbd vivo + test_ivr_legacy existe
     ivr_schema      — tablas y SP sp_rpt_clientes en test_ivr_legacy
+    etl_runs_clean  — limpia etl_runs antes y después de cada test
     ivr_job_*       — datos de job_execution_log para un test, limpia al final
     ivr_quarter_*   — datos base_ivr_clientes/detalle para un test, limpia
 
@@ -14,6 +15,12 @@ Arquitectura (MIGRATE=False, CREATE_DB=False en testing_local.py):
     pytest-django no la toca (MIGRATE=False, CREATE_DB=False).
     Los fixtures de datos usan subprocess para garantizar COMMIT inmediato:
     los datos son visibles para el endpoint en cualquier conexión.
+
+    etl_runs_clean (DT-API-001):
+    pytest-django hace ROLLBACK en PostgreSQL pero no en MariaDB (autocommit).
+    Los INSERT directos con connections['ivr'].cursor() son permanentes.
+    etl_runs_clean garantiza aislamiento borrando la tabla antes y después
+    de cada test que manipula etl_runs directamente.
 
 Escenario A confirmado (verificado 2026-05-08):
     sp_rpt_clientes no tiene prefijo 'ivr_legacy.' en el body del SP.
@@ -260,6 +267,35 @@ def ivr_schema(ensure_mariadb):
 
     yield
     # Sin teardown de schema — la DB persiste
+
+
+# ---------------------------------------------------------------------------
+# etl_runs_clean — function-scoped: limpia etl_runs antes y después de cada test
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def etl_runs_clean(ivr_schema):
+    """
+    Garantiza aislamiento para tests que insertan en etl_runs directamente.
+
+    DT-API-001: pytest-django hace ROLLBACK en PostgreSQL pero NO en MariaDB.
+    Los INSERT via connections['ivr'].cursor() usan autocommit y son permanentes.
+    Sin este fixture, las filas acumuladas entre sesiones contaminan el UPDATE
+    de tests posteriores que filtran por id y status='en_ejecucion'.
+
+    Usa Django connections['ivr'] directamente (no subprocess) para que el
+    DELETE se ejecute en la misma conexión que el test, sin depender de
+    que el socket de MariaDB esté disponible para un proceso externo.
+
+    Dependencia: ivr_schema (garantiza que la tabla existe antes de borrar).
+    Scope: function (default) — se ejecuta por cada test que lo solicita.
+    """
+    from django.db import connections
+    with connections['ivr'].cursor() as cur:
+        cur.execute("DELETE FROM etl_runs;")
+    yield
+    with connections['ivr'].cursor() as cur:
+        cur.execute("DELETE FROM etl_runs;")
 
 
 # ---------------------------------------------------------------------------

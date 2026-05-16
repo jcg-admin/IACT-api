@@ -266,7 +266,7 @@ class TestIVRMenuCenter:
 class TestHeartbeatTimeoutIntegration:
     """T-056: heartbeat marca timeout cuando timeout_at expiró."""
 
-    def test_timeout_at_pasado_marca_timeout(self, ivr_schema):
+    def test_timeout_at_pasado_marca_timeout(self, etl_runs_clean):
         from django.db import connections
         from django.utils import timezone
         import datetime
@@ -284,7 +284,7 @@ class TestHeartbeatTimeoutIntegration:
             cur.execute("SELECT status FROM etl_runs WHERE id=%s", [run_id])
             assert cur.fetchone()[0] == 'timeout'
 
-    def test_timeout_at_futuro_no_marca_timeout(self, ivr_schema):
+    def test_timeout_at_futuro_no_marca_timeout(self, etl_runs_clean):
         from django.db import connections
         from django.utils import timezone
         import datetime
@@ -311,7 +311,7 @@ class TestHeartbeatTimeoutIntegration:
 class TestEtlRunsWriteSequence:
     """T-057: WHERE status=en_ejecucion protege etl_runs de sobreescrituras."""
 
-    def test_escenario_a_success_no_sobreescrito_por_timeout(self, ivr_schema):
+    def test_escenario_a_success_no_sobreescrito_por_timeout(self, etl_runs_clean):
         """Escenario A: nominal — success gana, heartbeat tardío afecta 0 filas."""
         from django.db import connections
         from django.utils import timezone
@@ -337,7 +337,7 @@ class TestEtlRunsWriteSequence:
             cur.execute("SELECT status FROM etl_runs WHERE id=%s", [run_id])
             assert cur.fetchone()[0] == 'success'
 
-    def test_escenario_d_doble_cierre_primer_gana(self, ivr_schema):
+    def test_escenario_d_doble_cierre_primer_gana(self, etl_runs_clean):
         """Escenario D: doble cierre — primera llamada gana."""
         from django.db import connections
         from django.utils import timezone
