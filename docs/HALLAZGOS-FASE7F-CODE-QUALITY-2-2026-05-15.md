@@ -122,3 +122,34 @@ $ grep -rn "# TODO\|# FIXME\|# HACK" apps/ --include="*.py" \
 ---
 
 *Generado: 2026-05-15 | Commit: 62c5377*
+
+---
+
+## 6. Correcciones adicionales (commit 3396dfa)
+
+### F841 en tests internos de apps/ — 5 → 0
+
+Variables asignadas pero no usadas en tests internos de aplicaciones:
+- `apps/alerts/tests/test_services.py` líneas 81, 87, 108: `message1`, `message2`
+  asignados desde `MessageService.send_message()` sin uso posterior.
+- `apps/dashboard/tests/test_dashboard_service.py` líneas 68, 71: `dashboard1`,
+  `dashboard2` asignados desde `DashboardService.create_default_dashboard()`.
+
+### Código muerto: decorador @deprecated() — 44 líneas eliminadas
+
+`apps/utils/decorators.py` contenía un decorador `@deprecated(message)` que
+emitía `DeprecationWarning` al invocar la función decorada.
+
+Verificación previa al borrado:
+- No se importa en ningún módulo de producción.
+- No se usa en ningún test (solo el campo `deprecated_at` de `MenuItem` aparece
+  en tests, que es un campo de modelo sin relación con el decorador).
+
+### Estado final acumulado
+
+```
+flake8 --select=F401,F841 apps/ --exclude=migrations,__pycache__: 0
+Comentarios # DEPRECATED / # DEPRECADO: 0
+Comentarios # TODO / # FIXME / # HACK: 0
+Suite: 1335 passed, 0 warnings
+```
