@@ -285,7 +285,7 @@ class ReportService:
             report.status = 'completed'
             report.save()
             
-        except Exception as e:
+        except Exception:
             report.status = 'failed'
             report.save()
             raise

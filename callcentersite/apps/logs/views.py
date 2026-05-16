@@ -378,8 +378,6 @@ class LogMetricsView(APIView):
 
     def get(self, request):
         from django.db import connections, OperationalError, ProgrammingError
-        metrics = {}
-
         try:
             with connections['ivr'].cursor() as cursor:
                 cursor.execute("""
@@ -392,7 +390,7 @@ class LogMetricsView(APIView):
 
                 cursor.execute("SELECT COUNT(*) FROM job_execution_log")
                 total = cursor.fetchone()[0]
-        except (OperationalError, ProgrammingError) as e:
+        except (OperationalError, ProgrammingError):
             pipeline_stats = {}
             total = None
 

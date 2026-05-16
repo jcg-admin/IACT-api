@@ -307,7 +307,7 @@ class PermissionService:
                 PermissionCache.set(user_id, code, result)
                 PermissionCache._register_key(user_id, code)
                 results[code] = result
-            except (ValueError, LookupError) as exc:
+            except (ValueError, LookupError):
                 results[code] = CheckResult(
                     allowed=False, origin='DENIED_NO_GRANT',
                 )

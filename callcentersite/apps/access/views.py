@@ -666,7 +666,7 @@ class FunctionRevokeView(APIView):
 
     def post(self, request):
         from django.contrib.auth import get_user_model
-        User = get_user_model()
+        get_user_model()  # noqa: F841 — llamada por efecto
 
         user_id     = request.data.get('userId')
         function_id = request.data.get('functionId')

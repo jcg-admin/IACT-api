@@ -358,7 +358,7 @@ class WidgetConfigViewSet(viewsets.ModelViewSet):
         """
         if self.action == 'create':
             # Verificar tipo de widget solicitado
-            widget_type = self.request.data.get('widget_type', '')
+            # widget_type = self.request.data.get('widget_type', '')  # reservado para validación futura
             
             # Permisos base para crear widgets
             permissions = [

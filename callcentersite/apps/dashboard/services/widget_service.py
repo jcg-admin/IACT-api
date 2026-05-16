@@ -253,7 +253,7 @@ class WidgetService:
         """
         # Eliminar todas las variantes de cache del widget
         # Nota: En producción, podría usarse un patrón más sofisticado
-        cache_pattern = f'widget_data_{widget_id}*'
+        # cache_pattern = f'widget_data_{widget_id}*'  — reservado para invalidación futura
         
         # Django cache no soporta delete_pattern nativamente
         # Por simplicidad, eliminamos la entrada base

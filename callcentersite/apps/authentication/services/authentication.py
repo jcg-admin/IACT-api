@@ -177,7 +177,7 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
         )
         
         # 7. Log de sesión
-        session_log = self._create_session_log(
+        self._create_session_log(
             user=user,
             session_key=request.session.session_key,
             ip_address=ip_address,

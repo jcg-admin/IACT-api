@@ -547,7 +547,7 @@ def etl_retry(request):
             # CA-06: priority=high → SP con parámetro de prioridad (si soportado)
             # El SP actual no recibe priority — se documenta en la respuesta
             cursor.callproc('sp_etl_historico', [year, quarter_num])
-            result = cursor.fetchone()
+            cursor.fetchone()  # descarta resultado del SP
 
     except (OperationalError, ProgrammingError) as e:
         return Response(

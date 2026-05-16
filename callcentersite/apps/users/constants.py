@@ -51,15 +51,7 @@ PERM_AUTH_CHANGE_PASSWORD = 'authentication.change_password'
 PERM_AUTH_RECOVER_PASSWORD = 'authentication.recover_password'
 
 # ============================================================================
-# DEPRECATED: RBAC Codes (usar namespaces arriba)
-# ============================================================================
 
-# Funciones RBAC (referencia legacy - NO USAR)
-# DEPRECADO v6.0.0: Usar PERM_* arriba
-USR_VIEW = 'USR_VIEW'       # -> PERM_USERS_VIEW
-USR_EDIT = 'USR_EDIT'       # -> PERM_USERS_EDIT
-USR_DELETE = 'USR_DELETE'   # -> PERM_USERS_DELETE
-USR_PERMS = 'USR_PERMS'     # -> PERM_USERS_MANAGE
 
 
 

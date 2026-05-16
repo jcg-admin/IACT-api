@@ -140,7 +140,7 @@ class InternalMessageViewSet(viewsets.ModelViewSet):
         message = self.get_object()
         
         try:
-            recipient = MessageService.unarchive_message(
+            MessageService.unarchive_message(
                 message=message,
                 user=request.user
             )

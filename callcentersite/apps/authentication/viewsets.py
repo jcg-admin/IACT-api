@@ -304,7 +304,7 @@ class AuthViewSet(viewsets.ViewSet):
         serializer.is_valid(raise_exception=True)
         
         try:
-            success = self.recovery_service.reset_password_by_questions(
+            self.recovery_service.reset_password_by_questions(
                 username=serializer.validated_data['username'],
                 answers_data=serializer.validated_data['answers'],
                 new_password=serializer.validated_data['new_password']

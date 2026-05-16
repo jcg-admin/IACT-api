@@ -124,7 +124,7 @@ class LogoutView(APIView):
                 refresh_token_str=refresh_token,
                 ip=self._get_ip(request),
             )
-        except DatabaseError as exc:
+        except DatabaseError:
             return Response({
                 'error': 'DB_TIMEOUT',
                 'message': 'Servicio temporalmente no disponible.',

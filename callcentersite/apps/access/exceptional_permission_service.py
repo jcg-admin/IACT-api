@@ -260,7 +260,7 @@ class GrantPreviewService:
 
         ExpirationPolicy.validate(expires_at)
         functions = list(Function.objects.filter(id__in=function_ids))
-        now = expires_at - expires_at  # timedelta zero
+        _ = expires_at - expires_at  # timedelta zero — sin uso
         duration_days = (expires_at - timezone.now()).days
 
         # Evaluar SoD conflicts (stub — count reglas que apliquen)

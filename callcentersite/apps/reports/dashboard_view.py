@@ -309,7 +309,7 @@ class DashboardService:
         # Consulta BD
         try:
             rows = AnalyticsRepo.aggregate(segments=segments, period=period)
-        except OperationalError as exc:
+        except OperationalError:
             raise  # Se convierte en 503 en la view
 
         # Calcular KPIs y trend
