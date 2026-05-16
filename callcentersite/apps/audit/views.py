@@ -1,4 +1,3 @@
-from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
 """
 Views para consulta de AuditLog.
 
@@ -6,6 +5,10 @@ UC_AUD_01 — Consultar Auditoría.
 Fuente: uc-aud-01/criterios-aceptacion.rst
 Función RBAC: AUD-001 view_audit_log (CNST-010: permission_classes explícito).
 """
+import hashlib
+import hmac
+from django.conf import settings
+from drf_spectacular.utils import extend_schema, extend_schema_view, OpenApiParameter, OpenApiResponse
 from rest_framework import viewsets, filters
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -101,9 +104,6 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
 # ---------------------------------------------------------------------------
 # B-08: UC_AUD_04 — Firma y verificacion de integridad de AuditLog
 # ---------------------------------------------------------------------------
-import hashlib
-import hmac
-from django.conf import settings
 
 
 @extend_schema(

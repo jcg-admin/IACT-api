@@ -20,6 +20,7 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth.hashers import make_password, check_password
 from django.core.exceptions import ValidationError
 from django.utils import timezone
+import uuid as _uuid
 
 from apps.core.models import (
     TimeStampedModel,
@@ -610,8 +611,6 @@ class LoginLockout(TimeStampedModel):
 # Hallazgo F1-H-002: SessionLog tenía estructura incorrecta (is_active boolean,
 # sin state enum, sin close_reason, sin client_info, sin session_id UUID).
 # Se crea Session canónica separada.
-
-import uuid as _uuid
 
 
 class Session(models.Model):

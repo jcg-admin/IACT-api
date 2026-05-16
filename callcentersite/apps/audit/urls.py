@@ -1,3 +1,9 @@
+"""
+URLs para audit app.
+"""
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
+from .views import AuditLogViewSet, AuditIntegrityView
 from apps.audit.audit_event_views import (
     AuditLegacyExportView,
     GeneralAuditListView,
@@ -6,12 +12,6 @@ from apps.audit.audit_event_views import (
     AuditSearchView,
 )
 from apps.audit.compliance_views import ComplianceReportView, ComplianceVerifyView
-"""
-URLs para audit app.
-"""
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views import AuditLogViewSet
 
 router = DefaultRouter()
 router.register(r'logs', AuditLogViewSet, basename='auditlog')
@@ -20,11 +20,6 @@ app_name = 'audit'
 
 urlpatterns = [
     path('', include(router.urls)),
-]
-
-# B-08: UC_AUD_04 — integridad
-from .views import AuditIntegrityView
-urlpatterns += [
     # UC_PERM_10 — Consultar auditoría
     path('audit-events/',                   AuditEventListView.as_view(),      name='audit-event-list'),
     path('audit-events/<int:event_id>/',    AuditEventDetailView.as_view(),    name='audit-event-detail'),
@@ -37,5 +32,6 @@ urlpatterns += [
     path('general/',                        GeneralAuditListView.as_view(),    name='general-audit-list'),
     path('compliance-report/', ComplianceReportView.as_view(), name='compliance-report'),
     path('compliance-verify/', ComplianceVerifyView.as_view(), name='compliance-verify'),
+    # B-08: UC_AUD_04 — integridad
     path('integrity/', AuditIntegrityView.as_view(), name='integrity'),
 ]

@@ -1,5 +1,6 @@
 # apps/alerts/models.py
 
+import uuid as _uuid
 from django.db import models
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
@@ -463,8 +464,6 @@ class MailboxMessage(models.Model):
 # AlertConfiguration (existente) es un modelo diferente — mensajería/APScheduler.
 # AlertRule es el modelo de RBAC-aware rules con metric/scope/condition.
 # ===========================================================================
-
-import uuid as _uuid
 
 
 class AlertRule(models.Model):

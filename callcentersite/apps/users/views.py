@@ -4,12 +4,12 @@ Vistas para la gestion de usuarios, avatares y perfiles.
 import logging
 from django.conf import settings
 from rest_framework import status
-
-logger = logging.getLogger(__name__)
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+
+logger = logging.getLogger(__name__)
 
 
 @api_view(['POST'])

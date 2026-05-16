@@ -39,6 +39,11 @@ from apps.authentication.serializers.recovery import (
     PasswordResetRequestSerializer,
 )
 
+# Session serializer (1)
+from apps.users.serializers.session_serializer import (
+    SessionHistorySerializer,
+)
+
 # PasswordResetConfirmSerializer: simple serializer de confirmación vía token
 from rest_framework import serializers as _drf_serializers
 
@@ -63,11 +68,6 @@ class PasswordResetConfirmSerializer(_drf_serializers.Serializer):
 
 # UserProfileSerializer alias for ProfileSerializer
 UserProfileSerializer = ProfileSerializer
-
-# Session serializer (1)
-from apps.users.serializers.session_serializer import (
-    SessionHistorySerializer,
-)
 
 
 __all__ = [
