@@ -18,16 +18,16 @@ from typing import Optional, List
 def get_file_extension(filename: str) -> str:
     """
     Obtiene extensión de archivo.
-    
+
     CLEAN_CODE v3.0.1: Nombre que revela intención.
     SOLID SRP: Solo obtiene extensión.
-    
+
     Args:
         filename: Nombre archivo
-    
+
     Returns:
         str: Extensión (sin punto, lowercase)
-    
+
     Examples:
         >>> get_file_extension('document.pdf')
         'pdf'
@@ -41,17 +41,17 @@ def get_file_extension(filename: str) -> str:
 def change_file_extension(filename: str, new_extension: str) -> str:
     """
     Cambia extensión de archivo.
-    
+
     CLEAN_CODE v3.0.1: Nombre descriptivo.
     SOLID SRP: Solo cambia extensión.
-    
+
     Args:
         filename: Nombre archivo
         new_extension: Nueva extensión
-    
+
     Returns:
         str: Nombre con nueva extensión
-    
+
     Examples:
         >>> change_file_extension('document.txt', 'pdf')
         'document.pdf'
@@ -68,16 +68,16 @@ def change_file_extension(filename: str, new_extension: str) -> str:
 def get_file_size_bytes(filepath: str) -> int:
     """
     Obtiene tamaño de archivo en bytes.
-    
+
     CLEAN_CODE v3.0.1: Nombre auto-documentado.
     SOLID SRP: Solo obtiene tamaño.
-    
+
     Args:
         filepath: Ruta archivo
-    
+
     Returns:
         int: Tamaño en bytes
-    
+
     Examples:
         >>> get_file_size_bytes('/tmp/file.txt')
         1024
@@ -88,18 +88,18 @@ def get_file_size_bytes(filepath: str) -> int:
 def format_file_size(size_bytes: int, precision: int = 1) -> str:
     """
     Formatea tamaño de archivo.
-    
+
     CLEAN_CODE v3.0.1: Nombre descriptivo.
     SOLID SRP: Solo formatea.
     DRY: Reutiliza de formatters (pero aquí también para file_utils)
-    
+
     Args:
         size_bytes: Tamaño en bytes
         precision: Decimales
-    
+
     Returns:
         str: Tamaño formateado
-    
+
     Examples:
         >>> format_file_size(1024)
         '1.0 KB'
@@ -113,14 +113,14 @@ def format_file_size(size_bytes: int, precision: int = 1) -> str:
 def _format_bytes(size_bytes: int, precision: int = 1) -> str:
     """
     Formatea bytes.
-    
+
     SOLID SRP: Solo formatea bytes.
     DRY: Reutilizable.
-    
+
     Args:
         size_bytes: Bytes
         precision: Decimales
-    
+
     Returns:
         str: Formateado
     """
@@ -128,7 +128,7 @@ def _format_bytes(size_bytes: int, precision: int = 1) -> str:
         if size_bytes < 1024.0:
             return f"{size_bytes:.{precision}f} {unit}"
         size_bytes /= 1024.0
-    
+
     return f"{size_bytes:.{precision}f} PB"
 
 
@@ -142,17 +142,17 @@ def validate_file_type(
 ) -> bool:
     """
     Valida tipo de archivo por extensión.
-    
+
     CLEAN_CODE v3.0.1: Nombre que revela intención.
     SOLID SRP: Solo valida extensión.
-    
+
     Args:
         filename: Nombre archivo
         allowed_extensions: Extensiones permitidas
-    
+
     Returns:
         bool: True si válido
-    
+
     Examples:
         >>> validate_file_type('doc.pdf', ['pdf', 'docx'])
         True
@@ -160,26 +160,26 @@ def validate_file_type(
         False
     """
     ext = get_file_extension(filename)
-    
+
     # Normalizar allowed_extensions
     normalized_allowed = [e.lower().lstrip('.') for e in allowed_extensions]
-    
+
     return ext in normalized_allowed
 
 
 def is_image_file(filename: str) -> bool:
     """
     Verifica si es archivo de imagen.
-    
+
     CLEAN_CODE v3.0.1: Nombre auto-documentado.
     SOLID SRP: Solo verifica si es imagen.
-    
+
     Args:
         filename: Nombre archivo
-    
+
     Returns:
         bool: True si es imagen
-    
+
     Examples:
         >>> is_image_file('photo.jpg')
         True
@@ -188,23 +188,23 @@ def is_image_file(filename: str) -> bool:
     """
     # DRY: Extensiones centralizadas
     image_extensions = _get_image_extensions()
-    
+
     return validate_file_type(filename, image_extensions)
 
 
 def is_document_file(filename: str) -> bool:
     """
     Verifica si es archivo de documento.
-    
+
     CLEAN_CODE v3.0.1: Nombre descriptivo.
     SOLID SRP: Solo verifica documento.
-    
+
     Args:
         filename: Nombre archivo
-    
+
     Returns:
         bool: True si es documento
-    
+
     Examples:
         >>> is_document_file('report.pdf')
         True
@@ -213,18 +213,18 @@ def is_document_file(filename: str) -> bool:
     """
     # DRY: Extensiones centralizadas
     document_extensions = _get_document_extensions()
-    
+
     return validate_file_type(filename, document_extensions)
 
 
 def _get_image_extensions() -> List[str]:
     """
     Extensiones de imagen.
-    
+
     SOLID SRP: Solo provee lista.
     DRY: Centralizado.
     SOLID OCP: Fácil agregar más.
-    
+
     Returns:
         list: Extensiones
     """
@@ -234,10 +234,10 @@ def _get_image_extensions() -> List[str]:
 def _get_document_extensions() -> List[str]:
     """
     Extensiones de documento.
-    
+
     SOLID SRP: Solo provee lista.
     DRY: Centralizado.
-    
+
     Returns:
         list: Extensiones
     """
@@ -251,16 +251,16 @@ def _get_document_extensions() -> List[str]:
 def get_mime_type(filename: str) -> Optional[str]:
     """
     Obtiene MIME type de archivo.
-    
+
     CLEAN_CODE v3.0.1: Nombre que revela intención.
     SOLID SRP: Solo obtiene MIME type.
-    
+
     Args:
         filename: Nombre archivo
-    
+
     Returns:
         str: MIME type o None
-    
+
     Examples:
         >>> get_mime_type('document.pdf')
         'application/pdf'
@@ -278,19 +278,19 @@ def get_mime_type(filename: str) -> Optional[str]:
 def sanitize_filename(filename: str, replace_spaces: bool = True) -> str:
     """
     Sanitiza nombre de archivo.
-    
+
     CLEAN_CODE v3.0.1: Nombre descriptivo.
     SOLID SRP: Solo sanitiza.
-    
+
     Remueve caracteres peligrosos/inválidos.
-    
+
     Args:
         filename: Nombre archivo
         replace_spaces: Reemplazar espacios con guiones
-    
+
     Returns:
         str: Nombre sanitizado
-    
+
     Examples:
         >>> sanitize_filename('My Document!.pdf')
         'My-Document.pdf'
@@ -299,33 +299,33 @@ def sanitize_filename(filename: str, replace_spaces: bool = True) -> str:
     """
     # Separar nombre y extensión
     name, ext = os.path.splitext(filename)
-    
+
     # Remover caracteres peligrosos
     safe_name = _remove_unsafe_chars(name)
-    
+
     # Reemplazar espacios
     if replace_spaces:
         safe_name = safe_name.replace(' ', '-')
-    
+
     # Remover guiones/puntos múltiples
     safe_name = _clean_multiple_chars(safe_name, ['-', '.', '_'])
-    
+
     # Trim guiones al inicio/fin
     safe_name = safe_name.strip('-._')
-    
+
     return f"{safe_name}{ext.lower()}"
 
 
 def _remove_unsafe_chars(text: str) -> str:
     """
     Remueve caracteres inseguros.
-    
+
     SOLID SRP: Solo remueve.
     DRY: Reutilizable.
-    
+
     Args:
         text: Texto
-    
+
     Returns:
         str: Texto seguro
     """
@@ -337,14 +337,14 @@ def _remove_unsafe_chars(text: str) -> str:
 def _clean_multiple_chars(text: str, chars: List[str]) -> str:
     """
     Limpia caracteres múltiples.
-    
+
     SOLID SRP: Solo limpia repetidos.
     DRY: Reutilizable.
-    
+
     Args:
         text: Texto
         chars: Caracteres a limpiar
-    
+
     Returns:
         str: Texto limpio
     """
@@ -352,7 +352,7 @@ def _clean_multiple_chars(text: str, chars: List[str]) -> str:
     for char in chars:
         pattern = re.escape(char) + r'+'
         text = re.sub(pattern, char, text)
-    
+
     return text
 
 
@@ -363,13 +363,13 @@ def _clean_multiple_chars(text: str, chars: List[str]) -> str:
 def ensure_directory_exists(directory: str) -> None:
     """
     Asegura que directorio existe.
-    
+
     CLEAN_CODE v3.0.1: Nombre que revela intención.
     SOLID SRP: Solo crea directorio.
-    
+
     Args:
         directory: Ruta directorio
-    
+
     Examples:
         >>> ensure_directory_exists('/tmp/mydir')
     """
@@ -379,19 +379,19 @@ def ensure_directory_exists(directory: str) -> None:
 def get_unique_filename(directory: str, filename: str) -> str:
     """
     Genera nombre único de archivo.
-    
+
     CLEAN_CODE v3.0.1: Nombre descriptivo.
     SOLID SRP: Solo genera nombre único.
-    
+
     Si archivo existe, agrega contador (1), (2), etc.
-    
+
     Args:
         directory: Directorio
         filename: Nombre archivo
-    
+
     Returns:
         str: Nombre único
-    
+
     Examples:
         >>> get_unique_filename('/tmp', 'file.txt')
         'file.txt'  # Si no existe
@@ -399,24 +399,24 @@ def get_unique_filename(directory: str, filename: str) -> str:
         'file (1).txt'  # Si existe
     """
     filepath = os.path.join(directory, filename)
-    
+
     if not os.path.exists(filepath):
         return filename
-    
+
     # Separar nombre y extensión
     name, ext = os.path.splitext(filename)
-    
+
     # Buscar contador disponible
     counter = 1
     while True:
         new_filename = f"{name} ({counter}){ext}"
         new_filepath = os.path.join(directory, new_filename)
-        
+
         if not os.path.exists(new_filepath):
             return new_filename
-        
+
         counter += 1
-        
+
         # Seguridad: limitar búsqueda
         if counter > 1000:
             raise ValueError("Cannot find unique filename")
@@ -424,9 +424,9 @@ def get_unique_filename(directory: str, filename: str) -> str:
 
 # ============================================================================
 # RESUMEN FILE_UTILS
-# 
+#
 # Total: 12 funciones públicas + 5 helpers privados
-# 
+#
 # Funciones Públicas:
 #   [SUCCESS] get_file_extension()
 #   [SUCCESS] change_file_extension()
@@ -439,14 +439,14 @@ def get_unique_filename(directory: str, filename: str) -> str:
 #   [SUCCESS] sanitize_filename()
 #   [SUCCESS] ensure_directory_exists()
 #   [SUCCESS] get_unique_filename()
-# 
+#
 # Helpers Privados (DRY):
 #   [SUCCESS] _format_bytes()
 #   [SUCCESS] _get_image_extensions()
 #   [SUCCESS] _get_document_extensions()
 #   [SUCCESS] _remove_unsafe_chars()
 #   [SUCCESS] _clean_multiple_chars()
-# 
+#
 # Principios SOLID Aplicados:
 #   [SUCCESS] SRP: Cada función una responsabilidad
 #   [SUCCESS] DRY: Helpers privados reutilizables
@@ -459,13 +459,13 @@ def get_unique_filename(directory: str, filename: str) -> str:
 def calculate_file_hash(file) -> str:
     """
     Calcula hash SHA256 de un archivo.
-    
+
     Args:
         file: UploadedFile o archivo similar
-    
+
     Returns:
         str: Hash SHA256 en hexadecimal
-    
+
     Example:
         >>> from django.core.files.uploadedfile import SimpleUploadedFile
         >>> file = SimpleUploadedFile("test.txt", b"content")
@@ -474,16 +474,16 @@ def calculate_file_hash(file) -> str:
         64
     """
     import hashlib
-    
+
     # Reset file pointer
     file.seek(0)
-    
+
     # Calculate hash
     sha256 = hashlib.sha256()
     for chunk in file.chunks():
         sha256.update(chunk)
-    
+
     # Reset file pointer again
     file.seek(0)
-    
+
     return sha256.hexdigest()

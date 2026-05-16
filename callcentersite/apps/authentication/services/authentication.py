@@ -29,9 +29,9 @@ User = get_user_model()
 class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
     """
     Servicio de autenticación de usuarios.
-    
+
     SOLID SRP: Solo autenticación.
-    
+
     Responsabilidades:
     - Login username/password
     - Logout
@@ -39,18 +39,18 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
     - Verificación de lockout
     - Gestión de tokens DRF
     - Gestión de sesiones
-    
+
     CNST-005: PBKDF2 + Token + Session.
     CNST-031: Auditoría de todos los intentos.
     """
-    
+
     def __init__(self):
         """Initialize service."""
         super().__init__()  # [SUCCESS] Llamar a super
         self.lockout_service = LockoutService()
-        
+
         self.log_info("AuthenticationService initialized")
-    
+
     def login_user(
         self,
         request,
@@ -59,7 +59,7 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
     ) -> Dict:
         """
         Login de usuario.
-        
+
         Flujo:
         1. Verificar lockout
         2. Autenticar con Django
@@ -69,19 +69,19 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
         6. Registrar intento exitoso
         7. Crear SessionLog
         8. Resetear contador lockout
-        
+
         Args:
             request: HttpRequest
             username: Username
             password: Password
-        
+
         Returns:
             Dict con:
             - user: User object
             - token: DRF token key
             - session_key: Django session key
             - first_login: bool
-        
+
         Raises:
             AccountLockedError: Cuenta bloqueada
             InvalidCredentialsError: Credenciales inválidas
@@ -90,9 +90,9 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
         # [SUCCESS] Usar helpers de apps.utils
         ip_address = get_client_ip(request)
         user_agent = get_user_agent(request)
-        
+
         self.log_info(f"Login attempt for '{username}' from {ip_address}")  # [SUCCESS] Logging
-        
+
         # 1. Verificar lockout
         if self.lockout_service.is_locked(username):
             self._record_attempt(
@@ -101,24 +101,24 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
                 ip_address=ip_address,
                 user_agent=user_agent
             )
-            
+
             time_remaining = self.lockout_service.get_lockout_time_remaining(username)
             minutes = int(time_remaining.total_seconds() / 60) if time_remaining else 15
-            
+
             self.log_error(f"Login blocked for '{username}' - {minutes} minutes remaining")
-            
+
             raise AccountLockedError(
                 detail=f"Cuenta bloqueada. Intenta en {minutes} minutos.",
                 details={'locked_minutes': minutes}
             )
-        
+
         # 2. Autenticar
         user = authenticate(
             request,
             username=username,
             password=password
         )
-        
+
         if user is None:
             # Intento fallido
             self._record_attempt(
@@ -128,13 +128,13 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
                 ip_address=ip_address,
                 user_agent=user_agent
             )
-            
+
             # Incrementar contador lockout
             attempts = self.lockout_service.record_failed_attempt(username)
             remaining = self.lockout_service.max_attempts - attempts
-            
+
             self.log_warning(f"Invalid credentials for '{username}' - {remaining} attempts remaining")
-            
+
             if remaining > 0:
                 raise InvalidCredentialsError(
                     detail=f"Credenciales inválidas. Te quedan {remaining} intentos.",
@@ -144,7 +144,7 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
                 raise AccountLockedError(
                     detail="Cuenta bloqueada por múltiples intentos fallidos."
                 )
-        
+
         # 3. Verificar activo
         if not user.is_active:
             self._record_attempt(
@@ -154,19 +154,19 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
                 ip_address=ip_address,
                 user_agent=user_agent
             )
-            
+
             self.log_warning(f"Inactive user '{username}' attempted login")
-            
+
             raise UserInactiveError(
                 detail=f"Usuario '{username}' inactivo. Contacte al administrador."
             )
-        
+
         # 4. Login Django
         login(request, user)
-        
+
         # 5. Generar token DRF
         token, created = Token.objects.get_or_create(user=user)
-        
+
         # 6. Registrar intento exitoso
         self._record_attempt(
             username=username,
@@ -175,7 +175,7 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
             ip_address=ip_address,
             user_agent=user_agent
         )
-        
+
         # 7. Log de sesión
         self._create_session_log(
             user=user,
@@ -183,58 +183,58 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
             ip_address=ip_address,
             user_agent=user_agent
         )
-        
+
         # 8. Resetear contador lockout
         self.lockout_service.reset_failed_attempts(username)
-        
+
         # Detectar first login
         first_login = self._is_first_login(user)
-        
+
         self.log_info(f"Login successful for '{username}' - First login: {first_login}")
-        
+
         return {
             'user': user,
             'token': token.key,
             'session_key': request.session.session_key,
             'first_login': first_login
         }
-    
+
     def logout_user(self, request) -> bool:
         """
         Logout de usuario.
-        
+
         Args:
             request: HttpRequest
-        
+
         Returns:
             bool: True si logout exitoso
         """
         if not request.user.is_authenticated:
             return False
-        
+
         username = request.user.username
-        
+
         # Actualizar SessionLog
         self._update_session_log(
             session_key=request.session.session_key
         )
-        
+
         # Logout Django
         logout(request)
-        
+
         self.log_info(f"Logout successful for '{username}'")
-        
+
         return True
-    
+
     def _is_first_login(self, user) -> bool:
         """
         Detecta si es el primer login del usuario.
-        
+
         SOLID SRP: Solo detecta first login.
-        
+
         Args:
             user: User object
-        
+
         Returns:
             bool: True si es primer login
         """
@@ -243,10 +243,10 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
             user=user,
             success=True
         ).count()
-        
+
         # Si solo hay 1 (el actual), es el primero
         return previous_logins <= 1
-    
+
     def _record_attempt(
         self,
         username: str,
@@ -257,9 +257,9 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
     ):
         """
         Registra intento de login (CNST-031).
-        
+
         SOLID SRP: Solo registra intento.
-        
+
         Args:
             username: Username intentado
             success: Si fue exitoso
@@ -274,7 +274,7 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
             ip_address=ip_address,
             user_agent=user_agent
         )
-    
+
     def _create_session_log(
         self,
         user,
@@ -284,15 +284,15 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
     ) -> SessionLog:
         """
         Crea log de sesión.
-        
+
         SOLID SRP: Solo crea log.
-        
+
         Args:
             user: User object
             session_key: Django session key
             ip_address: IP
             user_agent: User agent
-        
+
         Returns:
             SessionLog: Log creado
         """
@@ -304,13 +304,13 @@ class AuthenticationService(BaseService):  # [SUCCESS] Hereda de BaseService
             is_active=True,
             created_by=user  # [SUCCESS] Auditoría
         )
-    
+
     def _update_session_log(self, session_key: str):
         """
         Actualiza log al hacer logout.
-        
+
         SOLID SRP: Solo actualiza log.
-        
+
         Args:
             session_key: Django session key
         """

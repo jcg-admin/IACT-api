@@ -19,15 +19,15 @@ User = get_user_model()
 class BaseService:
     """
     Service base para todos los services.
-    
+
     CLEAN_CODE v3.0.1: Service Layer Pattern.
     SOLID SRP: Solo provee funcionalidad base.
-    
+
     Provee:
     - Logging automático con nombre del service
     - Exception handling helpers
     - Métodos comunes reutilizables
-    
+
     Uso:
         class ReportService(BaseService):
             @classmethod
@@ -35,7 +35,7 @@ class BaseService:
                 cls.log_info("Generando reporte...")
                 # Lógica aquí
                 cls.log_info("Reporte generado")
-    
+
     Examples:
         >>> class MiService(BaseService):
         ...     @classmethod
@@ -43,50 +43,50 @@ class BaseService:
         ...         cls.log_info("Doing something...")
         ...         return True
     """
-    
+
     @classmethod
     def log_info(cls, message: str):
         """
         Log info level con nombre del service.
-        
+
         Args:
             message: Mensaje a loggear
-        
+
         Examples:
             >>> ReportService.log_info("Generando reporte trimestral")
             # [ReportService] Generando reporte trimestral
         """
         logger.info(f"[{cls.__name__}] {message}")
-    
+
     @classmethod
     def log_error(cls, message: str):
         """
         Log error level con nombre del service.
-        
+
         Args:
             message: Mensaje de error
-        
+
         Examples:
             >>> ReportService.log_error("Fallo al generar PDF")
             # [ReportService] Fallo al generar PDF
         """
         logger.error(f"[{cls.__name__}] {message}")
-    
+
     @classmethod
     def log_warning(cls, message: str):
         """
         Log warning level con nombre del service.
-        
+
         Args:
             message: Mensaje de warning
         """
         logger.warning(f"[{cls.__name__}] {message}")
-    
+
     @classmethod
     def log_debug(cls, message: str):
         """
         Log debug level con nombre del service.
-        
+
         Args:
             message: Mensaje de debug
         """

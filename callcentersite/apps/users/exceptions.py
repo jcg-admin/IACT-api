@@ -12,9 +12,9 @@ from apps.core.exceptions import BusinessRuleError
 class UserServiceError(BusinessRuleError):
     """
     Error base para operaciones de User.
-    
+
     Hereda de BusinessRuleError (apps.core.exceptions).
-    
+
     Example:
         raise UserServiceError("Error al procesar usuario")
     """
@@ -24,9 +24,9 @@ class UserServiceError(BusinessRuleError):
 class UserAlreadyExistsError(UserServiceError):
     """
     Error cuando se intenta crear un usuario que ya existe.
-    
+
     Se lanza cuando username o email ya están en uso.
-    
+
     Example:
         if User.objects.filter(username=username).exists():
             raise UserAlreadyExistsError(f"Username '{username}' ya existe")
@@ -37,9 +37,9 @@ class UserAlreadyExistsError(UserServiceError):
 class UserNotFoundError(UserServiceError):
     """
     Error cuando no se encuentra un usuario.
-    
+
     Se lanza cuando se busca un usuario que no existe.
-    
+
     Example:
         user = User.objects.filter(id=user_id).first()
         if not user:
@@ -51,9 +51,9 @@ class UserNotFoundError(UserServiceError):
 class InvalidCredentialsError(UserServiceError):
     """
     Error cuando las credenciales son inválidas.
-    
+
     Se lanza durante autenticación cuando username/password son incorrectos.
-    
+
     Example:
         user = authenticate(username=username, password=password)
         if not user:
@@ -65,9 +65,9 @@ class InvalidCredentialsError(UserServiceError):
 class UserInactiveError(UserServiceError):
     """
     Error cuando se intenta autenticar un usuario inactivo.
-    
+
     Se lanza cuando el usuario existe pero is_active=False.
-    
+
     Example:
         if not user.is_active:
             raise UserInactiveError(f"Usuario '{user.username}' está inactivo")
@@ -78,9 +78,9 @@ class UserInactiveError(UserServiceError):
 class PasswordValidationError(UserServiceError):
     """
     Error cuando la validación de password falla.
-    
+
     Se lanza cuando el password no cumple los requisitos.
-    
+
     Example:
         if len(password) < 8:
             raise PasswordValidationError("Password debe tener mínimo 8 caracteres")
@@ -90,26 +90,26 @@ class PasswordValidationError(UserServiceError):
 
 # ============================================================================
 # RESUMEN EXCEPTIONS
-# 
+#
 # Total Exceptions: 6
-# 
+#
 # Base:
 #   [SUCCESS] UserServiceError (BusinessLogicError)
-# 
+#
 # Específicas:
 #   [SUCCESS] UserAlreadyExistsError - Username/email duplicado
 #   [SUCCESS] UserNotFoundError - Usuario no encontrado
 #   [SUCCESS] InvalidCredentialsError - Credenciales incorrectas
 #   [SUCCESS] UserInactiveError - Usuario inactivo
 #   [SUCCESS] PasswordValidationError - Password inválido
-# 
+#
 # Uso de Arquitectura:
 #   [SUCCESS] BusinessLogicError (apps.core.exceptions)
-# 
+#
 # Principios SOLID:
 #   [SUCCESS] SRP: Cada excepción una responsabilidad
 #   [SUCCESS] Clean Naming: Nombres descriptivos
 #   [SUCCESS] Herencia: Jerarquía clara
-# 
+#
 # Líneas: ~110
 # ============================================================================

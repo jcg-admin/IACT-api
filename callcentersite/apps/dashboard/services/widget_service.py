@@ -31,13 +31,13 @@ from apps.dashboard.services.filter_service import FilterService
 class WidgetService:
     """
     Servicio para generación de datos de widgets.
-    
+
     Métodos principales:
     - get_widget_data: Obtener datos del widget
     - calculate_*_data: Calcular datos específicos por tipo
     - refresh_widget_cache: Refrescar cache
     """
-    
+
     # Mapeo de tipos de widget a métodos de cálculo
     WIDGET_CALCULATORS = {
         'CALLS_CHART': 'calculate_calls_chart_data',
@@ -49,50 +49,50 @@ class WidgetService:
         'AGENT_PERFORMANCE': 'calculate_agent_performance_data',
         'SLA_MONITOR': 'calculate_sla_monitor_data',
     }
-    
+
     @staticmethod
     def get_widget_data(widget_id, date_range=None, use_cache=True):
         """
         Obtener datos del widget según su tipo.
-        
+
         Args:
             widget_id: ID del widget
             date_range: Tupla (date_from, date_to) opcional
             use_cache: Si usar cache (default: True)
-        
+
         Returns:
             Dict con datos del widget
-        
+
         Raises:
             WidgetConfig.DoesNotExist: Si widget no existe
             ValueError: Si widget_type no es reconocido
         """
         widget = WidgetConfig.objects.select_related('dashboard').get(id=widget_id)
-        
+
         # Generar cache key
         cache_key = f'widget_data_{widget_id}'
         if date_range:
             cache_key += f'_{date_range[0]}_{date_range[1]}'
-        
+
         # Intentar obtener de cache
         if use_cache:
             cached_data = cache.get(cache_key)
             if cached_data is not None:
                 return cached_data
-        
+
         # Determinar método de cálculo
         calculator_method_name = WidgetService.WIDGET_CALCULATORS.get(
             widget.widget_type
         )
-        
+
         if not calculator_method_name:
             raise ValueError(
                 f"Tipo de widget no reconocido: {widget.widget_type}"
             )
-        
+
         # Obtener método de cálculo
         calculator_method = getattr(WidgetService, calculator_method_name)
-        
+
         # Parsear date_range si viene de config_data
         if not date_range and 'time_range' in widget.config_data:
             try:
@@ -102,25 +102,25 @@ class WidgetService:
             except ValueError:
                 # Si time_range no es reconocido, usar last_7_days
                 date_range = FilterService.parse_date_range('last_7_days')
-        
+
         # Calcular datos
         data = calculator_method(widget.config_data, date_range)
-        
+
         # Guardar en cache
         cache_timeout = widget.refresh_interval_seconds
         cache.set(cache_key, data, timeout=cache_timeout)
-        
+
         return data
-    
+
     @staticmethod
     def calculate_calls_chart_data(config_data, date_range=None):
         """
         Calcular datos para gráfico de llamadas.
-        
+
         Args:
             config_data: Configuración del widget
             date_range: Tupla (date_from, date_to)
-        
+
         Returns:
             Dict con datos del gráfico:
                 {
@@ -139,11 +139,11 @@ class WidgetService:
     def calculate_transfers_chart_data(config_data, date_range=None):
         """
         Calcular datos para gráfico de transferencias.
-        
+
         Args:
             config_data: Configuración del widget
             date_range: Tupla (date_from, date_to)
-        
+
         Returns:
             Dict con datos del gráfico
         """
@@ -154,11 +154,11 @@ class WidgetService:
     def calculate_abandonments_chart_data(config_data, date_range=None):
         """
         Calcular datos para gráfico de abandonos.
-        
+
         Args:
             config_data: Configuración del widget
             date_range: Tupla (date_from, date_to)
-        
+
         Returns:
             Dict con datos del gráfico y tasa de abandono
         """
@@ -169,11 +169,11 @@ class WidgetService:
     def calculate_top_clients_data(config_data, date_range=None):
         """
         Calcular datos para top clientes.
-        
+
         Args:
             config_data: Configuración del widget
             date_range: Tupla (date_from, date_to)
-        
+
         Returns:
             Dict con top clientes ordenados por total de llamadas
         """
@@ -184,11 +184,11 @@ class WidgetService:
     def calculate_metrics_summary_data(config_data, date_range=None):
         """
         Calcular datos para resumen de métricas (KPIs).
-        
+
         Args:
             config_data: Configuración del widget
             date_range: Tupla (date_from, date_to)
-        
+
         Returns:
             Dict con métricas resumen
         """
@@ -199,11 +199,11 @@ class WidgetService:
     def calculate_hourly_stats_data(config_data, date_range=None):
         """
         Calcular datos para estadísticas por hora.
-        
+
         Args:
             config_data: Configuración del widget
             date_range: Tupla (date_from, date_to)
-        
+
         Returns:
             Dict con estadísticas por hora del día (0-23)
         """
@@ -214,11 +214,11 @@ class WidgetService:
     def calculate_agent_performance_data(config_data, date_range=None):
         """
         Calcular datos para rendimiento de agentes.
-        
+
         Args:
             config_data: Configuración del widget
             date_range: Tupla (date_from, date_to)
-        
+
         Returns:
             Dict con rendimiento de agentes ordenado
         """
@@ -229,11 +229,11 @@ class WidgetService:
     def calculate_sla_monitor_data(config_data, date_range=None):
         """
         Calcular datos para monitor de SLA.
-        
+
         Args:
             config_data: Configuración del widget
             date_range: Tupla (date_from, date_to)
-        
+
         Returns:
             Dict con métricas de SLA
         """
@@ -244,20 +244,20 @@ class WidgetService:
     def refresh_widget_cache(widget_id):
         """
         Refrescar cache de widget.
-        
+
         Elimina todas las entradas de cache del widget
         para forzar recálculo en próxima consulta.
-        
+
         Args:
             widget_id: ID del widget
         """
         # Eliminar todas las variantes de cache del widget
         # Nota: En producción, podría usarse un patrón más sofisticado
         # cache_pattern = f'widget_data_{widget_id}*'  — reservado para invalidación futura
-        
+
         # Django cache no soporta delete_pattern nativamente
         # Por simplicidad, eliminamos la entrada base
         cache.delete(f'widget_data_{widget_id}')
-        
+
         # También podríamos eliminar todas las variantes conocidas
         # Esto requeriría tracking de todas las date_range usadas

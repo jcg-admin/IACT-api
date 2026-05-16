@@ -76,12 +76,12 @@ __all__ = [
     'UserListSerializer',
     'UserCreateSerializer',
     'UserUpdateSerializer',
-    
+
     # Profile (3)
     'ProfileSerializer',
     'UserSettingsSerializer',
     'AvatarUploadSerializer',
-    
+
     # Auth (2 + aliases)
     'PasswordChangeSerializer',
     'UserActivationSerializer',
@@ -90,7 +90,7 @@ __all__ = [
     'PasswordResetRequestSerializer',
     'PasswordResetConfirmSerializer',
     'UserProfileSerializer',
-    
+
     # Session (1)
     'SessionHistorySerializer',
 ]

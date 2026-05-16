@@ -15,9 +15,9 @@ User = get_user_model()
 class Report(SoftDeleteMixin, models.Model):
     """
     Reporte generado en el sistema.
-    
+
     Usa SoftDeleteMixin para delete lógico.
-    
+
     Attributes:
         name: Nombre descriptivo del reporte
         report_type: Tipo de reporte (calls, users, audit)
@@ -26,20 +26,20 @@ class Report(SoftDeleteMixin, models.Model):
         total_records: Total de registros (CNST-007)
         status: Estado del reporte
     """
-    
+
     REPORT_TYPES = [
         ('calls', 'Llamadas'),
         ('users', 'Usuarios'),
         ('audit', 'Auditoría'),
     ]
-    
+
     STATUS_CHOICES = [
         ('pending', 'Pendiente'),
         ('processing', 'Procesando'),
         ('completed', 'Completado'),
         ('failed', 'Fallido'),
     ]
-    
+
     # Campos básicos
     name = models.CharField(
         max_length=200,
@@ -50,7 +50,7 @@ class Report(SoftDeleteMixin, models.Model):
         choices=REPORT_TYPES,
         db_index=True
     )
-    
+
     # Usuario y fechas
     created_by = models.ForeignKey(
         User,
@@ -62,14 +62,14 @@ class Report(SoftDeleteMixin, models.Model):
         db_index=True
     )
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     # Filtros y configuración
     filters = models.JSONField(
         default=dict,
         blank=True,
         help_text="Filtros aplicados al reporte (JSON)"
     )
-    
+
     # Metadata
     total_records = models.IntegerField(
         default=0,
@@ -81,7 +81,7 @@ class Report(SoftDeleteMixin, models.Model):
         default='pending',
         db_index=True
     )
-    
+
     class Meta:
         ordering = ['-created_at']
         verbose_name = 'Report'
@@ -90,7 +90,7 @@ class Report(SoftDeleteMixin, models.Model):
             models.Index(fields=['-created_at', 'report_type']),
             models.Index(fields=['created_by', 'status']),
         ]
-    
+
     def __str__(self):
         return f"{self.name} ({self.get_report_type_display()})"
 

@@ -25,7 +25,7 @@ from apps.dashboard.models import (
 class DashboardService:
     """
     Servicio para gestión de dashboards.
-    
+
     Métodos principales:
     - create_default_dashboard: Crear dashboard por defecto
     - clone_dashboard: Clonar dashboard existente
@@ -34,21 +34,21 @@ class DashboardService:
     - import_config: Importar configuración desde JSON
     - delete_dashboard: Eliminar dashboard (soft delete)
     """
-    
+
     @staticmethod
     @transaction.atomic
     def create_default_dashboard(user):
         """
         Crear dashboard por defecto para un usuario.
-        
+
         Crea:
         - DashboardConfig con is_default=True
         - 3 widgets por defecto (METRICS_SUMMARY, CALLS_CHART, TRANSFERS_CHART)
         - UserDashboardPreference vinculada
-        
+
         Args:
             user: Usuario para quien crear el dashboard
-        
+
         Returns:
             DashboardConfig creado
         """
@@ -64,9 +64,9 @@ class DashboardService:
             is_default=True,
             is_public=False
         )
-        
+
         # Crear 3 widgets por defecto
-        
+
         # 1. Resumen de métricas (ancho completo)
         WidgetConfig.objects.create(
             dashboard=dashboard,
@@ -82,7 +82,7 @@ class DashboardService:
             is_visible=True,
             refresh_interval_seconds=300
         )
-        
+
         # 2. Gráfico de llamadas (mitad izquierda)
         WidgetConfig.objects.create(
             dashboard=dashboard,
@@ -100,7 +100,7 @@ class DashboardService:
             is_visible=True,
             refresh_interval_seconds=300
         )
-        
+
         # 3. Gráfico de transferencias (mitad derecha)
         WidgetConfig.objects.create(
             dashboard=dashboard,
@@ -117,7 +117,7 @@ class DashboardService:
             is_visible=True,
             refresh_interval_seconds=300
         )
-        
+
         # Crear preferencias si no existen
         UserDashboardPreference.objects.get_or_create(
             user=user,
@@ -134,26 +134,26 @@ class DashboardService:
                 }
             }
         )
-        
+
         return dashboard
-    
+
     @staticmethod
     @transaction.atomic
     def clone_dashboard(dashboard_id, new_user):
         """
         Clonar dashboard existente para un nuevo usuario.
-        
+
         Copia:
         - DashboardConfig (sin is_default, sin is_public)
         - Todos los WidgetConfig asociados
-        
+
         Args:
             dashboard_id: ID del dashboard a clonar
             new_user: Usuario que recibirá el clon
-        
+
         Returns:
             DashboardConfig clonado
-        
+
         Raises:
             DashboardConfig.DoesNotExist: Si dashboard no existe
         """
@@ -161,7 +161,7 @@ class DashboardService:
             id=dashboard_id,
             deleted_at__isnull=True
         )
-        
+
         # Crear copia del dashboard
         new_dashboard = DashboardConfig.objects.create(
             user=new_user,
@@ -171,7 +171,7 @@ class DashboardService:
             is_default=False,  # El clon nunca es default
             is_public=False    # El clon nunca es público
         )
-        
+
         # Copiar todos los widgets
         for widget in original.widgets.all():
             WidgetConfig.objects.create(
@@ -186,22 +186,22 @@ class DashboardService:
                 is_visible=widget.is_visible,
                 refresh_interval_seconds=widget.refresh_interval_seconds
             )
-        
+
         return new_dashboard
-    
+
     @staticmethod
     @transaction.atomic
     def set_as_default(dashboard_id, user):
         """
         Marcar dashboard como default para el usuario.
-        
+
         Solo un dashboard puede ser default por usuario.
         Desmarca otros dashboards como default.
-        
+
         Args:
             dashboard_id: ID del dashboard a marcar como default
             user: Usuario propietario
-        
+
         Raises:
             DashboardConfig.DoesNotExist: Si dashboard no existe
             PermissionDenied: Si usuario no es propietario
@@ -210,45 +210,45 @@ class DashboardService:
             id=dashboard_id,
             deleted_at__isnull=True
         )
-        
+
         # Verificar ownership
         if dashboard.user != user:
             raise PermissionDenied(
                 "No puedes marcar como default un dashboard que no te pertenece"
             )
-        
+
         # Desmarcar otros dashboards como default
         DashboardConfig.objects.filter(
             user=user,
             is_default=True
         ).exclude(id=dashboard_id).update(is_default=False)
-        
+
         # Marcar este como default
         dashboard.is_default = True
         dashboard.save()
-        
+
         # Actualizar preferencias
         preference, _ = UserDashboardPreference.objects.get_or_create(
             user=user
         )
         preference.default_dashboard = dashboard
         preference.save()
-    
+
     @staticmethod
     def export_config(dashboard_id):
         """
         Exportar configuración de dashboard a JSON.
-        
+
         Exporta:
         - Configuración del dashboard
         - Configuración de todos los widgets
-        
+
         Args:
             dashboard_id: ID del dashboard a exportar
-        
+
         Returns:
             Dict con configuración completa
-        
+
         Raises:
             DashboardConfig.DoesNotExist: Si dashboard no existe
         """
@@ -256,7 +256,7 @@ class DashboardService:
             id=dashboard_id,
             deleted_at__isnull=True
         )
-        
+
         # Exportar dashboard
         export_data = {
             'version': '1.0',
@@ -267,7 +267,7 @@ class DashboardService:
             },
             'widgets': []
         }
-        
+
         # Exportar widgets
         for widget in dashboard.widgets.all().order_by('position_y', 'position_x'):
             export_data['widgets'].append({
@@ -281,26 +281,26 @@ class DashboardService:
                 'is_visible': widget.is_visible,
                 'refresh_interval_seconds': widget.refresh_interval_seconds
             })
-        
+
         return export_data
-    
+
     @staticmethod
     @transaction.atomic
     def import_config(config_json, user):
         """
         Importar configuración de dashboard desde JSON.
-        
+
         Crea:
         - DashboardConfig nuevo
         - WidgetConfig asociados
-        
+
         Args:
             config_json: Dict o str JSON con configuración
             user: Usuario que recibirá el dashboard importado
-        
+
         Returns:
             DashboardConfig creado
-        
+
         Raises:
             ValidationError: Si JSON es inválido
         """
@@ -312,16 +312,16 @@ class DashboardService:
                 raise ValidationError(f"JSON inválido: {str(e)}")
         else:
             config_data = config_json
-        
+
         # Validar estructura
         if 'dashboard' not in config_data or 'widgets' not in config_data:
             raise ValidationError(
                 "JSON debe contener 'dashboard' y 'widgets'"
             )
-        
+
         dashboard_data = config_data['dashboard']
         widgets_data = config_data['widgets']
-        
+
         # Crear dashboard
         dashboard = DashboardConfig.objects.create(
             user=user,
@@ -331,7 +331,7 @@ class DashboardService:
             is_default=False,
             is_public=False
         )
-        
+
         # Crear widgets
         for widget_data in widgets_data:
             WidgetConfig.objects.create(
@@ -346,21 +346,21 @@ class DashboardService:
                 is_visible=widget_data.get('is_visible', True),
                 refresh_interval_seconds=widget_data.get('refresh_interval_seconds', 300)
             )
-        
+
         return dashboard
-    
+
     @staticmethod
     def delete_dashboard(dashboard_id, user):
         """
         Eliminar dashboard (soft delete).
-        
+
         Si el dashboard es default, desmarca is_default.
         No elimina físicamente, solo marca deleted_at.
-        
+
         Args:
             dashboard_id: ID del dashboard a eliminar
             user: Usuario propietario
-        
+
         Raises:
             DashboardConfig.DoesNotExist: Si dashboard no existe
             PermissionDenied: Si usuario no es propietario
@@ -369,16 +369,16 @@ class DashboardService:
             id=dashboard_id,
             deleted_at__isnull=True
         )
-        
+
         # Verificar ownership
         if dashboard.user != user:
             raise PermissionDenied(
                 "No puedes eliminar un dashboard que no te pertenece"
             )
-        
+
         # Si es default, desmarcar
         if dashboard.is_default:
             dashboard.is_default = False
-        
+
         # Soft delete
         dashboard.delete()  # SoftDeleteMixin maneja el soft delete

@@ -37,7 +37,7 @@ from .services import ModuleAccessService
 class ModuleViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de módulos.
-    
+
     Endpoints:
     - GET /api/v1/access/modules/ - Listar módulos
     - POST /api/v1/access/modules/ - Crear módulo
@@ -46,7 +46,7 @@ class ModuleViewSet(viewsets.ModelViewSet):
     - DELETE /api/v1/access/modules/{id}/ - Eliminar módulo (soft delete)
     - GET /api/v1/access/modules/tree/ - Obtener jerarquía completa
     """
-    
+
     queryset = Module.objects.all()
     serializer_class = ModuleSerializer
     permission_classes = [IsAuthenticated]
@@ -55,14 +55,14 @@ class ModuleViewSet(viewsets.ModelViewSet):
     search_fields = ['code', 'name', 'description']
     ordering_fields = ['order', 'code', 'name', 'created_at']
     ordering = ['order', 'code']
-    
+
     @action(detail=False, methods=['get'])
     def tree(self, request):
         """
         Obtener jerarquía completa de módulos.
-        
+
         GET /api/v1/access/modules/tree/
-        
+
         Returns:
             Estructura de árbol de módulos
         """
@@ -72,14 +72,14 @@ class ModuleViewSet(viewsets.ModelViewSet):
             'total_count': Module.objects.filter(is_active=True).count(),
             'root_count': Module.objects.filter(parent__isnull=True, is_active=True).count(),
         })
-    
+
     @action(detail=False, methods=['get'])
     def roots(self, request):
         """
         Obtener solo módulos raíz.
-        
+
         GET /api/v1/access/modules/roots/
-        
+
         Returns:
             Lista de módulos raíz
         """
@@ -94,13 +94,13 @@ class ModuleViewSet(viewsets.ModelViewSet):
 class UserModuleAccessViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestión de accesos a módulos.
-    
+
     Endpoints:
     - GET /api/v1/access/module-accesses/ - Listar accesos
     - POST /api/v1/access/module-accesses/ - Otorgar acceso
     - DELETE /api/v1/access/module-accesses/{id}/ - Revocar acceso
     """
-    
+
     queryset = UserModuleAccess.objects.all()
     serializer_class = UserModuleAccessSerializer
     permission_classes = [IsAuthenticated]
@@ -108,11 +108,11 @@ class UserModuleAccessViewSet(viewsets.ModelViewSet):
     filterset_fields = ['user', 'module', 'is_active']
     ordering_fields = ['granted_at', 'revoked_at']
     ordering = ['-granted_at']
-    
+
     def perform_create(self, serializer):
         """Guardar con granted_by automático."""
         serializer.save(granted_by=self.request.user)
-    
+
     def perform_destroy(self, instance):
         """Soft delete: marcar como revocado."""
         from django.utils import timezone
@@ -131,26 +131,26 @@ class UserModuleAccessViewSet(viewsets.ModelViewSet):
 class MyModulesView(APIView):
     """
     Vista para obtener módulos accesibles por el usuario autenticado.
-    
+
     GET /api/v1/access/my-modules/
-    
+
     Retorna:
         - modules: Árbol de módulos accesibles
         - total_count: Total de módulos accesibles
         - root_count: Número de módulos raíz accesibles
     """
-    
+
     permission_classes = [IsAuthenticated]
-    
+
     def get(self, request):
         """
         Obtener módulos del usuario autenticado.
-        
+
         Returns:
             Árbol de módulos con hijos anidados
         """
         user = request.user
-        
+
         # Obtener árbol de módulos del usuario
         modules_tree = ModuleAccessService.get_user_module_tree(user)
 

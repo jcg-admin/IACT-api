@@ -48,7 +48,7 @@ __all__ = [
     # Report serializers
     'ReportSerializer',
     'ReportCreateSerializer',
-    
+
     # Export serializers
     'ExportJobSerializer',
 ]

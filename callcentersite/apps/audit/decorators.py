@@ -16,7 +16,7 @@ def audit_log(
 ):
     """
     Decorator para registrar acciones en AuditLog automáticamente.
-    
+
     Args:
         action: Acción a registrar (CREATE, UPDATE, DELETE, etc.)
                 Si None, se infiere del método HTTP
@@ -24,32 +24,32 @@ def audit_log(
                        Si None, se usa el nombre de la view
         get_resource_id: Función para extraer ID del recurso
                          (por defecto usa kwargs['pk'])
-    
+
     Usage:
         # En function-based view:
         @audit_log(action='VIEW', resource_type='Report')
         def report_detail(request, pk):
             ...
-        
+
         # En ViewSet method:
         class ReportViewSet(viewsets.ModelViewSet):
             @audit_log()
             def destroy(self, request, *args, **kwargs):
                 # Se registrará DELETE automáticamente
                 ...
-    
+
     Examples:
         # Auto-detectar acción desde método HTTP
         @audit_log(resource_type='Report')
         def create_report(request):
             # Acción será CREATE (inferida de POST)
             ...
-        
+
         # Especificar acción manualmente
         @audit_log(action='EXPORT', resource_type='Report')
         def export_report(request, pk):
             ...
-        
+
         # Custom resource ID
         @audit_log(
             action='UPDATE',
@@ -75,14 +75,14 @@ def audit_log(
             else:
                 # Sin request, ejecutar sin auditoría
                 return func(*args, **kwargs)
-            
+
             # Ejecutar función original
             response = func(*args, **kwargs)
-            
+
             # Solo auditar si hay usuario autenticado
             if not request.user or not request.user.is_authenticated:
                 return response
-            
+
             # Inferir acción si no se especificó
             log_action = action
             if not log_action:
@@ -95,10 +95,10 @@ def audit_log(
                     'GET': AuditLogService.VIEW,
                 }
                 log_action = action_map.get(method, AuditLogService.VIEW)
-            
+
             # Determinar resource_type
             res_type = resource_type or view_name
-            
+
             # Obtener resource_id
             resource_id = None
             if get_resource_id:
@@ -109,20 +109,20 @@ def audit_log(
             else:
                 # Por defecto usar 'pk' de kwargs
                 resource_id = kwargs.get('pk', kwargs.get('id'))
-            
+
             # Construir resource string
             if resource_id:
                 resource = f'{res_type}:{resource_id}'
             else:
                 resource = res_type
-            
+
             # Determinar resultado (SUCCESS/FAILURE)
             result = AuditLogService.SUCCESS
             if hasattr(response, 'status_code'):
                 # Response de DRF o Django
                 if response.status_code >= 400:
                     result = AuditLogService.FAILURE
-            
+
             # Registrar en AuditLog
             try:
                 AuditLogService.log(
@@ -137,9 +137,9 @@ def audit_log(
                 import logging
                 logger = logging.getLogger(__name__)
                 logger.error(f'Error creating audit log: {e}')
-            
+
             return response
-        
+
         return wrapper
     return decorator
 
@@ -147,12 +147,12 @@ def audit_log(
 def audit_action(action_name: str):
     """
     Decorator simplificado para ViewSet actions.
-    
+
     Registra la acción especificada automáticamente.
-    
+
     Args:
         action_name: Nombre de la acción (CREATE, UPDATE, etc.)
-    
+
     Usage:
         class ReportViewSet(viewsets.ModelViewSet):
             @action(detail=True, methods=['post'])

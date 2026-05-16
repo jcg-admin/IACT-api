@@ -28,11 +28,11 @@ PRIORITY_CHOICES = [
 class InternalMessage(SoftDeleteMixin, models.Model):
     """
     Mensaje interno entre usuarios del sistema
-    
+
     Cumple:
     - CNST-001: Solo mensajería interna (NO email)
     - CNST-024: Máximo 50 destinatarios
-    
+
     Relaciones:
     - sender: Usuario que envía (User)
     - recipients: Usuarios que reciben (User) - many-to-many through MessageRecipient
@@ -56,7 +56,7 @@ class InternalMessage(SoftDeleteMixin, models.Model):
         default='info',
         verbose_name='Prioridad'
     )
-    
+
     # Many-to-many con usuarios a través de MessageRecipient
     recipients = models.ManyToManyField(
         User,
@@ -64,12 +64,12 @@ class InternalMessage(SoftDeleteMixin, models.Model):
         related_name='received_messages',
         verbose_name='Destinatarios'
     )
-    
+
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name='Fecha de creación'
     )
-    
+
     class Meta:
         db_table = 'alerts_internal_message'
         ordering = ['-created_at']
@@ -80,10 +80,10 @@ class InternalMessage(SoftDeleteMixin, models.Model):
             models.Index(fields=['sender', '-created_at'], name='idx_msg_sender'),
             models.Index(fields=['priority'], name='idx_msg_priority'),
         ]
-    
+
     def __str__(self):
         return f"{self.subject} (de {self.sender.username})"
-    
+
     def clean(self):
         """Validar CNST-024: máximo 50 destinatarios"""
         super().clean()
@@ -96,7 +96,7 @@ class InternalMessage(SoftDeleteMixin, models.Model):
 class MessageRecipient(models.Model):
     """
     Relación mensaje-destinatario con estado de lectura
-    
+
     Permite:
     - Estado individual por destinatario (read_at, archived_at)
     - Tracking de lectura
@@ -128,7 +128,7 @@ class MessageRecipient(models.Model):
         auto_now_add=True,
         verbose_name='Fecha de recepción'
     )
-    
+
     class Meta:
         db_table = 'alerts_message_recipient'
         unique_together = ('message', 'user')
@@ -138,15 +138,15 @@ class MessageRecipient(models.Model):
             models.Index(fields=['user', 'read_at'], name='idx_rcpt_user_read'),
             models.Index(fields=['user', 'archived_at'], name='idx_rcpt_user_arch'),
         ]
-    
+
     def __str__(self):
         return f"{self.message.subject} -> {self.user.username}"
-    
+
     @property
     def is_read(self):
         """Indica si el mensaje ha sido leído"""
         return self.read_at is not None
-    
+
     @property
     def is_archived(self):
         """Indica si el mensaje ha sido archivado"""
@@ -156,9 +156,9 @@ class MessageRecipient(models.Model):
 class AlertConfiguration(SoftDeleteMixin, models.Model):
     """
     Configuración de alertas automáticas
-    
+
     Evaluadas por APScheduler (CNST-013 compliant)
-    
+
     Estructura de condition (JSONField):
     {
         "metric": "call_volume | avg_wait_time | sla_percentage",
@@ -190,7 +190,7 @@ class AlertConfiguration(SoftDeleteMixin, models.Model):
         default=True,
         verbose_name='Activa'
     )
-    
+
     # Tracking de evaluación (para APScheduler)
     last_evaluated_at = models.DateTimeField(
         null=True,
@@ -202,7 +202,7 @@ class AlertConfiguration(SoftDeleteMixin, models.Model):
         blank=True,
         verbose_name='Último disparo'
     )
-    
+
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name='Fecha de creación'
@@ -211,7 +211,7 @@ class AlertConfiguration(SoftDeleteMixin, models.Model):
         auto_now=True,
         verbose_name='Fecha de actualización'
     )
-    
+
     class Meta:
         db_table = 'alerts_alert_configuration'
         ordering = ['-created_at']
@@ -221,7 +221,7 @@ class AlertConfiguration(SoftDeleteMixin, models.Model):
             models.Index(fields=['is_active'], name='idx_alert_active'),
             models.Index(fields=['-created_at'], name='idx_alert_created'),
         ]
-    
+
     def __str__(self):
         status = "[OK]" if self.is_active else "[FAIL]"
         return f"{status} {self.name} ({self.priority})"

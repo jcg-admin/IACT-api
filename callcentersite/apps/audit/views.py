@@ -75,7 +75,7 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     search_fields = ['resource', 'details']
     ordering_fields = ['timestamp', 'action']
     ordering = ['-timestamp']
-    
+
     def get_serializer_class(self):
         """
         Usar serializer resumido para list, completo para retrieve.
@@ -83,20 +83,20 @@ class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
         if self.action == 'list':
             return AuditLogSummarySerializer
         return AuditLogSerializer
-    
+
     def get_queryset(self):
         """
         Filtrar logs según permisos del usuario.
-        
+
         - Superusuarios ven todos los logs
         - Usuarios normales solo ven sus propios logs
         """
         queryset = super().get_queryset()
-        
+
         # Superusuarios ven todo
         if self.request.user.is_superuser:
             return queryset
-        
+
         # Usuarios normales solo sus logs
         return queryset.filter(user=self.request.user)
 

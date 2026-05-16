@@ -49,7 +49,7 @@ class UserViewSet(viewsets.ModelViewSet):
     F1-H-006: function_map ahora usa códigos canónicos v5.4.0.
     F1-H-007: RequiresFunctionPermission usa has_function_by_code().
     """
-    
+
     queryset = User.objects.all()
     serializer_class = UserSerializer
     permission_classes = [IsAuthenticated, RequiresFunctionPermission]
@@ -59,7 +59,7 @@ class UserViewSet(viewsets.ModelViewSet):
     ordering_fields = ['username', 'email', 'date_joined']
     ordering = ['-date_joined']
     _VALID_ORDERING = frozenset({'username', 'email', 'date_joined', '-username', '-email', '-date_joined'})
-    
+
     # F1-H-006: function_map con códigos canónicos v5.4.0 (antes: namespaces Django legacy)
     # list_users=USR-004, view_users=USR-009, create_users=USR-001, update_users=USR-002
 
@@ -108,7 +108,7 @@ class UserViewSet(viewsets.ModelViewSet):
         'activate':       'USR-008',  # reactivate_users
         'deactivate':     'USR-003',  # deactivate_users
     }
-    
+
     def get_serializer_class(self):
         """
         UC_USR_02: serializers distintos para list vs retrieve (CA-02 vs CA-03).
@@ -123,35 +123,35 @@ class UserViewSet(viewsets.ModelViewSet):
         if self.action == 'create':
             return UserCreateSerializer
         return UserSerializer
-    
+
     def perform_destroy(self, instance):
         """Soft delete del usuario."""
         instance.delete()  # SoftDeleteMixin
-    
+
     @action(detail=True, methods=['post'])
     def activate(self, request, pk=None):
         """
         Activar usuario.
-        
+
         POST /api/users/{id}/activate/
         """
         user = self.get_object()
         user.is_active = True
         user.save()
-        
+
         serializer = self.get_serializer(user)
         return Response(serializer.data)
-    
+
     @action(detail=True, methods=['post'])
     def deactivate(self, request, pk=None):
         """
         Desactivar usuario.
-        
+
         POST /api/users/{id}/deactivate/
         """
         user = self.get_object()
         user.is_active = False
         user.save()
-        
+
         serializer = self.get_serializer(user)
         return Response(serializer.data)

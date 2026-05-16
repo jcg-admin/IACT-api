@@ -15,11 +15,11 @@ User = get_user_model()
 class AuditLogService:
     """
     Service para crear logs de auditoría.
-    
+
     Maneja la creación de logs con información completa
     del contexto de la petición.
     """
-    
+
     # Constantes de acciones
     LOGIN = 'LOGIN'
     LOGOUT = 'LOGOUT'
@@ -31,11 +31,11 @@ class AuditLogService:
     IMPORT = 'IMPORT'
     ACCESS_DENIED = 'ACCESS_DENIED'
     ERROR = 'ERROR'
-    
+
     # Resultados
     SUCCESS = 'SUCCESS'
     FAILURE = 'FAILURE'
-    
+
     @classmethod
     def log(
         cls,
@@ -49,7 +49,7 @@ class AuditLogService:
     ) -> AuditLog:
         """
         Registrar log de auditoría.
-        
+
         Args:
             user: Usuario que realiza la acción (None para anónimos)
             action: Acción realizada (LOGIN, CREATE, etc.)
@@ -58,10 +58,10 @@ class AuditLogService:
             request: HttpRequest para extraer IP y User-Agent
             details: Dict con información adicional
             **kwargs: Campos adicionales del log
-            
+
         Returns:
             AuditLog: Log creado
-            
+
         Examples:
             >>> AuditLogService.log(
             ...     user=request.user,
@@ -74,12 +74,12 @@ class AuditLogService:
         # Extraer info del request si está disponible
         ip_address = None
         user_agent = ''
-        
+
         if request:
             from apps.utils import get_client_ip, get_user_agent
             ip_address = get_client_ip(request)
             user_agent = get_user_agent(request)
-        
+
         # Crear log
         return AuditLog.objects.create(
             user=user,
@@ -90,7 +90,7 @@ class AuditLogService:
             user_agent=user_agent or kwargs.get('user_agent', ''),
             details=details,
         )
-    
+
     @classmethod
     def log_login(
         cls,
@@ -101,13 +101,13 @@ class AuditLogService:
     ) -> AuditLog:
         """
         Registrar intento de login.
-        
+
         Args:
             user: Usuario intentando login
             request: HttpRequest
             success: Si login fue exitoso
             details: Info adicional (ej: método de auth)
-            
+
         Returns:
             AuditLog: Log creado
         """
@@ -119,7 +119,7 @@ class AuditLogService:
             request=request,
             details=details,
         )
-    
+
     @classmethod
     def log_logout(
         cls,
@@ -128,11 +128,11 @@ class AuditLogService:
     ) -> AuditLog:
         """
         Registrar logout.
-        
+
         Args:
             user: Usuario haciendo logout
             request: HttpRequest
-            
+
         Returns:
             AuditLog: Log creado
         """
@@ -142,7 +142,7 @@ class AuditLogService:
             resource=f'User:{user.id}',
             request=request,
         )
-    
+
     @classmethod
     def log_create(
         cls,
@@ -154,14 +154,14 @@ class AuditLogService:
     ) -> AuditLog:
         """
         Registrar creación de recurso.
-        
+
         Args:
             user: Usuario que crea
             resource_type: Tipo de recurso (ej: 'Report', 'User')
             resource_id: ID del recurso creado
             request: HttpRequest
             details: Datos adicionales del recurso
-            
+
         Returns:
             AuditLog: Log creado
         """
@@ -172,7 +172,7 @@ class AuditLogService:
             request=request,
             details=details,
         )
-    
+
     @classmethod
     def log_update(
         cls,
@@ -184,14 +184,14 @@ class AuditLogService:
     ) -> AuditLog:
         """
         Registrar actualización de recurso.
-        
+
         Args:
             user: Usuario que actualiza
             resource_type: Tipo de recurso
             resource_id: ID del recurso
             request: HttpRequest
             details: Cambios realizados (ej: {'field': 'old -> new'})
-            
+
         Returns:
             AuditLog: Log creado
         """
@@ -202,7 +202,7 @@ class AuditLogService:
             request=request,
             details=details,
         )
-    
+
     @classmethod
     def log_delete(
         cls,
@@ -214,14 +214,14 @@ class AuditLogService:
     ) -> AuditLog:
         """
         Registrar eliminación de recurso.
-        
+
         Args:
             user: Usuario que elimina
             resource_type: Tipo de recurso
             resource_id: ID del recurso
             request: HttpRequest
             details: Info del recurso eliminado
-            
+
         Returns:
             AuditLog: Log creado
         """
@@ -232,7 +232,7 @@ class AuditLogService:
             request=request,
             details=details,
         )
-    
+
     @classmethod
     def log_access_denied(
         cls,
@@ -243,13 +243,13 @@ class AuditLogService:
     ) -> AuditLog:
         """
         Registrar intento de acceso denegado.
-        
+
         Args:
             user: Usuario (None si anónimo)
             resource: Recurso al que intentó acceder
             request: HttpRequest
             reason: Razón del rechazo
-            
+
         Returns:
             AuditLog: Log creado
         """
@@ -262,7 +262,7 @@ class AuditLogService:
             request=request,
             details=details,
         )
-    
+
     @classmethod
     def log_export(
         cls,
@@ -273,13 +273,13 @@ class AuditLogService:
     ) -> AuditLog:
         """
         Registrar exportación de datos.
-        
+
         Args:
             user: Usuario que exporta
             resource_type: Tipo de datos exportados
             request: HttpRequest
             details: Info de la exportación (formato, filtros, etc)
-            
+
         Returns:
             AuditLog: Log creado
         """
@@ -295,9 +295,9 @@ class AuditLogService:
     def log_action(self, action: str, user=None, details: dict = None, resource: str = 'unknown'):
         """
         Wrapper genérico para log().
-        
+
         Mapea action a los métodos específicos de AuditLogService.
-        
+
         Args:
             action: Tipo de acción (USER_CREATED, USER_UPDATED, etc)
             user: Usuario que realiza la acción

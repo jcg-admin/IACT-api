@@ -47,7 +47,7 @@ class Command(BaseCommand):
             # =================================================================
             # MODULOS RAIZ (Nivel 1)
             # =================================================================
-            
+
             # Dashboard
             {
                 'code': 'MOD_Dashboard',
@@ -58,7 +58,7 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/dashboard',
             },
-            
+
             # Centers
             {
                 'code': 'MOD_Centers',
@@ -69,7 +69,7 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/centers',
             },
-            
+
             # Services
             {
                 'code': 'MOD_Services',
@@ -80,7 +80,7 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/services',
             },
-            
+
             # Users
             {
                 'code': 'MOD_Users',
@@ -91,7 +91,7 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/users',
             },
-            
+
             # Reports
             {
                 'code': 'MOD_Reports',
@@ -102,7 +102,7 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/reports',
             },
-            
+
             # Audit
             {
                 'code': 'MOD_Audit',
@@ -113,7 +113,7 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/audit',
             },
-            
+
             # Access
             {
                 'code': 'MOD_Access',
@@ -124,7 +124,7 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/access',
             },
-            
+
             # Pipeline
             {
                 'code': 'MOD_Pipeline',
@@ -135,7 +135,7 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/pipeline',
             },
-            
+
             # Settings
             {
                 'code': 'MOD_Settings',
@@ -146,7 +146,7 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/settings',
             },
-            
+
             # IVR (NUEVO - Modelo Granular)
             {
                 'code': 'MOD_IVR',
@@ -158,11 +158,11 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/ivr',
             },
-            
+
             # =================================================================
             # SUBMODULOS CENTERS (Nivel 2)
             # =================================================================
-            
+
             {
                 'code': 'MOD_Centers_View',
                 'name': 'Ver Centros',
@@ -199,11 +199,11 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/centers/delete',
             },
-            
+
             # =================================================================
             # SUBMODULOS SERVICES (Nivel 2)
             # =================================================================
-            
+
             {
                 'code': 'MOD_Services_View',
                 'name': 'Ver Servicios',
@@ -240,11 +240,11 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/services/assign',
             },
-            
+
             # =================================================================
             # SUBMODULOS USERS (Nivel 2)
             # =================================================================
-            
+
             {
                 'code': 'MOD_Users_View',
                 'name': 'Ver Usuarios',
@@ -290,11 +290,11 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/users/permissions',
             },
-            
+
             # =================================================================
             # SUBMODULOS REPORTS (Nivel 2)
             # =================================================================
-            
+
             {
                 'code': 'MOD_Reports_View',
                 'name': 'Ver Reportes',
@@ -331,11 +331,11 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/reports/schedule',
             },
-            
+
             # =================================================================
             # SUBMODULOS AUDIT (Nivel 2)
             # =================================================================
-            
+
             {
                 'code': 'MOD_Audit_View',
                 'name': 'Ver Auditoria',
@@ -354,11 +354,11 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/audit/export',
             },
-            
+
             # =================================================================
             # SUBMODULOS ACCESS (Nivel 2)
             # =================================================================
-            
+
             {
                 'code': 'MOD_Access_Modules',
                 'name': 'Gestionar Modulos',
@@ -386,11 +386,11 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/access/assign',
             },
-            
+
             # =================================================================
             # SUBMODULOS PIPELINE (Nivel 2)
             # =================================================================
-            
+
             {
                 'code': 'MOD_Pipeline_View',
                 'name': 'Ver Pipeline',
@@ -418,11 +418,11 @@ class Command(BaseCommand):
                 'icon': None,
                 'url_path': '/pipeline/schedule',
             },
-            
+
             # =================================================================
             # SUBMODULOS SETTINGS (Nivel 2)
             # =================================================================
-            
+
             {
                 'code': 'MOD_Settings_General',
                 'name': 'Configuracion General',
