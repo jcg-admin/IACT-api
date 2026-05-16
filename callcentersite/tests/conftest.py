@@ -411,3 +411,23 @@ def cleanup_files():
 # CNST-002: Dual DB (PostgreSQL test_iact_analytics + MariaDB test_ivr_legacy) [SUCCESS]
 # CNST-010: NO cache (DummyCache en testing.py) [SUCCESS]
 # ============================================================================
+
+@pytest.fixture(scope='session', autouse=True)
+def ensure_postgresql():
+    """
+    H-INFRA-002: garantiza que PostgreSQL esté corriendo antes de la sesión.
+    Sin este fixture, todos los tests @pytest.mark.django_db fallan con
+    psycopg2.OperationalError cuando el contenedor se reinicia.
+    """
+    import subprocess
+    result = subprocess.run(
+        ['pg_ctlcluster', '16', 'main', 'status'],
+        capture_output=True, text=True
+    )
+    if 'online' not in result.stdout and 'running' not in result.stdout:
+        subprocess.run(
+            ['pg_ctlcluster', '16', 'main', 'start'],
+            capture_output=True
+        )
+        import time; time.sleep(2)
+    yield
