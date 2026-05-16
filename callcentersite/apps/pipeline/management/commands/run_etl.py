@@ -1,3 +1,4 @@
+import logging
 """
 management/commands/run_etl.py
 
@@ -30,6 +31,8 @@ from datetime import date
 from django.core.management.base import BaseCommand, CommandError
 from django.db import OperationalError, connections
 
+
+logger = logging.getLogger(__name__)
 
 class Command(BaseCommand):
     help = (
@@ -158,9 +161,9 @@ class Command(BaseCommand):
                         """,
                         [run_id],
                     )
-            except Exception:
-                # El heartbeat no debe matar el thread principal
-                pass
+            except Exception as exc:
+                # El heartbeat no debe interrumpir el thread principal del ETL.
+                logger.warning("Heartbeat timeout-check falló (run_id=%s): %s", run_id, exc)
 
     def _update_run(
         self, run_id: int, status: str, error: str | None = None
@@ -181,6 +184,8 @@ class Command(BaseCommand):
                     """,
                     [status, error, run_id],
                 )
-        except Exception:
-            # Si la BD no está disponible en el finally, no propagar
-            pass
+        except Exception as exc:
+            # La BD no está disponible en el cleanup final — no propagar el error
+            # para no enmascarar la excepción original del ETL.
+            logger.warning("_update_run falló en cleanup (run_id=%s, status=%s): %s",
+                           run_id, status, exc)

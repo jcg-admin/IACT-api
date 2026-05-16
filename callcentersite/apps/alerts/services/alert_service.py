@@ -48,7 +48,7 @@ class AlertService:
                     triggered_count += 1
                     
             except Exception as e:
-                logger.error(f"Error evaluando config {config.id} '{config.name}': {e}")
+                logger.error(f"Error evaluando config {config.id} '{config.name}': {e}", exc_info=True)
         
         logger.info(f"Evaluación completada: {triggered_count} alertas disparadas de {active_configs.count()} configuraciones")
         

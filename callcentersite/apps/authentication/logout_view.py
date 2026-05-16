@@ -20,6 +20,7 @@ CA-06/07: si blacklist o audit fallan → Session permanece ACTIVE (rollback).
 CA-09 (frontend): fuera del scope de este archivo.
 CA-15 (HTTPS): Apache / nginx — fuera del scope de este archivo.
 """
+import logging
 from django.db import transaction, DatabaseError
 from django.utils import timezone
 from drf_spectacular.utils import extend_schema, OpenApiResponse
@@ -33,6 +34,8 @@ from rest_framework.views import APIView
 # ---------------------------------------------------------------------------
 # Throttle — CA-08: rate limit
 # ---------------------------------------------------------------------------
+logger = logging.getLogger(__name__)
+
 class LogoutThrottle(UserRateThrottle):
     rate = '30/min'
     scope = 'logout'
@@ -175,8 +178,10 @@ class LogoutView(APIView):
                     refresh_token_str, BlacklistedToken.TYPE_REFRESH, user=user
                 )
                 refresh_invalidated = True
-            except ValueError:
-                pass
+            except ValueError as exc:
+                # Token con formato inválido — ignorar, el logout continúa.
+                # El refresh token ya expiró o fue malformado por el cliente.
+                logger.warning("blacklist_jwt: token inválido para user=%s: %s", user.pk, exc)
 
         # PASO 8: AuditEvent LOGOUT (CNST-025/026)
         AuditLogService.emit(

@@ -58,8 +58,13 @@ class SessionSecurityPolicy(MiddlewareMixin):
                     'path': request.path,
                 }
             )
-        except Exception:
-            # No fallar si auditoria falla
-            pass
+        except Exception as exc:
+            # No fallar el request si la auditoría de seguridad falla.
+            # El error queda registrado para investigación posterior.
+            import logging as _log
+            _log.getLogger(__name__).error(
+                "session_security middleware: error de auditoría (path=%s): %s",
+                request.path, exc
+            )
         
         return None

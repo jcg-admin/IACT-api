@@ -1,8 +1,11 @@
 """
 Vistas para la gestion de usuarios, avatares y perfiles.
 """
+import logging
 from django.conf import settings
 from rest_framework import status
+
+logger = logging.getLogger(__name__)
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.permissions import IsAuthenticated
@@ -48,8 +51,10 @@ def upload_avatar_view(request):
     if user.avatar:
         try:
             user.avatar.delete(save=False)
-        except Exception:
-            pass
+        except Exception as exc:
+            # El archivo puede no existir en storage (borrado externo o CDN).
+            # No es error fatal — continuar con la subida del nuevo avatar.
+            logger.warning("avatar.delete() falló para user=%s: %s", user.pk, exc)
 
     user.avatar = file
     user.save(update_fields=['avatar'])
@@ -77,8 +82,9 @@ def delete_avatar_view(request):
 
     try:
         user.avatar.delete(save=False)
-    except Exception:
-        pass
+    except Exception as exc:
+        # El archivo puede haberse borrado del storage externamente.
+        logger.warning("avatar.delete() falló para user=%s: %s", user.pk, exc)
 
     user.avatar = None
     user.save(update_fields=['avatar'])
