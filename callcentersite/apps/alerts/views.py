@@ -194,10 +194,11 @@ class AlertSubscriptionViewSet(viewsets.ModelViewSet):
     serializer_class = AlertSubscriptionSerializer
     permission_classes = [AlertSubscriptionPermissions]
     http_method_names = ['get', 'post', 'delete']  # No PUT/PATCH
-    
+    queryset = AlertSubscription.objects.none()  # override en get_queryset
+
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
-            return self.queryset.none() if self.queryset is not None else AlertSubscriptionViewSet.queryset.model.objects.none()
+            return AlertSubscription.objects.none()
         """Solo suscripciones del usuario actual"""
         return AlertSubscription.objects.filter(
             user=self.request.user,

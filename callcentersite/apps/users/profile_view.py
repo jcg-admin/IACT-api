@@ -7,6 +7,7 @@ GET/PATCH /api/users/settings/ — configuraciones del usuario autenticado.
 Los modelos UserProfile y UserSettings fueron integrados directamente en User
 (FASE 4). Estos endpoints exponen los campos disponibles en el modelo User.
 """
+from drf_spectacular.utils import extend_schema, extend_schema_field
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -24,6 +25,7 @@ class UserProfileSerializer(serializers.Serializer):
     last_name   = serializers.CharField(required=False, allow_blank=True)
     avatar_url  = serializers.SerializerMethodField()
 
+    @extend_schema_field(serializers.URLField(allow_null=True))
     def get_avatar_url(self, obj):
         if obj.avatar and hasattr(obj.avatar, 'url'):
             try:
@@ -56,12 +58,14 @@ class UserSettingsSerializer(serializers.Serializer):
         return value
 
 
+@extend_schema(tags=['Perfil'])
 class ProfileView(APIView):
     """
     GET /api/users/profile/  — retorna perfil del usuario autenticado.
     PATCH /api/users/profile/ — actualiza campos de perfil.
     """
     permission_classes = [IsAuthenticated]
+    serializer_class   = UserProfileSerializer
 
     def get(self, request):
         serializer = UserProfileSerializer(request.user)
@@ -78,12 +82,14 @@ class ProfileView(APIView):
         return Response(UserProfileSerializer(user).data)
 
 
+@extend_schema(tags=['Perfil'])
 class SettingsView(APIView):
     """
     GET /api/users/settings/  — retorna configuraciones del usuario autenticado.
     PATCH /api/users/settings/ — actualiza configuraciones.
     """
     permission_classes = [IsAuthenticated]
+    serializer_class   = UserSettingsSerializer
 
     # Clave usada para persistir settings en cache con TTL largo
     _CACHE_TTL = 86_400 * 7  # 7 días
@@ -120,12 +126,14 @@ class SettingsView(APIView):
         return Response(settings)
 
 
+@extend_schema(tags=['Perfil'])
 class AvatarUploadView(APIView):
     """
     POST   /api/users/profile/avatar/ — sube avatar.
     DELETE /api/users/profile/avatar/ — elimina avatar.
     """
     permission_classes = [IsAuthenticated]
+    serializer_class   = UserProfileSerializer
 
     def post(self, request):
         from apps.users.serializers import AvatarUploadSerializer

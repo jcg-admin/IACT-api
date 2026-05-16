@@ -1,3 +1,5 @@
+from drf_spectacular.utils import extend_schema_field
+from rest_framework import serializers as drf_serializers
 """
 Serializer para Function.
 
@@ -24,6 +26,7 @@ class FunctionSerializer(serializers.ModelSerializer):
             'category', 'module_code',
         ]
 
+    @extend_schema_field(drf_serializers.CharField(allow_null=True))
     def get_category(self, obj):
         """
         Mapea el codigo del modulo a la categoria que espera FunctionSelector.

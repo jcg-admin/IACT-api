@@ -288,10 +288,11 @@ class ScheduledReportViewSet(viewsets.ModelViewSet):
     serializer_class   = ScheduledReportSerializer
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-009'
+    queryset           = ScheduledReport.objects.none()  # override en get_queryset
 
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
-            return self.queryset.none() if self.queryset is not None else ScheduledReportViewSet.queryset.model.objects.none()
+            return ScheduledReport.objects.none()
         return ScheduledReport.objects.filter(
             created_by=self.request.user
         ).select_related('report').order_by('-created_at')
@@ -333,9 +334,11 @@ class SavedViewViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticated, HasFunction]
     required_function  = 'RPT-001'
 
+    queryset = SavedView.objects.none()  # override en get_queryset
+
     def get_queryset(self):
         if getattr(self, "swagger_fake_view", False):
-            return self.queryset.none() if self.queryset is not None else SavedViewViewSet.queryset.model.objects.none()
+            return SavedView.objects.none()
         return SavedView.objects.filter(
             created_by=self.request.user
         ).select_related('report').order_by('-created_at')

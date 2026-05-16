@@ -48,6 +48,9 @@ class MessageRecipientSerializer(serializers.ModelSerializer):
     
     user = UserBasicSerializer(read_only=True)
     
+    is_read     = serializers.BooleanField(read_only=True)
+    is_archived = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = MessageRecipient
         fields = [
@@ -185,6 +188,9 @@ class InboxMessageSerializer(serializers.ModelSerializer):
     sender = UserBasicSerializer(source='message.sender', read_only=True)
     created_at = serializers.DateTimeField(source='message.created_at', read_only=True)
     
+    is_read     = serializers.BooleanField(read_only=True)
+    is_archived = serializers.BooleanField(read_only=True)
+
     class Meta:
         model = MessageRecipient
         fields = [
