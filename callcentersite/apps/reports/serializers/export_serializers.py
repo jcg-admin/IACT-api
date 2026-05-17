@@ -17,24 +17,25 @@ Principios aplicados:
 
 from rest_framework import serializers
 from apps.reports.models import ExportJob
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 
 class ExportJobSerializer(serializers.ModelSerializer):
     """
     Serializer para ExportJob.
-    
+
     CNST-007: Valida límite de 100K registros.
-    
+
     Incluye:
     - Datos del job de exportación
     - Progreso de exportación (%)
     - Validación CNST-007
     - Validación de reporte completado
     """
-    
+
     # Constante CNST-007
     MAX_EXPORT_SIZE = 100000
-    
+
     report_name = serializers.CharField(
         source='report.name',
         read_only=True
@@ -48,7 +49,7 @@ class ExportJobSerializer(serializers.ModelSerializer):
         read_only=True
     )
     progress = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = ExportJob
         fields = [
@@ -78,25 +79,26 @@ class ExportJobSerializer(serializers.ModelSerializer):
             'completed_at',
             'error_message',
         ]
-    
+
+    @extend_schema_field(OpenApiTypes.FLOAT)
     def get_progress(self, obj):
         """
         Obtener porcentaje de progreso.
-        
+
         Calcula el progreso de exportación redondeado a 2 decimales.
         """
         return round(obj.progress_percentage, 2)
-    
+
     def validate_total_records(self, value):
         """
         Validar CNST-007: máximo 100K registros.
-        
+
         Args:
             value: Total de registros a exportar
-            
+
         Returns:
             int: Total validado
-            
+
         Raises:
             ValidationError: Si excede límite CNST-007 o es negativo
         """
@@ -106,26 +108,26 @@ class ExportJobSerializer(serializers.ModelSerializer):
                 f"{self.MAX_EXPORT_SIZE:,} registros. "
                 f"Total solicitado: {value:,}"
             )
-        
+
         if value < 0:
             raise serializers.ValidationError(
                 "Total de registros debe ser positivo"
             )
-        
+
         return value
-    
+
     def validate(self, data):
         """
         Validación adicional del ExportJob.
-        
+
         Verifica que el reporte asociado exista y esté completado.
         Solo se pueden exportar reportes en estado 'completed'.
         """
         report = data.get('report')
-        
+
         if report and report.status != 'completed':
             raise serializers.ValidationError({
                 'report': 'Solo se pueden exportar reportes completados'
             })
-        
+
         return data

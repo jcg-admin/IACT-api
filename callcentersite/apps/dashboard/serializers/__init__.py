@@ -72,17 +72,17 @@ __all__ = [
     'DashboardConfigDetailSerializer',
     'DashboardExportSerializer',
     'DashboardImportSerializer',
-    
+
     # Widget serializers
     'WidgetConfigSerializer',
     'WidgetConfigCreateSerializer',
     'WidgetConfigUpdateSerializer',
     'WidgetDataSerializer',
-    
+
     # Filter serializers
     'SavedFilterSerializer',
     'SavedFilterListSerializer',
-    
+
     # Preference serializers
     'UserDashboardPreferenceSerializer',
 ]

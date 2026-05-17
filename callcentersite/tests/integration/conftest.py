@@ -77,38 +77,39 @@ def user_with_permissions(db):
         last_name='User',
     )
     
-    # Crear funciones
-    func_view = Function.objects.create(
+    # Crear funciones usando el catálogo existente o creando con Module
+    from apps.access.models import Module
+    default_module, _ = Module.objects.get_or_create(
+        code='USR', defaults={'name': 'Usuarios', 'order': 99}
+    )
+    func_view, _ = Function.objects.get_or_create(
         code='USR_VIEW',
-        name='Ver Usuarios',
-        description='Permiso para ver usuarios',
+        defaults={'name': 'Ver Usuarios', 'module': default_module,
+                  'permission_django': 'users.view'}
     )
-    func_create = Function.objects.create(
+    func_create, _ = Function.objects.get_or_create(
         code='USR_CREATE',
-        name='Crear Usuarios',
-        description='Permiso para crear usuarios',
+        defaults={'name': 'Crear Usuarios', 'module': default_module,
+                  'permission_django': 'users.create'}
     )
-    func_edit = Function.objects.create(
+    func_edit, _ = Function.objects.get_or_create(
         code='USR_EDIT',
-        name='Editar Usuarios',
-        description='Permiso para editar usuarios',
+        defaults={'name': 'Editar Usuarios', 'module': default_module,
+                  'permission_django': 'users.edit'}
     )
     
     # Asignar funciones al usuario
     UserPermission.objects.create(
         user=user,
         function=func_view,
-        is_active=True,
     )
     UserPermission.objects.create(
         user=user,
         function=func_create,
-        is_active=True,
     )
     UserPermission.objects.create(
         user=user,
         function=func_edit,
-        is_active=True,
     )
     
     return user
@@ -180,6 +181,48 @@ def permitted_client(api_client, user_with_permissions):
 # 
 # Uso:
 #   def test_something(admin_client):
-#       response = admin_client.get('/api/v1/users/')
+#       response = admin_client.get('/api/users/')
 #       assert response.status_code == 200
 # ============================================================================
+
+
+# ─── Fix de migraciones para la BD de producción ─────────────────────────────
+# Las columnas de access_group.is_active, reports.ExportJob.id (uuid) y
+# users.PasswordHistory ya existen en iact_analytics por evolución manual
+# del schema anterior a las migraciones correspondientes. Si esas migraciones
+# se ejecutan contra iact_analytics, fallan con "column already exists".
+#
+# Solución: monkey-patch del executor de migraciones que aplica fake SOLO
+# cuando la conexión apunta a la BD de producción (iact_analytics).
+# La BD de test (test_iact_analytics) se crea limpia desde cero — no tiene
+# columnas preexistentes, así que sus migraciones deben ejecutarse normalmente.
+#
+# Criterio de discriminación: la BD de test siempre comienza con "test_".
+
+import django.db.migrations.executor as _executor_mod
+_orig_run_migration = _executor_mod.MigrationExecutor.apply_migration
+
+_FAKE_MIGRATIONS = {
+    ('access',      '0007_fase2_access_group_and_function_menu'),
+    ('access',      '0008_std008_fase2_related_names'),
+    ('access',      '0009_fase4_exceptionalpermisos_canonical'),
+    ('reports',     '0004_fase3_exportjob_canonical'),
+    ('reports',     '0005_fase4_scheduledreport_canonical'),
+    ('reports',     '0006_fase5_savedfilter_savedview_canonical'),
+    ('users',       '0002_fase1_user_canonical_fields'),
+    ('users',       '0003_fase1_password_history'),
+    ('users',       '0004_fase2_user_admin_fields'),
+}
+
+def _patched_apply_migration(self, state, migration, fake=False, fake_initial=False):
+    key = (migration.app_label, migration.name)
+    if key in _FAKE_MIGRATIONS:
+        # Solo forzar fake en la BD de producción.
+        # En test_iact_analytics las migraciones deben correr para que el
+        # schema quede correcto (constraints, nullable, etc.).
+        db_name = self.connection.settings_dict.get('NAME', '')
+        if not db_name.startswith('test_'):
+            fake = True
+    return _orig_run_migration(self, state, migration, fake=fake, fake_initial=fake_initial)
+
+_executor_mod.MigrationExecutor.apply_migration = _patched_apply_migration

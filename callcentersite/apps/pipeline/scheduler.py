@@ -70,8 +70,10 @@ class ETLScheduler:
                    WHERE id=%s AND status='en_ejecucion'""",
                 [status, error_message, run_id]
             )
-        except Exception:
-            pass
+        except Exception as exc:
+            # El UPDATE de etl_runs falló (BD caída o conexión cerrada).
+            # No propagamos — es un error de auditoría, no del proceso ETL.
+            logger.warning("_update_run falló (run_id=%s, status=%s): %s", run_id, status, exc)
 
     @classmethod
     def run_etl(cls):
@@ -90,13 +92,15 @@ class ETLScheduler:
                 try:
                     with connections['ivr'].cursor() as cur:
                         cls._update_run(cur, run_id, 'failed', str(e))
-                except Exception:
-                    pass
+                except Exception as exc2:
+                    # BD no disponible para registrar el fallo — el log de arriba es suficiente.
+                    logger.warning("No se pudo registrar fallo ETL en etl_runs (run_id=%s): %s", run_id, exc2)
         except Exception as e:
             logger.error(f"ETL nocturno error: {e}", exc_info=True)
             if run_id:
                 try:
                     with connections['ivr'].cursor() as cur:
                         cls._update_run(cur, run_id, 'failed', str(e))
-                except Exception:
-                    pass
+                except Exception as exc2:
+                    # BD no disponible para registrar el fallo.
+                    logger.warning("No se pudo registrar fallo ETL en etl_runs (run_id=%s): %s", run_id, exc2)

@@ -22,23 +22,23 @@ scheduler = None
 def start_scheduler():
     """
     Inicia APScheduler para tareas programadas de alertas
-    
+
     Cumple CNST-013: Usa APScheduler en lugar de Celery
     """
     global scheduler
-    
+
     if scheduler is not None:
         logger.warning("APScheduler ya está corriendo")
         return
-    
+
     scheduler = BackgroundScheduler(
         timezone=settings.TIME_ZONE,
         daemon=True,
     )
-    
+
     # Job: Evaluar alertas cada 5 minutos
     from apps.alerts.services.alert_service import AlertService
-    
+
     scheduler.add_job(
         func=AlertService.evaluate_all_active_configs,
         trigger=IntervalTrigger(minutes=5),
@@ -47,7 +47,7 @@ def start_scheduler():
         replace_existing=True,
         max_instances=1,  # Solo una instancia a la vez
     )
-    
+
     scheduler.start()
     logger.info("[OK] APScheduler iniciado: Evaluación de alertas cada 5 minutos (CNST-013 compliant)")
 

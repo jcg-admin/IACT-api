@@ -11,16 +11,6 @@ Total Mocks: 81 fixtures
 # DATABASE MOCKS (12)
 # ============================================================================
 
-# =============================================================================
-# DEUDA TÉCNICA — PENDIENTE
-# =============================================================================
-# Fecha de eliminación: 2026-03-21
-# Fixtures IVR desactivadas (mock_ivr_connection, mock_ivr_cursor_quarterly,
-# mock_ivr_cursor_transfers, mock_ivr_empty_result, mock_readonly_violation,
-# mock_database_router, mock_slow_query).
-# Ver: documentos/planes/PLAN_IVR_SIMPLIFICACION_20260321.md
-# =============================================================================
-
 from .database_mocks import (
     # PostgreSQL Mocks
     mock_postgresql_connection,

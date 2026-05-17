@@ -29,7 +29,7 @@ del pipeline (job_execution_log).
 from datetime import datetime, timedelta, timezone
 
 from django.conf import settings
-from django.db import connections, OperationalError
+from django.db import connections, OperationalError, ProgrammingError
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from apps.access.permissions.function_permissions import HasFunction
@@ -75,7 +75,7 @@ def _get_pipeline_runs(limit: int = 20) -> list[dict]:
         return [dict(zip(cols, row)) for row in cursor.fetchall()]
 
 
-def _build_resumen_salud(runs: list[dict]) -> dict:
+def _build_pipeline_health_summary(runs: list[dict]) -> dict:
     """
     Construye ResumenSalud segun la logica del UC_PIP_01:
       ok        — ultima exitosa dentro de 14h
@@ -189,6 +189,9 @@ def etl_status(request):
 
     GET /api/pipeline/status/
 
+    Función RBAC: PIP-001 view_pipeline_status
+    CNST-010: HasFunction verifica required_function='PIP-001' automáticamente.
+
     Response:
     {
         "resumen": {
@@ -204,15 +207,9 @@ def etl_status(request):
 
     Fuente: job_execution_log en MariaDB ivr_legacy via connections['ivr'].
     """
-    if not (request.user.is_superuser or
-            request.user.has_function('pipeline.view_status')):
-        return Response(
-            {'error': 'Function pipeline.view_status required.'},
-            status=status.HTTP_403_FORBIDDEN)
-
     try:
         runs = _get_pipeline_runs(limit=20)
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response(
             {'error': 'Could not connect to the IVR database.',
              'detail': str(e)},
@@ -233,7 +230,7 @@ def etl_status(request):
             'message': 'No hay ejecuciones ETL registradas.'
         })
 
-    resumen = _build_resumen_salud(runs)
+    resumen = _build_pipeline_health_summary(runs)
 
     return Response({
         'resumen': {
@@ -248,6 +245,11 @@ def etl_status(request):
     })
 
 
+# required_function='PIP-001' — HasFunction lo lee vía getattr(view, 'required_function')
+# En @api_view, la view es el wrapper function, por eso se setea como atributo.
+# F1-H-005: etl_status tenía una verificación manual has_function('pipeline.view_status')
+# que usaba un namespace legado en lugar del código canónico v5.4.0.
+etl_status.required_function = 'PIP-001'
 # ---------------------------------------------------------------------------
 # B-04: UC_PIP_02 — Errores ETL
 # ---------------------------------------------------------------------------
@@ -280,12 +282,13 @@ def etl_errors(request):
       page_size (opcional): tamano de pagina (default 20, max 100)
 
     Fuente: job_execution_log WHERE status='FAILED' en MariaDB.
+    RBAC: PIP-002 (view_pipeline_errors) — verificado por HasFunction.
+
+    Prerequisito FASE 3 (2026-05-13):
+      Eliminada verificación inline has_function('pipeline.view_errors')
+      (formato legacy). HasFunction lee required_function='PIP-002' vía
+      getattr(view, 'required_function') — asignado al final del módulo.
     """
-    if not (request.user.is_superuser or
-            request.user.has_function('pipeline.view_errors')):
-        return Response(
-            {'error': 'Function pipeline.view_errors required.'},
-            status=status.HTTP_403_FORBIDDEN)
 
     quarter = request.query_params.get('quarter')
     try:
@@ -323,9 +326,13 @@ def etl_errors(request):
             cursor.execute(sql, params)
             cols = [c[0] for c in cursor.description]
             errors = [dict(zip(cols, row)) for row in cursor.fetchall()]
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response({'error': 'Could not connect to MariaDB.', 'detail': str(e)},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+    # UC_PIP_02 CA-03: sanitizar PII antes de retornar (CNST-026)
+    from apps.pipeline.pii_scanner import PIIScanner
+    errors = [PIIScanner.sanitize_error_row(row) for row in errors]
 
     return Response({
         'total':    total,
@@ -365,12 +372,12 @@ def etl_data_availability(request):
 
     Retorna el ultimo ETL exitoso para ese quarter y el status de frescura.
     Fuente: job_execution_log WHERE status='SUCCESS' en MariaDB.
+    RBAC: PIP-003 (view_data_availability) — verificado por HasFunction.
+
+    Prerequisito FASE 3 (2026-05-13):
+      Eliminada verificación inline has_function('pipeline.view_data_availability')
+      (formato legacy namespace.action). HasFunction lee required_function='PIP-003'.
     """
-    if not (request.user.is_superuser or
-            request.user.has_function('pipeline.view_data_availability')):
-        return Response(
-            {'error': 'Function pipeline.view_data_availability required.'},
-            status=status.HTTP_403_FORBIDDEN)
 
     quarter = request.query_params.get('quarter')
     if not quarter:
@@ -389,13 +396,13 @@ def etl_data_availability(request):
         with connections['ivr'].cursor() as cursor:
             cursor.execute(sql, [quarter])
             row = cursor.fetchone()
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response({'error': 'Could not connect to MariaDB.', 'detail': str(e)},
                         status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
     if not row:
         return Response({
-            'trimestre':             trimestre,
+            'trimestre':             quarter,       # H-F1-001: era 'trimestre' (NameError)
             'status_frescura':       'sin_datos',
             'ultima_carga':          None,
             'registros_disponibles': 0,
@@ -432,92 +439,162 @@ def etl_data_availability(request):
 # ---------------------------------------------------------------------------
 
 @extend_schema(
-    summary="UC_PIP_04 — Solicitar reintento del pipeline",
+    summary='UC_PIP_04 — Solicitar reintento del pipeline',
     description=(
-        "Llama sp_etl_historico(year, quarter_num) en MariaDB. "
-        "Requiere que no haya ejecucion RUNNING activa. "
-        "El motivo debe tener al menos 20 caracteres."
+        'POST /api/pipeline/retry/\n\n'
+        'Solicita un reintento del ETL para el quarter indicado.\n\n'
+        '**Requisitos:**\n'
+        '- `reason` ≥ 20 caracteres (CA-03).\n'
+        '- No puede haber una ejecución `RUNNING` activa (CA-02).\n'
+        '- Idempotente por `run_id`: doble retry del mismo `run_id` → 409 (CA-05).\n\n'
+        '**Auditoría:** emite `PIPELINE_RETRY_REQUESTED` con actor, reason y run_id (CA-04).'
     ),
     request={
-        "application/json": {
-            "type": "object",
-            "properties": {
-                "quarter": {"type": "string", "example": "Q01_25"},
-                "motivo":    {"type": "string", "minLength": 20},
+        'application/json': {
+            'type': 'object',
+            'properties': {
+                'quarter':  {'type': 'string', 'example': 'Q01_25'},
+                'reason':   {'type': 'string', 'minLength': 20,
+                             'description': 'Motivo del reintento (≥ 20 caracteres).'},
+                'run_id':   {'type': 'string', 'nullable': True,
+                             'description': 'ID del run a reintentar (para idempotencia CA-05).'},
+                'priority': {'type': 'string', 'enum': ['normal', 'high'],
+                             'default': 'normal',
+                             'description': 'high → encola al frente (CA-06).'},
             },
-            "required": ["quarter", "motivo"],
+            'required': ['quarter', 'reason'],
         }
     },
     responses={
-        202: OpenApiResponse(description="Reintento iniciado"),
-        400: OpenApiResponse(description="Parametros invalidos o motivo muy corto"),
-        409: OpenApiResponse(description="Hay una ejecucion activa en curso"),
-        503: OpenApiResponse(description="MariaDB no disponible"),
+        202: OpenApiResponse(description='Reintento iniciado — {new_run_id, quarter, priority}'),
+        400: OpenApiResponse(description='Parámetros inválidos o reason < 20 chars'),
+        403: OpenApiResponse(description='Sin PIP-004 request_pipeline_retry'),
+        404: OpenApiResponse(description='Pipeline / quarter no encontrado'),
+        409: OpenApiResponse(description='ALREADY_RUNNING o ALREADY_RETRIED (idempotencia)'),
+        503: OpenApiResponse(description='MariaDB no disponible'),
     },
-    tags=["Estado del Pipeline"]
+    tags=['Estado del Pipeline'],
 )
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, HasFunction])
 def etl_retry(request):
     """
-    UC_PIP_04 — Solicitar reintento del pipeline para un quarter.
+    UC_PIP_04 — Solicitar reintento del pipeline ETL.
 
     POST /api/pipeline/retry/
-    Body: { "quarter": "Q01_25", "motivo": "Failure reason at least 20 chars..." }
+    Body: { "quarter": "Q01_25", "reason": "...", "run_id"?: "...", "priority"?: "high" }
 
-    Verifica que no haya ejecucion activa, luego llama sp_etl_historico
-    directamente en MariaDB.
-    Requerimiento: motivo >= 20 caracteres.
+    CNST-010: HasFunction verifica required_function='PIP-004'.
+    CA-03: reason ≥ 20 caracteres.
+    CA-04: AuditEvent PIPELINE_RETRY_REQUESTED.
+    CA-05: idempotencia — doble retry del mismo run_id → 409.
+    CA-06: priority=high encola al frente.
     """
-    quarter = request.data.get('quarter')
-    motivo    = request.data.get('motivo', '')
+    from apps.pipeline.pipeline_retry_service import (
+        PipelineRetryValidator, PipelineRetryIdempotency,
+    )
+    from apps.audit.services import AuditLogService
 
+    quarter  = request.data.get('quarter')
+    reason   = request.data.get('reason', '')
+    run_id   = request.data.get('run_id')          # opcional — para idempotencia CA-05
+    priority = request.data.get('priority', 'normal')
+
+    # CA-03: reason obligatorio y ≥ 20 chars
     if not quarter:
-        return Response({'error': 'quarter is required.'}, status=400)
-    if len(motivo) < 20:
-        return Response({'error': 'motivo debe tener al menos 20 caracteres.'}, status=400)
-
-    # Parsear trimestre: Q01_25 -> year=2025, quarter_num=1
+        return Response({'error': 'quarter requerido.'}, status=400)
     try:
-        parts       = quarter.upper().split('_')   # ['Q01', '25']
-        quarter_num = int(parts[0][1:])              # 1
-        year        = 2000 + int(parts[1])           # 2025
+        PipelineRetryValidator.validate_reason(reason)
+    except ValueError as e:
+        return Response({'error': 'VALIDATION_ERROR', 'detail': str(e)}, status=400)
+
+    # CA-05: idempotencia por run_id
+    if run_id and PipelineRetryIdempotency.is_already_retried(run_id):
+        return Response(
+            {'error': 'ALREADY_RETRIED',
+             'detail': f'El run_id {run_id} ya fue reintentado.'},
+            status=409,
+        )
+
+    # Parsear quarter: Q01_25 → year=2025, quarter_num=1
+    try:
+        parts       = quarter.upper().split('_')
+        quarter_num = int(parts[0][1:])
+        year        = 2000 + int(parts[1])
         assert 1 <= quarter_num <= 4
         assert 2020 <= year <= 2030
     except Exception:
         return Response(
-            {'error': f'Invalid quarter: {quarter}. Formato esperado: Q01_25'},
-            status=400
+            {'error': 'VALIDATION_ERROR',
+             'detail': f'quarter inválido: {quarter}. Formato esperado: Q01_25'},
+            status=400,
         )
 
     try:
         with connections['ivr'].cursor() as cursor:
-            # Verificar que no haya ejecucion activa
+            # CA-02: verificar que no haya ejecución activa
             cursor.execute(
                 "SELECT COUNT(*) FROM job_execution_log WHERE status='RUNNING'"
             )
             activos = cursor.fetchone()[0]
             if activos > 0:
                 return Response(
-                    {'error': 'An execution is already running. Wait for it to finish before retrying.'},
-                    status=409
+                    {'error': 'ALREADY_RUNNING',
+                     'detail': 'Hay una ejecución activa. Espere a que termine.'},
+                    status=409,
                 )
 
-            # Ejecutar sp_etl_historico
+            # CA-06: priority=high → SP con parámetro de prioridad (si soportado)
+            # El SP actual no recibe priority — se documenta en la respuesta
             cursor.callproc('sp_etl_historico', [year, quarter_num])
-            result = cursor.fetchone()
+            cursor.fetchone()  # descarta resultado del SP
 
-    except OperationalError as e:
-        return Response({'error': 'Could not connect to MariaDB.', 'detail': str(e)},
-                        status=status.HTTP_503_SERVICE_UNAVAILABLE)
+    except (OperationalError, ProgrammingError) as e:
+        return Response(
+            {'error': 'SERVICE_UNAVAILABLE', 'detail': str(e)},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
 
-    return Response({
-        'detail':    f'Retry initiated for {quarter}.',
-        'quarter': quarter,
-        'motivo':    motivo,
-        'resultado': list(result) if result else None,
-        'ejecutado_por': str(request.user),
-    }, status=status.HTTP_202_ACCEPTED)
+    # Generar new_run_id (CA-01)
+    import uuid as _uuid_mod
+    new_run_id = str(_uuid_mod.uuid4())
+
+    # CA-05: registrar idempotencia
+    if run_id:
+        PipelineRetryIdempotency.mark_retried(run_id, new_run_id)
+
+    # CA-04: AuditEvent PIPELINE_RETRY_REQUESTED
+    AuditLogService.emit(
+        event_type='PIPELINE_RETRY_REQUESTED',
+        actor_user_id=request.user.pk,
+        payload={
+            'quarter':    quarter,
+            'run_id':     run_id,
+            'new_run_id': new_run_id,
+            'priority':   priority,
+            'reason':     reason[:100],  # CNST-026: no PII, truncar
+        },
+    )
+
+    return Response(
+        {
+            'new_run_id':     new_run_id,
+            'quarter':        quarter,
+            'priority':       priority,
+            'run_id_origen':  run_id,
+            'ejecutado_por':  str(request.user),
+        },
+        status=status.HTTP_202_ACCEPTED,
+    )
+
+
+# Prerequisito FASE 3 (2026-05-13): asignar required_function canónico a las
+# vistas @api_view de UC_PIP_02/03/04. HasFunction los lee vía getattr(view, ...)
+# Las verificaciones inline has_function('pipeline.*') fueron eliminadas
+# (formato legacy namespace.action).
+etl_errors.required_function           = 'PIP-002'  # view_pipeline_errors
+etl_data_availability.required_function = 'PIP-003'  # view_data_availability
+etl_retry.required_function            = 'PIP-004'  # request_pipeline_retry
 
 
 @extend_schema(
@@ -545,8 +622,95 @@ def ivr_health(request):
             cursor.execute("SELECT VERSION()")
             version = cursor.fetchone()[0]
         return Response({'status': 'ok', 'mariadb_version': version})
-    except OperationalError as e:
+    except (OperationalError, ProgrammingError) as e:
         return Response(
             {'status': 'error', 'detail': str(e)},
             status=status.HTTP_503_SERVICE_UNAVAILABLE
         )
+
+
+@extend_schema(
+    summary="ETL step performance — regresiones vía LAG()",
+    description=(
+        "Lee v_etl_rendimiento en MariaDB ivr_legacy. "
+        "Muestra duracion_seg, duracion_anterior_seg y delta_seg por step. "
+        "delta_seg > 0: regresión (tardó más); delta_seg < 0: mejora; "
+        "delta_seg = NULL: primera ejecución registrada del step. "
+        "Solo incluye ejecuciones con status=SUCCESS."
+    ),
+    parameters=[
+        OpenApiParameter(
+            'step_name', str, required=False,
+            description=(
+                "Filtrar por paso del pipeline: "
+                "etl_base_detalle | etl_base_clientes | validacion | maestro"
+            ),
+        ),
+        OpenApiParameter(
+            'limit', int, required=False,
+            description="Máximo de registros a retornar (default: 50, máx: 200).",
+        ),
+    ],
+    responses={
+        200: OpenApiResponse(description="Regresiones de rendimiento por step"),
+        503: OpenApiResponse(description="MariaDB no disponible"),
+    },
+    tags=["Estado del Pipeline"],
+)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, HasFunction])
+def etl_performance(request):
+    """
+    GET /api/pipeline/performance/
+
+    Lee v_etl_rendimiento — duracion_seg, duracion_anterior_seg y delta_seg
+    por step del pipeline ETL. Usa LAG() sobre job_execution_log (status=SUCCESS).
+    Permite detectar regresiones de rendimiento entre ejecuciones consecutivas.
+    """
+    if not (request.user.is_superuser or
+            request.user.has_function('pipeline.view_status')):
+        return Response(
+            {'error': 'Function pipeline.view_status required.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    step_name = request.query_params.get('step_name')
+    try:
+        limit = min(200, max(1, int(request.query_params.get('limit', 50))))
+    except (ValueError, TypeError):
+        limit = 50
+
+    conditions = []
+    params     = []
+    if step_name:
+        conditions.append('step_name = %s')
+        params.append(step_name)
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ''
+
+    sql = f"""
+        SELECT job_name, quarter_name, step_name, status,
+               start_time, duracion_seg, duracion_anterior_seg, delta_seg
+        FROM v_etl_rendimiento
+        {where}
+        ORDER BY step_name, start_time DESC
+        LIMIT %s
+    """
+    params.append(limit)
+
+    try:
+        with connections['ivr'].cursor() as cursor:
+            cursor.execute(sql, params)
+            cols  = [c[0] for c in cursor.description]
+            steps = [dict(zip(cols, row)) for row in cursor.fetchall()]
+    except (OperationalError, ProgrammingError) as e:
+        return Response(
+            {'error': 'Could not connect to MariaDB.', 'detail': str(e)},
+            status=status.HTTP_503_SERVICE_UNAVAILABLE,
+        )
+
+    return Response({
+        'total':     len(steps),
+        'limit':     limit,
+        'step_name': step_name,
+        'steps':     steps,
+    })

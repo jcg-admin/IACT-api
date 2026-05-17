@@ -24,7 +24,7 @@ class Command(BaseCommand):
         self.stdout.write('=' * 70)
         self.stdout.write('FASE A.2: Crear Functions MOD_Calls')
         self.stdout.write('=' * 70)
-        
+
         # 1. Obtener o crear MOD_Calls
         mod_calls, created = Module.objects.get_or_create(
             code='MOD_Calls',
@@ -37,12 +37,12 @@ class Command(BaseCommand):
                 'is_active': True,
             }
         )
-        
+
         if created:
             self.stdout.write(self.style.SUCCESS(f'Módulo creado: {mod_calls.code}'))
         else:
             self.stdout.write(f'Módulo existente: {mod_calls.code}')
-        
+
         # 2. Definir functions
         functions_data = [
             {
@@ -71,11 +71,11 @@ class Command(BaseCommand):
                 'description': 'Permiso para ver estadísticas de llamadas',
             },
         ]
-        
+
         # 3. Crear functions
         created_count = 0
         existing_count = 0
-        
+
         for func_data in functions_data:
             function, created = Function.objects.get_or_create(
                 code=func_data['code'],
@@ -86,14 +86,14 @@ class Command(BaseCommand):
                     'is_active': True,
                 }
             )
-            
+
             if created:
                 created_count += 1
                 self.stdout.write(self.style.SUCCESS(f'{function.code}: {function.name}'))
             else:
                 existing_count += 1
                 self.stdout.write(f'{function.code}: Ya existe')
-        
+
         # 4. Resumen
         self.stdout.write('')
         self.stdout.write('=' * 70)
@@ -103,7 +103,7 @@ class Command(BaseCommand):
         self.stdout.write(f'  Functions existentes: {existing_count}')
         self.stdout.write(f'  Total: {created_count + existing_count}')
         self.stdout.write('=' * 70)
-        
+
         if created_count > 0:
             self.stdout.write(self.style.SUCCESS('Functions creadas exitosamente'))
         else:

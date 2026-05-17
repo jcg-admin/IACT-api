@@ -1,20 +1,6 @@
 """
-Services para apps/pipeline/.
+Pipeline Services.
 
-Servicios movidos desde apps/core/:
-- CenterService
-- ServiceService  
-- CallRecordService
-- ETLService
+CenterService, ServiceService, CallRecordService y ETLService eliminados
+en FASE 3. UC_OPR/UC_SUP/UC_CLI están fuera del scope analítico de IACT-api.
 """
-from .center_service import CenterService
-from .service_service import ServiceService
-from .callrecord_service import CallRecordService
-from .etl_service import ETLService
-
-__all__ = [
-    'CenterService',
-    'ServiceService',
-    'CallRecordService',
-    'ETLService',
-]

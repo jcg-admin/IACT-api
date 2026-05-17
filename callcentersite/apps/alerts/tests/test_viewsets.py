@@ -4,9 +4,9 @@ from django.test import TestCase
 from django.contrib.auth import get_user_model
 from rest_framework.test import APIClient
 from rest_framework import status
-from apps.alerts.models import (
-    InternalMessage,
-    MessageRecipient,
+from apps.alerts.models import (  # noqa: F401
+    InternalMessage,  # noqa: F401
+    MessageRecipient,  # noqa: F401
     AlertConfiguration,
     AlertSubscription
 )
@@ -18,7 +18,7 @@ User = get_user_model()
 
 class InternalMessageViewSetTest(TestCase):
     """Tests para InternalMessageViewSet"""
-    
+
     def setUp(self):
         """Setup para todos los tests"""
         self.client = APIClient()
@@ -31,7 +31,7 @@ class InternalMessageViewSetTest(TestCase):
             username='recipient',
             password='password123'
         )
-        
+
         # Crear funciones RBAC si no existen
         Function.objects.get_or_create(
             permission_django='alerts.send',
@@ -51,9 +51,9 @@ class InternalMessageViewSetTest(TestCase):
                 'status': 'activo'
             }
         )
-        
+
         self.client.force_authenticate(user=self.user)
-    
+
     def test_create_message_endpoint(self):
         """Test: POST /api/alerts/messages/ - Crear mensaje"""
         data = {
@@ -62,16 +62,16 @@ class InternalMessageViewSetTest(TestCase):
             'body': 'Test Body',
             'priority': 'info'
         }
-        
+
         response = self.client.post('/api/alerts/messages/', data, format='json')
-        
+
         # Puede fallar por permisos si no tiene la función asignada
         # Pero al menos verificamos que el endpoint existe
         self.assertIn(response.status_code, [
             status.HTTP_201_CREATED,
             status.HTTP_403_FORBIDDEN
         ])
-    
+
     def test_inbox_endpoint(self):
         """Test: GET /api/alerts/messages/inbox/ - Bandeja de entrada"""
         # Crear mensaje para el usuario
@@ -81,14 +81,14 @@ class InternalMessageViewSetTest(TestCase):
             subject='Test',
             body='Test'
         )
-        
+
         response = self.client.get('/api/alerts/messages/inbox/')
-        
+
         self.assertIn(response.status_code, [
             status.HTTP_200_OK,
             status.HTTP_403_FORBIDDEN
         ])
-    
+
     def test_mark_read_endpoint(self):
         """Test: PATCH /api/alerts/messages/{id}/mark-read/ - Marcar leído"""
         # Crear mensaje
@@ -98,14 +98,14 @@ class InternalMessageViewSetTest(TestCase):
             subject='Test',
             body='Test'
         )
-        
+
         response = self.client.patch(
             f'/api/alerts/messages/{message.id}/mark-read/'
         )
-        
+
         # Verificar que el endpoint existe
         self.assertNotEqual(response.status_code, status.HTTP_404_NOT_FOUND)
-    
+
     def test_archive_endpoint(self):
         """Test: PATCH /api/alerts/messages/{id}/archive/ - Archivar"""
         message = MessageService.send_message(
@@ -114,17 +114,17 @@ class InternalMessageViewSetTest(TestCase):
             subject='Test',
             body='Test'
         )
-        
+
         response = self.client.patch(
             f'/api/alerts/messages/{message.id}/archive/'
         )
-        
+
         self.assertNotEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 class AlertConfigurationViewSetTest(TestCase):
     """Tests para AlertConfigurationViewSet"""
-    
+
     def setUp(self):
         """Setup para todos los tests"""
         self.client = APIClient()
@@ -133,7 +133,7 @@ class AlertConfigurationViewSetTest(TestCase):
             password='password123',
             is_staff=True
         )
-        
+
         # Crear función RBAC
         Function.objects.get_or_create(
             permission_django='alerts.configure.rules',
@@ -144,9 +144,9 @@ class AlertConfigurationViewSetTest(TestCase):
                 'status': 'activo'
             }
         )
-        
+
         self.client.force_authenticate(user=self.user)
-    
+
     def test_list_configurations(self):
         """Test: GET /api/alerts/configurations/ - Listar configuraciones"""
         # Crear configuración
@@ -159,14 +159,14 @@ class AlertConfigurationViewSetTest(TestCase):
                 'period': '1h'
             }
         )
-        
+
         response = self.client.get('/api/alerts/configurations/')
-        
+
         self.assertIn(response.status_code, [
             status.HTTP_200_OK,
             status.HTTP_403_FORBIDDEN
         ])
-    
+
     def test_create_configuration(self):
         """Test: POST /api/alerts/configurations/ - Crear configuración"""
         data = {
@@ -181,19 +181,19 @@ class AlertConfigurationViewSetTest(TestCase):
             'priority': 'warning',
             'is_active': True
         }
-        
+
         response = self.client.post(
             '/api/alerts/configurations/',
             data,
             format='json'
         )
-        
+
         self.assertIn(response.status_code, [
             status.HTTP_201_CREATED,
             status.HTTP_403_FORBIDDEN,
             status.HTTP_400_BAD_REQUEST
         ])
-    
+
     def test_update_configuration(self):
         """Test: PATCH /api/alerts/configurations/{id}/ - Actualizar"""
         config = AlertConfiguration.objects.create(
@@ -205,21 +205,21 @@ class AlertConfigurationViewSetTest(TestCase):
                 'period': '1h'
             }
         )
-        
+
         data = {'is_active': False}
-        
+
         response = self.client.patch(
             f'/api/alerts/configurations/{config.id}/',
             data,
             format='json'
         )
-        
+
         self.assertNotEqual(response.status_code, status.HTTP_404_NOT_FOUND)
 
 
 class AlertSubscriptionViewSetTest(TestCase):
     """Tests para AlertSubscriptionViewSet"""
-    
+
     def setUp(self):
         """Setup para todos los tests"""
         self.client = APIClient()
@@ -236,7 +236,7 @@ class AlertSubscriptionViewSetTest(TestCase):
                 'period': '1h'
             }
         )
-        
+
         # Crear función RBAC
         Function.objects.get_or_create(
             permission_django='alerts.manage.subscriptions',
@@ -247,9 +247,9 @@ class AlertSubscriptionViewSetTest(TestCase):
                 'status': 'activo'
             }
         )
-        
+
         self.client.force_authenticate(user=self.user)
-    
+
     def test_list_subscriptions(self):
         """Test: GET /api/alerts/subscriptions/ - Mis suscripciones"""
         # Crear suscripción
@@ -257,41 +257,41 @@ class AlertSubscriptionViewSetTest(TestCase):
             user=self.user,
             alert_configuration=self.config
         )
-        
+
         response = self.client.get('/api/alerts/subscriptions/')
-        
+
         self.assertIn(response.status_code, [
             status.HTTP_200_OK,
             status.HTTP_403_FORBIDDEN
         ])
-    
+
     def test_create_subscription(self):
         """Test: POST /api/alerts/subscriptions/ - Suscribirse"""
         data = {
             'alert_configuration_id': self.config.id
         }
-        
+
         response = self.client.post(
             '/api/alerts/subscriptions/',
             data,
             format='json'
         )
-        
+
         self.assertIn(response.status_code, [
             status.HTTP_201_CREATED,
             status.HTTP_403_FORBIDDEN,
             status.HTTP_400_BAD_REQUEST
         ])
-    
+
     def test_delete_subscription(self):
         """Test: DELETE /api/alerts/subscriptions/{id}/ - Desuscribirse"""
         subscription = AlertSubscription.objects.create(
             user=self.user,
             alert_configuration=self.config
         )
-        
+
         response = self.client.delete(
             f'/api/alerts/subscriptions/{subscription.id}/'
         )
-        
+
         self.assertNotEqual(response.status_code, status.HTTP_404_NOT_FOUND)

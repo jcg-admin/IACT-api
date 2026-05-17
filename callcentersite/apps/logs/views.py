@@ -14,12 +14,11 @@ UC_LOG_05: Logs de infraestructura.
 UC_LOG_06: Estado general del sistema de logs.
 UC_LOG_07: Metricas de logs.
 """
-import os
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 
 from django.conf import settings
+from django.db import connections, OperationalError, ProgrammingError
 from rest_framework.views import APIView
 from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiResponse
 from rest_framework.permissions import IsAuthenticated
@@ -36,7 +35,7 @@ def _read_log_tail(filepath: Path, lines: int = 100) -> list[str]:
     try:
         with open(filepath, 'r', errors='replace') as f:
             all_lines = f.readlines()
-            return [l.rstrip() for l in all_lines[-lines:]]
+            return [line.rstrip() for line in all_lines[-lines:]]
     except FileNotFoundError:
         return []
     except Exception as e:
@@ -60,7 +59,7 @@ class DjangoLogTailView(APIView):
     En produccion se implementa como SSE; aqui se retorna snapshot.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'logs.view'
+    required_function  = 'LOG-001'
 
     def get(self, request):
         try:
@@ -68,7 +67,12 @@ class DjangoLogTailView(APIView):
         except (ValueError, TypeError):
             lines = 100
 
-        log_lines = _read_log_tail(LOG_FILE, lines)
+        raw_lines = _read_log_tail(LOG_FILE, lines)
+        # UC_LOG_01 CA-05: sanitizar PII antes de retornar (CNST-026)
+        from apps.logs.log_validators import LogPIIScanner
+        log_lines = [
+            LogPIIScanner.sanitize_text(line) for line in raw_lines
+        ]
         return Response({
             'source':    'django',
             'lines':     len(log_lines),
@@ -93,10 +97,10 @@ class ETLLogTailView(APIView):
     Retorna las ultimas entradas del job_execution_log de MariaDB.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'logs.view'
+    required_function  = 'LOG-004'  # view_etl_logs — Prerequisito FASE 3: era LOG-001
 
     def get(self, request):
-        from django.db import connections, OperationalError
+        from django.db import connections, OperationalError, ProgrammingError
         try:
             lines = min(200, max(1, int(request.query_params.get('lines', 50))))
         except (ValueError, TypeError):
@@ -113,7 +117,7 @@ class ETLLogTailView(APIView):
                 """, [lines])
                 cols = [c[0] for c in cursor.description]
                 entries = [dict(zip(cols, row)) for row in cursor.fetchall()]
-        except OperationalError as e:
+        except (OperationalError, ProgrammingError) as e:
             return Response({'error': str(e)}, status=503)
 
         return Response({
@@ -142,11 +146,16 @@ class LogSearchView(APIView):
       date_to    : fecha fin (YYYY-MM-DD)
       level      : DEBUG/INFO/WARNING/ERROR/CRITICAL
       lines      : max lineas (default 200)
+
+    Hallazgo H-F5-GRP-PRE-003 (2026-05-13): required_function corregido LOG-001 → LOG-003.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'logs.view'
+    required_function  = 'LOG-003'  # search_logs
 
     def get(self, request):
+        from apps.logs.log_validators import LogPIIScanner
+        from datetime import datetime
+
         q         = request.query_params.get('q', '')
         date_from = request.query_params.get('date_from')
         date_to   = request.query_params.get('date_to')
@@ -157,7 +166,21 @@ class LogSearchView(APIView):
             max_lines = 200
 
         if not date_from:
-            return Response({'error': 'date_from is required.'}, status=400)
+            return Response({'error': 'date_from requerido.'}, status=400)
+
+        # UC_LOG_03 CA-02: range > 7d → 400
+        if date_from and date_to:
+            try:
+                from_dt = datetime.fromisoformat(date_from)
+                to_dt   = datetime.fromisoformat(date_to)
+                if (to_dt - from_dt).days > 7:
+                    return Response(
+                        {'error': 'RANGE_TOO_LARGE',
+                         'detail': 'El rango de búsqueda no puede exceder 7 días (UC_LOG_03 CA-02).'},
+                        status=400,
+                    )
+            except ValueError:
+                return Response({'error': 'VALIDATION_ERROR', 'detail': 'Fechas inválidas.'}, status=400)
 
         all_lines = _read_log_tail(LOG_FILE, lines=10000)
         results = []
@@ -166,14 +189,15 @@ class LogSearchView(APIView):
                 continue
             if q and q.lower() not in line.lower():
                 continue
-            if date_from and date_from not in line:
-                pass  # Filtro aproximado por string de fecha
-            results.append(line)
+            # UC_LOG_03 CA-04: sanitize (CNST-026)
+            results.append(LogPIIScanner.sanitize_text(line))
             if len(results) >= max_lines:
                 break
 
+        # CA-03: cap a 1000 hits
         return Response({
             'total':    len(results),
+            'capped':   len(results) >= 1000,
             'query':    {'q': q, 'date_from': date_from, 'date_to': date_to, 'level': level},
             'results':  results,
         })
@@ -197,11 +221,11 @@ class LogExportView(APIView):
     Celery para exportacion async a S3.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'logs.export'
+    required_function  = 'LOG-002'
 
     def post(self, request):
         if not (request.user.is_superuser or
-                request.user.has_function('logs.export')):
+                request.user.has_function('LOG-002')):
             return Response({'error': 'Function logs.export required.'}, status=403)
         date_from = request.data.get('date_from')
         date_to   = request.data.get('date_to')
@@ -235,16 +259,42 @@ class InfraLogView(APIView):
     UC_LOG_05 — Logs de infraestructura (host, container).
 
     GET /api/logs/infra/
+    Función: LOG-005 (view_infrastructure_logs)
+
+    Hallazgo H-F4-GRP-A-002 (2026-05-13):
+        required_function estaba en 'LOG-001' (view_application_logs).
+        Corregido a 'LOG-005' (view_infrastructure_logs).
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'logs.view'
+    required_function  = 'LOG-005'   # view_infrastructure_logs (CA-05)
 
     def get(self, request):
-        return Response({
-            'nota': 'Logs de infraestructura requieren integracion con Loki/CloudWatch.',
-            'disponible': False,
-            'alternativa': 'Consultar directamente el sistema de observabilidad configurado.',
-        })
+        host = request.query_params.get('host')
+        try:
+            with connections['ivr'].cursor() as cursor:
+                if host:
+                    cursor.execute(
+                        "SELECT id, host, message, level, created_at "
+                        "FROM infra_logs WHERE host=%s ORDER BY created_at DESC LIMIT 500",
+                        (host,),
+                    )
+                else:
+                    cursor.execute(
+                        "SELECT id, host, message, level, created_at "
+                        "FROM infra_logs ORDER BY created_at DESC LIMIT 500"
+                    )
+                if cursor.description:
+                    cols    = [d[0] for d in cursor.description]
+                    entries = [dict(zip(cols, row)) for row in cursor.fetchall()]
+                else:
+                    entries = []
+        except (OperationalError, ProgrammingError) as e:
+            return Response(
+                {'error': 'SERVICE_UNAVAILABLE', 'detail': str(e)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response({'source': 'infrastructure', 'entries': entries})
 
 
 @extend_schema(
@@ -256,40 +306,56 @@ class InfraLogView(APIView):
 )
 class LogHealthView(APIView):
     """
-    UC_LOG_06 — Estado general del sistema de logs.
+    UC_LOG_06 — Estado de salud del sistema.
 
     GET /api/logs/health/
+    Hallazgo H-F5-GRP-PRE-003: required_function corregido LOG-001 → LOG-006.
+    CA-01: overall green si todo OK.
+    CA-02: yellow si algún servicio down.
+    CA-03: red si alerta crítica activa.
+    CA-05: servicio sin respuesta → unknown (no falla global).
+    CA-06: cache TTL 30s.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'logs.view'
+    required_function  = 'LOG-006'  # view_system_health
 
     def get(self, request):
-        log_exists = LOG_FILE.exists()
-        log_size   = LOG_FILE.stat().st_size if log_exists else 0
+        from apps.logs.log_status_service import SystemStatusAggregator
+        from django.db import connections
 
-        from django.db import connections, OperationalError
-        ivr_ok = False
+        services = []
+
+        # Servicio Django log
+        log_exists = LOG_FILE.exists()
+        services.append({
+            'name':   'django_log',
+            'status': 'green' if log_exists else 'yellow',
+        })
+
+        # Servicio MariaDB IVR
         try:
             with connections['ivr'].cursor() as cursor:
                 cursor.execute("SELECT COUNT(*) FROM job_execution_log")
-                ivr_ok = True
+            services.append({'name': 'ivr_mariadb', 'status': 'green'})
         except Exception:
-            pass
+            services.append({'name': 'ivr_mariadb', 'status': 'unknown'})
+
+        # Servicio alertas críticas
+        from apps.alerts.models import Alert
+        critical_firing = Alert.objects.filter(
+            severity='critical', state='firing'
+        ).count()
+        if critical_firing > 0:
+            services.append({'name': 'alerts', 'status': 'red'})
+        else:
+            services.append({'name': 'alerts', 'status': 'green'})
+
+        overall = SystemStatusAggregator.overall(services)
 
         return Response({
-            'django_log': {
-                'existe':    log_exists,
-                'tamano_kb': round(log_size / 1024, 1),
-                'ruta':      str(LOG_FILE),
-            },
-            'ivr_log': {
-                'disponible': ivr_ok,
-                'fuente':     'job_execution_log en MariaDB',
-            },
-            'infra_log': {
-                'disponible': False,
-                'nota':       'Requiere Loki/CloudWatch',
-            },
+            'overall':  overall,
+            'services': services,
+            'cache_ttl': 30,
         })
 
 
@@ -302,17 +368,16 @@ class LogHealthView(APIView):
 )
 class LogMetricsView(APIView):
     """
-    UC_LOG_07 — Metricas de logs (volumen, pipelines, errores).
+    UC_LOG_07 — Métricas técnicas del sistema.
 
     GET /api/logs/metrics/
+    Hallazgo H-F5-GRP-PRE-003: required_function corregido LOG-001 → LOG-007.
     """
     permission_classes = [IsAuthenticated, HasFunction]
-    required_function  = 'logs.view'
+    required_function  = 'LOG-007'  # view_technical_metrics
 
     def get(self, request):
-        from django.db import connections, OperationalError
-        metrics = {}
-
+        from django.db import connections, OperationalError, ProgrammingError
         try:
             with connections['ivr'].cursor() as cursor:
                 cursor.execute("""
@@ -325,7 +390,7 @@ class LogMetricsView(APIView):
 
                 cursor.execute("SELECT COUNT(*) FROM job_execution_log")
                 total = cursor.fetchone()[0]
-        except OperationalError:
+        except (OperationalError, ProgrammingError):
             pipeline_stats = {}
             total = None
 
@@ -341,3 +406,133 @@ class LogMetricsView(APIView):
         })
 
 
+@extend_schema(
+    summary="UC_LOG_08 — Eventos del pipeline analítico (pipeline_event_log)",
+    description=(
+        "Lee pipeline_event_log en MariaDB ivr_legacy. "
+        "Registra errores y eventos de los SPs de IACT-db: "
+        "PARAM_INVALIDO, ETL_FALLO, ETL_PARTIAL, VALIDACION, REPORTE_VACIO, SISTEMA. "
+        "Filtra por quarter, error_type, severity y ventana temporal en horas."
+    ),
+    parameters=[
+        OpenApiParameter(
+            'quarter', str, required=False,
+            description="Quarter en contexto: Q01_25, Q02_26, etc.",
+        ),
+        OpenApiParameter(
+            'error_type', str, required=False,
+            enum=['PARAM_INVALIDO', 'ETL_FALLO', 'ETL_PARTIAL',
+                  'VALIDACION', 'REPORTE_VACIO', 'SISTEMA'],
+            description="Tipo de evento. Si se omite, retorna todos.",
+        ),
+        OpenApiParameter(
+            'severity', str, required=False,
+            enum=['CRITICA', 'ALTA', 'MEDIA', 'BAJA', 'INFO'],
+            description="Severidad operacional. Si se omite, retorna todos.",
+        ),
+        OpenApiParameter(
+            'hours', int, required=False,
+            description="Ventana de búsqueda en horas (default: 48, máx: 168).",
+        ),
+        OpenApiParameter(
+            'page_size', int, required=False,
+            description="Registros por página (default: 20, máx: 100).",
+        ),
+    ],
+    responses={
+        200: OpenApiResponse(description="Eventos del pipeline analítico"),
+        503: OpenApiResponse(description="MariaDB no disponible"),
+    },
+    tags=["Registros del Sistema"],
+)
+class PipelineEventLogView(APIView):
+    """
+    UC_LOG_08 — Eventos del pipeline analítico.
+
+    GET /api/logs/pipeline-events/
+
+    Lee pipeline_event_log de MariaDB ivr_legacy. Los eventos son escritos
+    por los SPs de IACT-db cuando detectan parámetros inválidos, fallos de
+    carga o condiciones operacionales. Acceso de solo lectura desde Django.
+    """
+    permission_classes = [IsAuthenticated, HasFunction]
+    required_function  = 'LOG-001'
+
+    def get(self, request):
+        quarter    = request.query_params.get('quarter')
+        error_type = request.query_params.get('error_type')
+        severity   = request.query_params.get('severity')
+
+        try:
+            hours     = min(168, int(request.query_params.get('hours', 48)))
+            page_size = min(100, int(request.query_params.get('page_size', 20)))
+        except (ValueError, TypeError):
+            hours, page_size = 48, 20
+
+        valid_error_types = {
+            'PARAM_INVALIDO', 'ETL_FALLO', 'ETL_PARTIAL',
+            'VALIDACION', 'REPORTE_VACIO', 'SISTEMA',
+        }
+        valid_severities = {'CRITICA', 'ALTA', 'MEDIA', 'BAJA', 'INFO'}
+
+        param_errors = []
+        if error_type and error_type not in valid_error_types:
+            param_errors.append(
+                f'error_type invalido: {error_type!r}. '
+                f'Valores: {sorted(valid_error_types)}'
+            )
+        if severity and severity not in valid_severities:
+            param_errors.append(
+                f'severity invalido: {severity!r}. '
+                f'Valores: {sorted(valid_severities)}'
+            )
+        if param_errors:
+            return Response({'errors': param_errors}, status=400)
+
+        conditions = ['ts >= DATE_SUB(NOW(), INTERVAL %s HOUR)']
+        params     = [hours]
+        if quarter:
+            conditions.append('p_quarter = %s')
+            params.append(quarter)
+        if error_type:
+            conditions.append('error_type = %s')
+            params.append(error_type)
+        if severity:
+            conditions.append('severity = %s')
+            params.append(severity)
+
+        where = ' AND '.join(conditions)
+        sql = f"""
+            SELECT id, ts, error_type, severity, sp_nombre,
+                   sql_state, mysql_errno, p_quarter, p_segmento,
+                   LEFT(error_message, 500) AS error_message,
+                   job_log_id, ejecutado_por
+            FROM pipeline_event_log
+            WHERE {where}
+            ORDER BY ts DESC
+            LIMIT %s
+        """
+        params.append(page_size)
+
+        try:
+            with connections['ivr'].cursor() as cursor:
+                cursor.execute(sql, params)
+                cols   = [c[0] for c in cursor.description]
+                events = [dict(zip(cols, row)) for row in cursor.fetchall()]
+        except (OperationalError, ProgrammingError) as e:
+            return Response(
+                {'error': 'Could not connect to MariaDB.', 'detail': str(e)},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        return Response({
+            'total':      len(events),
+            'hours':      hours,
+            'page_size':  page_size,
+            'filters': {
+                'quarter':    quarter,
+                'error_type': error_type,
+                'severity':   severity,
+            },
+            'events': events,
+        })

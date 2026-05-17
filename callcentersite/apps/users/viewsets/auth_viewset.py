@@ -20,23 +20,23 @@ from apps.users.serializers import PasswordChangeSerializer
 class AuthViewSet(viewsets.GenericViewSet):
     """
     ViewSet para gestión de password.
-    
+
     Solo endpoints de cambio de password.
     Login/Logout están en apps/authentication.
-    
+
     Endpoints:
     - POST /api/auth/change-password/ - Cambiar password
-    
+
     Permissions:
     - IsAuthenticated: Solo usuarios autenticados
     - NO RequiresFunctionPermission (password propio)
-    
+
     NOTA:
     Login/Logout/Reset están en apps/authentication:
     - POST /api/auth/login/
     - POST /api/auth/logout/
     - POST /api/auth/password-reset/
-    
+
     Example:
         # Cambiar password
         POST /api/auth/change-password/
@@ -46,45 +46,45 @@ class AuthViewSet(viewsets.GenericViewSet):
             "new_password_confirm": "NewPass456!"
         }
     """
-    
+
     permission_classes = [IsAuthenticated]
     # NO function_map: password propio no requiere RBAC
-    
+
     @action(detail=False, methods=['post'], url_path='change-password')
     def change_password(self, request):
         """
         Cambiar password del usuario autenticado.
-        
+
         Endpoint: POST /api/auth/change-password/
         Permission: IsAuthenticated (sin RBAC)
-        
+
         Request body:
         {
             "old_password": "OldPass123!",
             "new_password": "NewPass456!",
             "new_password_confirm": "NewPass456!"
         }
-        
+
         Validations:
         - old_password correcto
         - new_password != old_password
         - new_password fuerte (8 chars, mayús/minús/número/especial)
         - new_password == new_password_confirm
-        
+
         Args:
             request: HttpRequest
-            
+
         Returns:
             Response: Confirmación de cambio
         """
         user = request.user
-        
+
         serializer = PasswordChangeSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         # Cambiar password (delega a PasswordService)
         serializer.save(user=user)
-        
+
         return Response(
             {'detail': 'Password cambiado correctamente'},
             status=status.HTTP_200_OK

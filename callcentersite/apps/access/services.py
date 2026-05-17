@@ -1,82 +1,95 @@
 """
-Access control services for the IACT API.
-Provides RBAC helpers for function code resolution and navigation building.
+apps/access/services.py
+
+Servicios de dominio para el módulo de control de acceso.
 """
-from __future__ import annotations
-
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from apps.users.models import User
+from django.utils import timezone
 
 
-def get_user_function_codes(user: 'User') -> list[str]:
+class ModuleAccessService:
     """
-    Return a list of function codes that the given user has access to.
-    Combines direct permissions. Superusers get all functions.
+    Servicio para gestionar acceso de usuarios a módulos del sistema.
+
+    RBAC v5.4.0: el acceso a módulos se concede via UserModuleAccess.
     """
-    if user.is_superuser:
-        from apps.access.models import Function
-        return list(Function.objects.filter(is_active=True).values_list('code', flat=True))
 
-    from apps.access.models import UserPermission
-    codes = UserPermission.objects.filter(
-        user=user,
-        function__is_active=True,
-        function__module__is_active=True,
-    ).values_list('function__code', flat=True)
+    @classmethod
+    def has_module_access(cls, user, module_code: str) -> bool:
+        """
+        Retorna True si el usuario tiene acceso activo al módulo indicado.
 
-    return list(codes)
+        Args:
+            user: instancia de User.
+            module_code: código canónico del módulo (ej. 'MOD_RPT').
 
-
-def get_navigation_modules(user: 'User') -> list:
-    """
-    Return a list of NavigationItem objects for the modules the user can access.
-    """
-    from apps.access.models import Module
-    from apps.core.navigation.builders import NavigationItem
-
-    function_codes = get_user_function_codes(user)
-
-    accessible_module_ids = set(
-        Module.objects.filter(
-            functions__code__in=function_codes,
+        Returns:
+            bool: True si tiene acceso activo.
+        """
+        if user.is_superuser:
+            return True
+        from apps.access.models import UserModuleAccess
+        return UserModuleAccess.objects.filter(
+            user=user,
+            module__code=module_code,
             is_active=True,
-        ).values_list('id', flat=True)
-    )
+        ).exists()
 
-    if user.is_superuser:
-        top_modules = Module.objects.filter(
-            parent__isnull=True,
+    @classmethod
+    def grant_module_access(
+        cls,
+        user,
+        module_code: str,
+        granted_by,
+        reason: str = '',
+    ):
+        """
+        Otorga acceso a un módulo al usuario indicado.
+
+        Args:
+            user: instancia de User que recibirá el acceso.
+            module_code: código canónico del módulo.
+            granted_by: instancia de User que concede el acceso.
+            reason: justificación del acceso.
+
+        Returns:
+            UserModuleAccess: instancia creada o activada.
+        """
+        from apps.access.models import UserModuleAccess, Module
+        module = Module.objects.get(code=module_code)
+        access, _ = UserModuleAccess.objects.get_or_create(
+            user=user,
+            module=module,
+            defaults={
+                'granted_by': granted_by,
+                'reason': reason,
+                'granted_at': timezone.now(),
+                'is_active': True,
+            },
+        )
+        if not access.is_active:
+            access.is_active = True
+            access.granted_by = granted_by
+            access.reason = reason
+            access.granted_at = timezone.now()
+            access.save(update_fields=['is_active', 'granted_by', 'reason', 'granted_at'])
+        return access
+
+    @classmethod
+    def revoke_module_access(cls, user, module_code: str, revoked_by) -> bool:
+        """
+        Revoca el acceso a un módulo.
+
+        Returns:
+            bool: True si se revocó, False si no tenía acceso.
+        """
+        from apps.access.models import UserModuleAccess
+        updated = UserModuleAccess.objects.filter(
+            user=user,
+            module__code=module_code,
             is_active=True,
-        ).prefetch_related('children').order_by('order')
-    else:
-        top_modules = Module.objects.filter(
-            parent__isnull=True,
-            is_active=True,
-        ).prefetch_related('children').order_by('order')
-
-    items = []
-    for module in top_modules:
-        children = []
-        for child in module.children.filter(is_active=True).order_by('order'):
-            if user.is_superuser or child.id in accessible_module_ids:
-                children.append(NavigationItem(
-                    id=child.id,
-                    name=child.name,
-                    code=child.code,
-                    icon=child.icon,
-                    order=child.order,
-                ))
-
-        if user.is_superuser or module.id in accessible_module_ids or children:
-            items.append(NavigationItem(
-                id=module.id,
-                name=module.name,
-                code=module.code,
-                icon=module.icon,
-                order=module.order,
-                children=children,
-            ))
-
-    return items
+        ).update(
+            is_active=False,
+            revoked_by=revoked_by,
+            revoked_at=timezone.now(),
+        )
+        return updated > 0

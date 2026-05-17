@@ -1,8 +1,2 @@
-from django.contrib import admin
-from apps.pipeline.models import ETLExecution, Center, Service, CallRecord, CallNote
-
-admin.site.register(ETLExecution)
-admin.site.register(Center)
-admin.site.register(Service)
-admin.site.register(CallRecord)
-admin.site.register(CallNote)
+# Centro, Service, CallRecord, CallNote y ETLExecution eliminados (FASE 3).
+# UC_OPR/UC_SUP/UC_CLI están fuera del scope analítico de IACT-api.

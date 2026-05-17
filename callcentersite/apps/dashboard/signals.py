@@ -29,12 +29,12 @@ logger = logging.getLogger(__name__)
 def create_default_dashboard_for_new_user(sender, instance, created, **kwargs):
     """
     Crear dashboard por defecto cuando se crea un nuevo usuario.
-    
+
     Ejecuta:
     - DashboardService.create_default_dashboard()
     - Crea dashboard con 3 widgets por defecto
     - Crea UserDashboardPreference vinculada
-    
+
     Args:
         sender: Modelo User
         instance: Instancia de User creada
@@ -45,12 +45,12 @@ def create_default_dashboard_for_new_user(sender, instance, created, **kwargs):
         try:
             # Crear dashboard por defecto usando el service
             dashboard = DashboardService.create_default_dashboard(instance)
-            
+
             logger.info(
                 f"Dashboard por defecto creado para usuario {instance.username} "
                 f"(ID: {instance.id}) - Dashboard ID: {dashboard.id}"
             )
-            
+
         except Exception as e:
             # Log error pero no fallar creación de usuario
             logger.error(
@@ -67,10 +67,10 @@ def create_default_dashboard_for_new_user(sender, instance, created, **kwargs):
 def ensure_only_one_default_dashboard(sender, instance, created, **kwargs):
     """
     Asegurar que solo un dashboard sea default por usuario.
-    
+
     Si un dashboard se marca como is_default=True:
     - Desmarca todos los otros dashboards del mismo usuario
-    
+
     Args:
         sender: Modelo DashboardConfig
         instance: Instancia de DashboardConfig guardada
@@ -87,13 +87,13 @@ def ensure_only_one_default_dashboard(sender, instance, created, **kwargs):
                 is_default=True,
                 deleted_at__isnull=True
             ).exclude(id=instance.id).update(is_default=False)
-            
+
             if updated_count > 0:
                 logger.info(
                     f"Desmarcados {updated_count} dashboards como default para "
                     f"usuario {instance.user.username}. Nuevo default: '{instance.config_name}'"
                 )
-            
+
         except Exception as e:
             logger.error(
                 f"Error al desmarcar dashboards default para usuario {instance.user.username}: {str(e)}",
@@ -109,11 +109,11 @@ def ensure_only_one_default_dashboard(sender, instance, created, **kwargs):
 def invalidate_widget_cache_on_update(sender, instance, created, **kwargs):
     """
     Invalidar cache del widget cuando se actualiza.
-    
+
     Ejecuta:
     - WidgetService.refresh_widget_cache()
     - Limpia cache para forzar recálculo en próxima consulta
-    
+
     Args:
         sender: Modelo WidgetConfig
         instance: Instancia de WidgetConfig guardada
@@ -126,16 +126,15 @@ def invalidate_widget_cache_on_update(sender, instance, created, **kwargs):
         try:
             # Refrescar cache del widget
             WidgetService.refresh_widget_cache(instance.id)
-            
+
             logger.debug(
                 f"Cache invalidado para widget '{instance.widget_name}' "
                 f"(ID: {instance.id}) del dashboard '{instance.dashboard.config_name}'"
             )
-            
+
         except Exception as e:
             # Log error pero no fallar actualización
             logger.error(
                 f"Error al invalidar cache de widget {instance.id}: {str(e)}",
                 exc_info=True
             )
-

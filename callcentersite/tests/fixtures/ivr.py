@@ -7,6 +7,7 @@ Arquitectura (MIGRATE=False, CREATE_DB=False en testing_local.py):
 
     ensure_mariadb  — proceso mariadbd vivo + test_ivr_legacy existe
     ivr_schema      — tablas y SP sp_rpt_clientes en test_ivr_legacy
+    etl_runs_clean  — limpia etl_runs antes y después de cada test
     ivr_job_*       — datos de job_execution_log para un test, limpia al final
     ivr_quarter_*   — datos base_ivr_clientes/detalle para un test, limpia
 
@@ -14,6 +15,12 @@ Arquitectura (MIGRATE=False, CREATE_DB=False en testing_local.py):
     pytest-django no la toca (MIGRATE=False, CREATE_DB=False).
     Los fixtures de datos usan subprocess para garantizar COMMIT inmediato:
     los datos son visibles para el endpoint en cualquier conexión.
+
+    etl_runs_clean (DT-API-001):
+    pytest-django hace ROLLBACK en PostgreSQL pero no en MariaDB (autocommit).
+    Los INSERT directos con connections['ivr'].cursor() son permanentes.
+    etl_runs_clean garantiza aislamiento borrando la tabla antes y después
+    de cada test que manipula etl_runs directamente.
 
 Escenario A confirmado (verificado 2026-05-08):
     sp_rpt_clientes no tiene prefijo 'ivr_legacy.' en el body del SP.
@@ -103,7 +110,7 @@ CREATE TABLE IF NOT EXISTS base_ivr_clientes (
 # SP sin prefijo de schema (Escenario A).
 # Se recrea en test_ivr_legacy en cada sesión via ensure_mariadb → ivr_schema.
 _SP_BODY = """\
-CREATE PROCEDURE sp_rpt_clientes(IN p_quarter VARCHAR(10))
+CREATE PROCEDURE sp_rpt_clientes(IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT
         c.trimestre,
@@ -127,8 +134,8 @@ END"""
 
 _SP_MENU_REDIRIGIDOS = """\
 CREATE PROCEDURE sp_rpt_menu_redirigidos(
-    IN p_quarter VARCHAR(10),
-    IN p_segmento VARCHAR(20)
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     SELECT
@@ -145,8 +152,8 @@ END"""
 
 _SP_MENU_CENTRO = """\
 CREATE PROCEDURE sp_rpt_menu_centro(
-    IN p_quarter VARCHAR(10),
-    IN p_segmento VARCHAR(20)
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci
 )
 BEGIN
     SELECT
@@ -162,7 +169,8 @@ END"""
 
 
 _SP_CENTROS_TRANSFERENCIA = """CREATE PROCEDURE sp_rpt_centros_transferencia(
-    IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT trimestre, fecha, segmento, centro_transferencia,
            menu, opcion, total_llamadas,
@@ -178,7 +186,8 @@ BEGIN
 END"""
 
 _SP_LLAMADAS_ABANDONADAS = """CREATE PROCEDURE sp_rpt_llamadas_abandonadas(
-    IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT trimestre, segmento, menu,
            SUM(total_llamadas) AS total_abandonadas
@@ -191,7 +200,8 @@ BEGIN
 END"""
 
 _SP_CMENU_ERROR = """CREATE PROCEDURE sp_rpt_cMENU_ERROR(
-    IN p_quarter VARCHAR(10), IN p_segmento VARCHAR(20))
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci,
+    IN p_segmento VARCHAR(20) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT trimestre, segmento, menu, centro_transferencia,
            SUM(total_llamadas) AS total_llamadas
@@ -204,7 +214,7 @@ BEGIN
 END"""
 
 _SP_CENTROS_XSEGMENTO = """CREATE PROCEDURE sp_rpt_centros_xsegmento(
-    IN p_quarter VARCHAR(10))
+    IN p_quarter VARCHAR(10) COLLATE utf8mb4_unicode_ci)
 BEGIN
     SELECT trimestre, segmento, centro_transferencia,
            SUM(total_llamadas) AS total_llamadas,
@@ -257,6 +267,35 @@ def ivr_schema(ensure_mariadb):
 
     yield
     # Sin teardown de schema — la DB persiste
+
+
+# ---------------------------------------------------------------------------
+# etl_runs_clean — function-scoped: limpia etl_runs antes y después de cada test
+# ---------------------------------------------------------------------------
+
+@pytest.fixture
+def etl_runs_clean(ivr_schema):
+    """
+    Garantiza aislamiento para tests que insertan en etl_runs directamente.
+
+    DT-API-001: pytest-django hace ROLLBACK en PostgreSQL pero NO en MariaDB.
+    Los INSERT via connections['ivr'].cursor() usan autocommit y son permanentes.
+    Sin este fixture, las filas acumuladas entre sesiones contaminan el UPDATE
+    de tests posteriores que filtran por id y status='en_ejecucion'.
+
+    Usa Django connections['ivr'] directamente (no subprocess) para que el
+    DELETE se ejecute en la misma conexión que el test, sin depender de
+    que el socket de MariaDB esté disponible para un proceso externo.
+
+    Dependencia: ivr_schema (garantiza que la tabla existe antes de borrar).
+    Scope: function (default) — se ejecuta por cada test que lo solicita.
+    """
+    from django.db import connections
+    with connections['ivr'].cursor() as cur:
+        cur.execute("DELETE FROM etl_runs;")
+    yield
+    with connections['ivr'].cursor() as cur:
+        cur.execute("DELETE FROM etl_runs;")
 
 
 # ---------------------------------------------------------------------------

@@ -15,7 +15,7 @@ User = get_user_model()
 class UserFilter(django_filters.FilterSet):
     """
     Filtros para User.
-    
+
     Filtros disponibles:
     - username (icontains)
     - email (icontains)
@@ -23,10 +23,10 @@ class UserFilter(django_filters.FilterSet):
     - is_staff (exact)
     - date_joined (gte, lte)
     """
-    
+
     username = django_filters.CharFilter(lookup_expr='icontains')
     email = django_filters.CharFilter(lookup_expr='icontains')
-    
+
     class Meta:
         model = User
         fields = {

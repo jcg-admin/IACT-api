@@ -18,10 +18,10 @@ except ImportError:
 class SessionHistorySerializer(serializers.ModelSerializer):
     """
     Serializer para SessionHistory.
-    
+
     Auditoría de sesiones de usuario.
     Read-only (la creación es automática vía signals).
-    
+
     Fields:
     - id: ID de sesión
     - username: Username del usuario (nested)
@@ -30,7 +30,7 @@ class SessionHistorySerializer(serializers.ModelSerializer):
     - ip_address: IP del cliente
     - user_agent: User agent del navegador
     - is_active: Si la sesión está activa
-    
+
     Example:
         sessions = SessionHistory.objects.filter(user=user)
         serializer = SessionHistorySerializer(sessions, many=True)
@@ -48,23 +48,23 @@ class SessionHistorySerializer(serializers.ModelSerializer):
         #   ...
         # ]
     """
-    
+
     username = serializers.CharField(
         source='user.username',
         read_only=True,
         help_text='Username del usuario'
     )
-    
+
     full_name = serializers.CharField(
         source='user.get_full_name',
         read_only=True,
         help_text='Nombre completo del usuario'
     )
-    
+
     duration = serializers.SerializerMethodField(
         help_text='Duración de la sesión en minutos (null si activa)'
     )
-    
+
     class Meta:
         model = SessionHistory
         # CLEAN CODE: Explicit is better than implicit (PEP 20)
@@ -81,20 +81,20 @@ class SessionHistorySerializer(serializers.ModelSerializer):
         )
         # Session history is read-only (created by signals)
         read_only_fields = fields
-    
+
     def get_duration(self, obj):
         """
         Calcula duración de la sesión.
-        
+
         Args:
             obj: SessionHistory instance
-            
+
         Returns:
             int: Duración en minutos, None si sesión activa
         """
         if obj.is_active or not obj.logout_at:
             return None
-        
+
         delta = obj.logout_at - obj.login_at
         return int(delta.total_seconds() / 60)
 

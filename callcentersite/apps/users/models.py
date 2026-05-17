@@ -34,6 +34,88 @@ class User(AbstractUser):
         verbose_name='Telefono',
     )
     is_active = models.BooleanField(default=True, verbose_name='Activo')
+    state = models.CharField(
+        max_length=10,
+        choices=[
+            ('ACTIVE',     'Activo'),
+            ('INACTIVE',   'Inactivo'),    # BR-009: baja lógica
+            ('BLOCKED',    'Bloqueado'),   # BR-015: 5 intentos fallidos
+            ('ELIMINATED', 'Eliminado'),   # UC_USR_04: baja definitiva (BR-009)
+        ],
+        default='ACTIVE',
+        verbose_name='Estado',
+        db_index=True,
+        help_text='Estado canónico del usuario. ELIMINATED = baja lógica definitiva.',
+    )
+    # -- Trazabilidad de ciclo de vida (F2-H-003) --
+    created_by_admin = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        related_name='users_created',
+        null=True,
+        blank=True,
+        verbose_name='Creado por admin',
+        help_text='UC_USR_01 PASO 10.',
+    )
+    last_modified_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Última modificación',
+        help_text='UC_USR_03 PASO 8.',
+    )
+    last_modified_by_admin = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        related_name='users_modified',
+        null=True,
+        blank=True,
+        verbose_name='Modificado por admin',
+    )
+    state_changed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Estado cambiado en',
+        help_text='UC_USR_03: solo si state cambia.',
+    )
+    eliminated_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Eliminado en',
+        help_text='UC_USR_04 CA-01.',
+    )
+    eliminated_by_admin = models.ForeignKey(
+        'users.User',
+        on_delete=models.SET_NULL,
+        related_name='users_eliminated',
+        null=True,
+        blank=True,
+        verbose_name='Eliminado por admin',
+    )
+    first_login = models.BooleanField(
+        default=True,
+        verbose_name='Primer login',
+        help_text='True al crear la cuenta. UC_AUTH_01 FA-01: fuerza cambio de contraseña.',
+    )
+    password_expires_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Contraseña expira',
+        help_text='UC_AUTH_01 FA-02: aviso cuando password_expires_at - now() < ventana.',
+    )
+    password_changed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Contraseña cambiada en',
+        help_text='UC_AUTH_04 PASO 10: actualizado al cambiar contraseña.',
+    )
+    last_login_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name='Último login',
+        help_text='UC_AUTH_01 paso 14: actualizado en cada login exitoso.',
+        db_index=True,
+    )
+
 
     class Meta:
         verbose_name = 'Usuario'
@@ -73,29 +155,37 @@ class User(AbstractUser):
 
         function_codes: set[str] = set()
 
-        # 1. Direct UserPermission
+        # 1. Direct UserPermission — solo funciones activas
         function_codes.update(
-            UserPermission.objects.filter(user=self)
+            UserPermission.objects.filter(user=self, function__is_active=True)
             .values_list('function__code', flat=True)
         )
 
-        # 2. Via AccessGroup membership
+        # 2. Via AccessGroup membership — solo funciones activas
         function_codes.update(
             Function.objects.filter(
-                access_groups__memberships__user=self
+                access_groups__memberships__user=self,
+                is_active=True,
             ).values_list('code', flat=True)
         )
 
-        # 3. Active ExceptionalPermission
+        # 3. Active ExceptionalPermission (FASE 6 — usa STATE_ACTIVE + expires_at)
         now = timezone.now()
         function_codes.update(
             ExceptionalPermission.objects.filter(
                 user=self,
-                status='approved',
-                valid_from__lte=now,
-                valid_until__gte=now,
+                status=ExceptionalPermission.STATE_ACTIVE,
+                expires_at__gte=now,
+                function__is_active=True,
             ).values_list('function__code', flat=True)
         )
+
+        # Revocaciones excepcionales tienen precedencia
+        revoked = ExceptionalPermission.objects.filter(
+            user=self,
+            status=ExceptionalPermission.STATE_REVOKED,
+        ).values_list('function__code', flat=True)
+        function_codes -= set(revoked)
 
         return sorted(function_codes)
 
@@ -119,3 +209,121 @@ class User(AbstractUser):
             # If the function doesn't exist in DB, deny
             return False
         return fn.code in self.get_functions()
+    def has_function_by_code(self, function_code: str) -> bool:
+        """
+        Verifica si el usuario tiene la función por código canónico v5.4.0.
+
+        ADR-BACK-006: verificación por Function.code (ej: 'RPT-001').
+        CNST-033: código en formato MOD-NNN.
+
+        A diferencia de has_function() que usa permission_django (legacy),
+        este método usa el campo code canónico.
+
+        Args:
+            function_code: Código canónico v5.4.0 (ej: 'RPT-001').
+
+        Returns:
+            bool: True si el usuario tiene la función, False si no.
+        """
+        if self.is_superuser:
+            return True
+        return function_code in self.get_functions()
+
+    def has_any_function(self, function_codes: list[str]) -> bool:
+        """
+        Retorna True si el usuario tiene al menos una de las funciones indicadas.
+
+        ADR-BACK-006: verificación por Function.code canónico v5.4.0.
+
+        Args:
+            function_codes: Lista de códigos canónicos (ej: ['RPT-001', 'RPT-002']).
+
+        Returns:
+            bool: True si tiene al menos una, False si ninguna.
+        """
+        if self.is_superuser:
+            return True
+        user_functions = set(self.get_functions())
+        return any(code in user_functions for code in function_codes)
+
+    def has_all_functions(self, function_codes: list[str]) -> bool:
+        """
+        Retorna True si el usuario tiene todas las funciones indicadas.
+
+        ADR-BACK-006: verificación por Function.code canónico v5.4.0.
+
+        Args:
+            function_codes: Lista de códigos canónicos.
+
+        Returns:
+            bool: True si tiene todas, False si falta alguna.
+        """
+        if self.is_superuser:
+            return True
+        user_functions = set(self.get_functions())
+        return all(code in user_functions for code in function_codes)
+
+
+class PasswordHistory(models.Model):
+    """
+    Historial de contraseñas anteriores — UC_AUTH_04 PASO 11.
+
+    Fuente: uc-auth-04/datos-involucrados.rst § 7.4.2
+    Propósito: verificar reuso en los últimos N=5 cambios (PASO 9).
+
+    Regla de limpieza: mantener como máximo HISTORY_DEPTH=5 entradas.
+    Las más antiguas se purgan después del INSERT (fuera de la transacción
+    principal — uc-auth-04/flujo-principal.rst § 3.2 PASO 11).
+
+    BR-009 no aplica aquí: PasswordHistory es append-only por diseño.
+    Las entradas viejas se eliminan para no crecer indefinidamente,
+    lo que está explícitamente permitido por el flujo del UC.
+    """
+
+    HISTORY_DEPTH = 5  # máximo N=5 por usuario
+
+    user = models.ForeignKey(
+        'users.User',
+        on_delete=models.CASCADE,
+        related_name='password_history',
+        verbose_name='Usuario',
+    )
+    password_hash = models.CharField(
+        max_length=128,
+        verbose_name='Hash de contraseña',
+        help_text='Hash bcrypt de la contraseña. Nunca en texto plano.',
+    )
+    changed_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name='Cambiada en',
+    )
+
+    class Meta:
+        db_table = 'users_password_history'
+        verbose_name = 'Historial de contraseña'
+        verbose_name_plural = 'Historial de contraseñas'
+        ordering = ['-changed_at']
+        indexes = [
+            models.Index(fields=['user', '-changed_at'], name='idx_pwhistory_user_date'),
+        ]
+
+    def __str__(self) -> str:
+        return f'PasswordHistory({self.user.username}, {self.changed_at})'
+
+    @classmethod
+    def record_and_purge(cls, user) -> None:
+        """
+        Registra el hash actual del usuario y elimina entradas > HISTORY_DEPTH.
+        Se llama después de cada cambio exitoso de contraseña.
+
+        Args:
+            user: User instance con el nuevo password_hash ya guardado.
+        """
+        cls.objects.create(user=user, password_hash=user.password)
+        # Purgar entradas antiguas fuera del top-N
+        keep_ids = list(
+            cls.objects.filter(user=user)
+            .order_by('-changed_at')
+            .values_list('id', flat=True)[:cls.HISTORY_DEPTH]
+        )
+        cls.objects.filter(user=user).exclude(id__in=keep_ids).delete()

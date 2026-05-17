@@ -138,4 +138,3 @@ CNST-031: Auditoría de sesiones.
 # - Fields: username, failed_attempts, locked_until
 # - Persistente, sobrevive restart
 # - Compatible multi-server
-

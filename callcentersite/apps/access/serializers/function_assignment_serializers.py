@@ -27,9 +27,9 @@ User = get_user_model()
 class UserFunctionAssignmentSerializer(serializers.ModelSerializer):
     """
     Serializer para asignaciones de funciones a usuarios.
-    
+
     RBAC v6.0.0: Gestión de asignaciones con namespaces.
-    
+
     Incluye información enriquecida:
     - user_username: Username del usuario
     - user_full_name: Nombre completo del usuario
@@ -37,11 +37,11 @@ class UserFunctionAssignmentSerializer(serializers.ModelSerializer):
     - function_name: Nombre de la función
     - function_module: Módulo de la función
     - assigned_by_username: Username de quien asignó
-    
+
     Read-only fields:
     - id, assigned_at
     - Relaciones enriched (user_username, etc)
-    
+
     Examples:
         >>> assignment = UserFunctionAssignment.objects.first()
         >>> serializer = UserFunctionAssignmentSerializer(assignment)
@@ -50,7 +50,7 @@ class UserFunctionAssignmentSerializer(serializers.ModelSerializer):
         >>> serializer.data['is_active']
         True
     """
-    
+
     user_username = serializers.CharField(source='user.username', read_only=True)
     user_full_name = serializers.CharField(source='user.get_full_name', read_only=True)
     function_namespace = serializers.CharField(
@@ -64,7 +64,7 @@ class UserFunctionAssignmentSerializer(serializers.ModelSerializer):
         read_only=True,
         allow_null=True
     )
-    
+
     class Meta:
         model = UserFunctionAssignment
         fields = [
@@ -92,22 +92,22 @@ class UserFunctionAssignmentSerializer(serializers.ModelSerializer):
 class AssignFunctionSerializer(serializers.Serializer):
     """
     Serializer para asignar función a usuario.
-    
+
     Input:
     - user: ID del usuario (required)
     - function: ID de la función (required)
     - reason: Razón de la asignación (optional)
-    
+
     Validations:
     - Usuario debe existir
     - Función debe existir y estar activa (status='activo')
     - No debe existir asignación activa duplicada
-    
+
     Process:
     - Valida inputs
     - Crea UserFunctionAssignment
     - assigned_by se obtiene del request.user (en la view)
-    
+
     Examples:
         >>> data = {
         ...     'user': 1,
@@ -118,7 +118,7 @@ class AssignFunctionSerializer(serializers.Serializer):
         >>> serializer.is_valid()
         True
     """
-    
+
     user = serializers.PrimaryKeyRelatedField(
         queryset=User.objects.all(),
         required=True,
@@ -135,53 +135,53 @@ class AssignFunctionSerializer(serializers.Serializer):
         max_length=255,
         help_text='Razón de la asignación'
     )
-    
+
     def validate(self, attrs):
         """
         Valida que no exista asignación activa duplicada.
-        
+
         Previene duplicados de la misma función al mismo usuario.
         """
         user = attrs['user']
         function = attrs['function']
-        
+
         # Verificar si ya existe asignación activa
         exists = UserFunctionAssignment.objects.filter(
             user=user,
             function=function,
             is_active=True
         ).exists()
-        
+
         if exists:
             raise serializers.ValidationError({
                 'function': f'Usuario ya tiene asignada la función {function.permission_django}'
             })
-        
+
         return attrs
 
 
 class RevokeFunctionSerializer(serializers.Serializer):
     """
     Serializer para revocar función de usuario.
-    
+
     Input:
     - assignment: ID de la asignación (required)
-    
+
     Validations:
     - Asignación debe existir
     - Asignación debe estar activa (is_active=True)
-    
+
     Process:
     - Valida que assignment existe y está activa
     - Marca is_active=False (en la view)
-    
+
     Examples:
         >>> data = {'assignment': 1}
         >>> serializer = RevokeFunctionSerializer(data=data)
         >>> serializer.is_valid()
         True
     """
-    
+
     assignment = serializers.PrimaryKeyRelatedField(
         queryset=UserFunctionAssignment.objects.filter(is_active=True),
         required=True,
@@ -192,14 +192,14 @@ class RevokeFunctionSerializer(serializers.Serializer):
 class MyFunctionsSerializer(serializers.Serializer):
     """
     Serializer para respuesta de /my-functions/.
-    
+
     Retorna funciones del usuario autenticado.
-    
+
     Fields:
     - functions: Lista de namespaces (permission_django)
     - count: Total de funciones activas
     - user: Datos básicos del usuario
-    
+
     Examples:
         >>> data = {
         ...     'functions': ['users.view', 'calls.view'],
@@ -210,7 +210,7 @@ class MyFunctionsSerializer(serializers.Serializer):
         >>> serializer.data['functions']
         ['users.view', 'calls.view']
     """
-    
+
     functions = serializers.ListField(
         child=serializers.CharField(),
         read_only=True,

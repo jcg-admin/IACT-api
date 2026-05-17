@@ -13,13 +13,13 @@ from apps.authentication.serializers import (
 class CustomTokenObtainPairView(TokenObtainPairView):
     """
     Login JWT custom.
-    
+
     POST /api/v1/auth/login/
     {
         "username": "user",
         "password": "pass"
     }
-    
+
     Returns:
         {
             "access": "...",
@@ -36,7 +36,7 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 def password_reset_request(request):
     """
     Reset password sin email.
-    
+
     POST /api/v1/auth/password-reset/
     {
         "username": "user",
@@ -45,16 +45,16 @@ def password_reset_request(request):
         "question3_answer": "perro",
         "new_password": "newpass123"
     }
-    
+
     CNST-001: NO usar email.
     """
     serializer = PasswordResetRequestSerializer(data=request.data)
-    
+
     if serializer.is_valid():
         serializer.save()
         return Response(
             {'message': 'Password actualizado exitosamente'},
             status=status.HTTP_200_OK
         )
-    
+
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)

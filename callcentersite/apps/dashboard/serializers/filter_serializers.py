@@ -22,17 +22,17 @@ class SavedFilterSerializer(serializers.ModelSerializer):
     """
     Serializer básico para SavedFilter.
     """
-    
+
     user_username = serializers.CharField(
         source='user.username',
         read_only=True
     )
-    
+
     filter_type_display = serializers.CharField(
         source='get_filter_type_display',
         read_only=True
     )
-    
+
     class Meta:
         model = SavedFilter
         fields = [
@@ -48,40 +48,40 @@ class SavedFilterSerializer(serializers.ModelSerializer):
             'updated_at'
         ]
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
-    
+
     def validate_filter_config(self, value):
         """Validar filter_config usando FilterService."""
         if not isinstance(value, dict):
             raise serializers.ValidationError(
                 "filter_config debe ser un objeto JSON (dict)"
             )
-        
+
         # Usar FilterService para validar
         try:
             FilterService.validate_filter_config(value)
         except Exception as e:
             raise serializers.ValidationError(str(e))
-        
+
         return value
 
 
 class SavedFilterListSerializer(serializers.ModelSerializer):
     """
     Serializer para listado de filtros.
-    
+
     Campos resumidos sin filter_config completo.
     """
-    
+
     user_username = serializers.CharField(
         source='user.username',
         read_only=True
     )
-    
+
     filter_type_display = serializers.CharField(
         source='get_filter_type_display',
         read_only=True
     )
-    
+
     class Meta:
         model = SavedFilter
         fields = [

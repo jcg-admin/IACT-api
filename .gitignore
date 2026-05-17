@@ -276,4 +276,7 @@ infrastructure/cpython/.build_state/*docs_analysis_report/
 infrastructure/cpython/.build_state/
 
 
-logs/
+# Directorios de logs de la aplicación Django (raíz y callcentersite).
+# NOTA: apps/logs/ es código fuente — NO ignorar.
+/logs/
+/callcentersite/logs/

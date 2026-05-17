@@ -16,11 +16,11 @@ Modelos disponibles:
 """
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
+
 from django.utils.translation import gettext_lazy as _
 
 # Re-exportar desde utils para compatibilidad de imports
-from apps.utils.models import SoftDeleteMixin, ActiveRecordQuery, SoftDeleteQuerySet
+from apps.utils.models import SoftDeleteMixin, ActiveRecordQuery, SoftDeleteQuerySet  # noqa: F401
 
 
 # ==============================================================================

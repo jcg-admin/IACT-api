@@ -2,7 +2,7 @@
 Builders para el sistema de navegacion del menu principal.
 """
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Tuple
 
 
 class MenuValidator:
@@ -96,7 +96,7 @@ class MenuValidator:
         return Path(path).exists()
 
 
-class MenuBuilder:
+class NavigationMenuAssembler:
     """Construye la estructura de navegacion a partir de los modulos."""
 
     def __init__(self):

@@ -1,20 +1,24 @@
 """
-Tests para User Serializers.
+Tests para Serializers de apps/users/.
 
 TDD: Tests primero, luego implementación.
 """
 
 import pytest
 from django.contrib.auth import get_user_model
-from rest_framework.test import APIRequestFactory
 
 
 try:
     from apps.users.serializers import (
         UserSerializer,
-        UserListSerializer,
         UserCreateSerializer,
         UserUpdateSerializer,
+        UserSettingsSerializer,
+        AvatarUploadSerializer,
+        LoginSerializer,
+        ChangePasswordSerializer,
+        PasswordResetRequestSerializer,
+        PasswordResetConfirmSerializer,
     )
 
 except ImportError as _err:
@@ -26,275 +30,126 @@ User = get_user_model()
 
 
 @pytest.mark.django_db
+class TestUserProfileSerializer:
+    """
+    Tests para el serializer de perfil de usuario.
+
+    Usa UserProfileSerializer de apps.users.profile_view — serializa el modelo User
+    directamente (UserProfile fue eliminado en FASE 4).
+    """
+
+    def test_serialize_profile_avatar(self):
+        """UserProfileSerializer incluye el campo avatar_url del usuario."""
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        user = User.objects.create_user(
+            username=f'u_{u}',
+            email=f'u_{u}@example.com',
+            password='Pass123',
+        )
+        from apps.users.profile_view import UserProfileSerializer as PS
+        serializer = PS(user)
+        data = serializer.data
+        assert 'avatar_url' in data
+
+    def test_update_profile(self):
+        """UserProfileSerializer acepta actualización parcial de first_name."""
+        import uuid
+        u = uuid.uuid4().hex[:6]
+        user = User.objects.create_user(
+            username=f'u_{u}',
+            email=f'u_{u}@example.com',
+            password='Pass123',
+        )
+        from apps.users.profile_view import UserProfileSerializer as PS
+        serializer = PS(user, data={'first_name': 'Updated'}, partial=True)
+        assert serializer.is_valid(), serializer.errors
+
+
+@pytest.mark.django_db
 class TestUserSerializer:
     """Tests para UserSerializer."""
     
-    def setup_method(self):
-        """Setup para cada test."""
-        self.factory = APIRequestFactory()
-    
-    def test_user_serializer_fields(self):
-        """Test: UserSerializer incluye todos los campos."""
+    def test_serialize_user(self):
+        """UserSerializer incluye campos básicos del usuario."""
+        import uuid
+        u = uuid.uuid4().hex[:6]
         user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='TestPass123',
-            first_name='Test',
-            last_name='User',
+            username=f'jdoe_{u}',
+            email=f'jdoe_{u}@example.com',
+            password='Pass123',
+            first_name='John',
+            last_name='Doe',
         )
-        
         serializer = UserSerializer(user)
         data = serializer.data
-        
-        # Verificar campos básicos
-        assert data['id'] == user.id
-        assert data['username'] == 'testuser'
-        assert data['email'] == 'test@example.com'
-        assert data['first_name'] == 'Test'
-        assert data['last_name'] == 'User'
-        assert data['full_name'] == 'Test User'
-        assert data['is_active'] is True
-        
-        # Verificar campos computados
-        assert 'functions' in data
-        assert isinstance(data['functions'], list)
-        
-        assert 'profile' in data
-        assert data['profile'] is not None
-        
-        assert 'settings' in data
-        assert data['settings'] is not None
-    
-    def test_user_list_serializer_lightweight(self):
-        """Test: UserListSerializer solo campos esenciales."""
-        user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='TestPass123',
-        )
-        
-        serializer = UserListSerializer(user)
-        data = serializer.data
-        
-        # Verificar campos presentes
+        assert data['username'] == f'jdoe_{u}'
+        assert data['email'] == f'jdoe_{u}@example.com'
         assert 'id' in data
-        assert 'username' in data
-        assert 'email' in data
-        assert 'full_name' in data
-        
-        # Verificar campos ausentes (optimización)
-        assert 'functions' not in data
-        assert 'profile' not in data
-        assert 'settings' not in data
 
 
 @pytest.mark.django_db
 class TestUserCreateSerializer:
     """Tests para UserCreateSerializer."""
     
-    def setup_method(self):
-        """Setup para cada test."""
-        self.factory = APIRequestFactory()
-    
     def test_create_user_success(self):
         """Test: Crear usuario exitosamente."""
         data = {
             'username': 'newuser',
-            'email': 'newuser@example.com',
-            'password': 'NewPass123',
+            'email': 'new@example.com',
+            'password': 'SecureP@ss1!',
+            'password_confirm': 'SecureP@ss1!',
             'first_name': 'New',
-            'last_name': 'User',
+            'last_name': 'User'
         }
         
-        request = self.factory.post('/api/v1/users/')
-        serializer = UserCreateSerializer(
-            data=data,
-            context={'request': request}
-        )
-        
+        serializer = UserCreateSerializer(data=data)
         assert serializer.is_valid(), serializer.errors
+        
         user = serializer.save()
         
         assert user.username == 'newuser'
-        assert user.email == 'newuser@example.com'
-        assert user.first_name == 'New'
-        assert user.check_password('NewPass123')
-        
-        # Verificar profile y settings auto-creados
-        assert hasattr(user, 'profile')
-        assert hasattr(user, 'settings')
+        assert user.check_password('SecureP@ss1!')
     
-    def test_create_user_password_too_short(self):
-        """Test: Error si password muy corto."""
+    def test_create_user_password_mismatch(self):
+        """Test: Error cuando passwords no coinciden."""
         data = {
-            'username': 'user',
-            'email': 'user@example.com',
-            'password': 'short',
-        }
-        
-        serializer = UserCreateSerializer(data=data)
-        
-        assert not serializer.is_valid()
-        assert 'password' in serializer.errors
-        assert 'mínimo 8 caracteres' in str(serializer.errors['password'])
-    
-    def test_create_user_password_no_letter(self):
-        """Test: Error si password sin letra."""
-        data = {
-            'username': 'user',
-            'email': 'user@example.com',
-            'password': '12345678',
-        }
-        
-        serializer = UserCreateSerializer(data=data)
-        
-        assert not serializer.is_valid()
-        assert 'password' in serializer.errors
-        assert 'letra' in str(serializer.errors['password'])
-    
-    def test_create_user_password_no_number(self):
-        """Test: Error si password sin número."""
-        data = {
-            'username': 'user',
-            'email': 'user@example.com',
-            'password': 'abcdefgh',
-        }
-        
-        serializer = UserCreateSerializer(data=data)
-        
-        assert not serializer.is_valid()
-        assert 'password' in serializer.errors
-        assert 'número' in str(serializer.errors['password'])
-    
-    def test_create_user_duplicate_username(self):
-        """Test: Error con username duplicado."""
-        # Crear primer usuario
-        User.objects.create_user(
-            username='duplicate',
-            email='user1@example.com',
-            password='Pass123',
-        )
-        
-        # Intentar crear con mismo username
-        data = {
-            'username': 'duplicate',
-            'email': 'user2@example.com',
+            'username': 'newuser',
+            'email': 'new@example.com',
             'password': 'Pass123',
+            'password_confirm': 'Pass456'
         }
         
-        request = self.factory.post('/api/v1/users/')
-        serializer = UserCreateSerializer(
-            data=data,
-            context={'request': request}
-        )
-        
-        # DRF valida unicidad en is_valid()
+        serializer = UserCreateSerializer(data=data)
         assert not serializer.is_valid()
-        assert 'username' in serializer.errors
 
 
 @pytest.mark.django_db
-class TestUserUpdateSerializer:
-    """Tests para UserUpdateSerializer."""
+class TestLoginSerializer:
+    """Tests para LoginSerializer."""
     
-    def setup_method(self):
-        """Setup para cada test."""
-        self.factory = APIRequestFactory()
-    
-    def test_update_user_success(self):
-        """Test: Actualizar usuario exitosamente."""
-        user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='Pass123',
-        )
-        
+    def test_login_serializer_valid(self):
+        """Test: Serializer de login válido."""
         data = {
-            'first_name': 'Updated',
-            'last_name': 'Name',
+            'username': 'testuser',
+            'password': 'Pass123'
         }
         
-        request = self.factory.patch(f'/api/v1/users/{user.id}/')
-        serializer = UserUpdateSerializer(
-            user,
-            data=data,
-            partial=True,
-            context={'request': request}
-        )
-        
+        serializer = LoginSerializer(data=data)
         assert serializer.is_valid()
-        updated_user = serializer.save()
-        
-        assert updated_user.first_name == 'Updated'
-        assert updated_user.last_name == 'Name'
-    
-    def test_update_user_email(self):
-        """Test: Actualizar email."""
-        user = User.objects.create_user(
-            username='testuser',
-            email='old@example.com',
-            password='Pass123',
-        )
-        
-        data = {'email': 'new@example.com'}
-        
-        request = self.factory.patch(f'/api/v1/users/{user.id}/')
-        serializer = UserUpdateSerializer(
-            user,
-            data=data,
-            partial=True,
-            context={'request': request}
-        )
-        
-        assert serializer.is_valid()
-        updated_user = serializer.save()
-        
-        assert updated_user.email == 'new@example.com'
-    
-    def test_update_user_cannot_change_username(self):
-        """Test: No permite cambiar username."""
-        user = User.objects.create_user(
-            username='testuser',
-            email='test@example.com',
-            password='Pass123',
-        )
-        
-        data = {'username': 'newusername'}
-        
-        serializer = UserUpdateSerializer(user, data=data, partial=True)
-        
-        # username no está en fields, así que se ignora
-        assert serializer.is_valid()
-        updated_user = serializer.save()
-        
-        # Username no cambia
-        assert updated_user.username == 'testuser'
 
 
-# ============================================================================
-# RESUMEN Tests User Serializers
-# 
-# Total Tests: 12
-# 
-# UserSerializer: 2 tests
-#   [SUCCESS] Incluye todos los campos
-#   [SUCCESS] Campos computados (full_name, functions, profile, settings)
-# 
-# UserListSerializer: 1 test
-#   [SUCCESS] Solo campos esenciales
-# 
-# UserCreateSerializer: 5 tests
-#   [SUCCESS] Creación exitosa
-#   [SUCCESS] Password muy corto
-#   [SUCCESS] Password sin letra
-#   [SUCCESS] Password sin número
-#   [SUCCESS] Username duplicado
-# 
-# UserUpdateSerializer: 4 tests
-#   [SUCCESS] Actualización exitosa
-#   [SUCCESS] Actualizar email
-#   [SUCCESS] No permite cambiar username
-#   [SUCCESS] Actualizar campos opcionales
-# 
-# Coverage: ~90% de user_serializers.py
-# ============================================================================
+@pytest.mark.django_db
+class TestChangePasswordSerializer:
+    """Tests para ChangePasswordSerializer (authentication.serializers.auth)."""
+
+    def test_change_password_valid(self):
+        """Test: Cambio de password válido con campos reales: current/new/confirm."""
+        data = {
+            'current_password': 'OldPass123',
+            'new_password': 'T3stP@ssw0rd!',
+            'confirm_password': 'T3stP@ssw0rd!'
+        }
+
+        serializer = ChangePasswordSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors

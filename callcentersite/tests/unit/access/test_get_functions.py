@@ -49,9 +49,9 @@ class TestGetFunctions:
         ExceptionalPermission.objects.create(
             user=user, function=fn,
             justification='J' * 55,
-            status='approved',
-            valid_from=now - timedelta(hours=1),
-            valid_until=now + timedelta(days=7),
+            status='ACTIVE',
+            granted_at=now - timedelta(hours=1),
+            expires_at=now + timedelta(days=7),
         )
 
         codes = user.get_functions()
@@ -64,9 +64,9 @@ class TestGetFunctions:
         ExceptionalPermission.objects.create(
             user=user, function=fn,
             justification='J' * 55,
-            status='approved',
-            valid_from=now - timedelta(days=10),
-            valid_until=now - timedelta(days=3),  # expirado
+            status='ACTIVE',
+            granted_at=now - timedelta(days=10),
+            expires_at=now - timedelta(days=3),  # expirado
         )
 
         codes = user.get_functions()
@@ -80,8 +80,8 @@ class TestGetFunctions:
             user=user, function=fn,
             justification='J' * 55,
             status='pending',
-            valid_from=now,
-            valid_until=now + timedelta(days=7),
+            granted_at=now,
+            expires_at=now + timedelta(days=7),
         )
 
         codes = user.get_functions()
@@ -106,9 +106,9 @@ class TestGetFunctions:
         now = timezone.now()
         ExceptionalPermission.objects.create(
             user=user, function=fn_exceptional,
-            justification='J' * 55, status='approved',
-            valid_from=now - timedelta(hours=1),
-            valid_until=now + timedelta(days=7),
+            justification='J' * 55, status='ACTIVE',
+            granted_at=now - timedelta(hours=1),
+            expires_at=now + timedelta(days=7),
         )
 
         codes = user.get_functions()

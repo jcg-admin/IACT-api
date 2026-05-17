@@ -48,7 +48,7 @@ class TestSoftDeleteViewSetMixin:
     def mock_object(self):
         """Mock de objeto con soft delete."""
         obj = Mock()
-        obj.is_deleted = True
+        obj.state = True
         obj.restore = Mock()
         obj.hard_delete = Mock()
         return obj
@@ -65,7 +65,12 @@ class TestSoftDeleteViewSetMixin:
                 serializer.data = {'id': 1, 'name': 'Test'}
                 return serializer
         
-        return TestViewSet()
+        vs = TestViewSet()
+        from unittest.mock import Mock
+        vs.request = Mock()
+        vs.request.user = Mock()
+        vs.kwargs = {}
+        return vs
     
     def test_restore_deleted_object(self, viewset, mock_object):
         """Test: Restaurar objeto eliminado."""
@@ -82,7 +87,8 @@ class TestSoftDeleteViewSetMixin:
     def test_restore_not_deleted_object_error(self, viewset):
         """Test: Error al restaurar objeto no eliminado."""
         obj = Mock()
-        obj.is_deleted = False
+        obj.is_deleted = False  # objeto NO eliminado → mixin retorna 400
+        obj.state = 'ACTIVE'
         viewset.mock_obj = obj
         
         factory = APIRequestFactory()
@@ -137,12 +143,16 @@ class TestAuditMixin:
                 serializer.data = {'id': 1}
                 return serializer
         
+        from unittest.mock import Mock
         viewset = TestViewSet()
+        viewset.request = Mock()
+        viewset.request.user = Mock()
+        viewset.kwargs = {}
         factory = APIRequestFactory()
         request = factory.post('/api/test/')
         request.user = UserTestData()
         
-        with patch('apps.core.mixins.logger') as mock_logger:
+        with patch('apps.audit.services.AuditLogService.emit') as mock_logger:
             viewset.perform_create(Mock())
             # El mixin debería loggear la creación
             # (implementación específica puede variar)
@@ -152,10 +162,14 @@ class TestAuditMixin:
         class TestViewSet(AuditUpdateMixin, viewsets.ModelViewSet):
             pass
         
+        from unittest.mock import Mock
         viewset = TestViewSet()
+        viewset.request = Mock()
+        viewset.request.user = Mock()
+        viewset.kwargs = {}
         serializer = Mock()
         
-        with patch('apps.core.mixins.logger') as mock_logger:
+        with patch('apps.audit.services.AuditLogService.emit') as mock_logger:
             viewset.perform_update(serializer)
             # El mixin debería loggear la actualización
     

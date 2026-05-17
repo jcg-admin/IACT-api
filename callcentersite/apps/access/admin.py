@@ -4,7 +4,6 @@ apps/access/admin.py
 Django Admin registration for the access app models.
 """
 from django.contrib import admin
-from django.utils.html import format_html
 
 from apps.access.models import (
     Module, Function, UserPermission,
@@ -78,10 +77,12 @@ class UserAccessGroupAdmin(admin.ModelAdmin):
 
 @admin.register(SeparationRule)
 class SeparationRuleAdmin(admin.ModelAdmin):
-    list_display  = ['name', 'function_a', 'function_b', 'status', 'created_by']
-    list_filter   = ['status']
-    search_fields = ['name', 'function_a__code', 'function_b__code']
-    raw_id_fields = ['function_a', 'function_b', 'created_by']
+    list_display  = ['code', 'name', 'state', 'created_by']
+    list_filter   = ['state']
+    search_fields = ['code', 'name']
+    raw_id_fields = ['created_by']
+    # functions_set_a/b son M2M — se gestionan en inline o filter_horizontal
+    filter_horizontal = []
     ordering      = ['name']
 
 

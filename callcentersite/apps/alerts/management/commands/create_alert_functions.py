@@ -6,12 +6,12 @@ from apps.access.models import Function
 
 class Command(BaseCommand):
     help = 'Crear funciones RBAC para módulo MOD_Alerts'
-    
+
     def handle(self, *args, **options):
         """Crear las 6 funciones RBAC del módulo Alerts"""
-        
+
         module = 'MOD_Alerts'
-        
+
         # Definir las 6 funciones
         functions = [
             {
@@ -57,19 +57,19 @@ class Command(BaseCommand):
                 'status': 'activo'
             }
         ]
-        
+
         created_count = 0
         updated_count = 0
-        
+
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('━' * 70))
         self.stdout.write(self.style.SUCCESS(f'  CREACIÓN DE FUNCIONES RBAC - {module}'))
         self.stdout.write(self.style.SUCCESS('━' * 70))
         self.stdout.write('')
-        
+
         for func_data in functions:
             permission_django = func_data['permission_django']
-            
+
             # Buscar si ya existe
             function, created = Function.objects.get_or_create(
                 permission_django=permission_django,
@@ -82,7 +82,7 @@ class Command(BaseCommand):
                     'is_active': True
                 }
             )
-            
+
             if created:
                 created_count += 1
                 self.stdout.write(
@@ -101,7 +101,7 @@ class Command(BaseCommand):
                 self.stdout.write(
                     self.style.WARNING(f'  ⟳ Actualizada: {permission_django} ({func_data["code"]})')
                 )
-        
+
         self.stdout.write('')
         self.stdout.write(self.style.SUCCESS('━' * 70))
         self.stdout.write(self.style.SUCCESS('  RESUMEN'))
@@ -111,23 +111,23 @@ class Command(BaseCommand):
         self.stdout.write(f'  Funciones actualizadas: {updated_count}')
         self.stdout.write(f'  Total: {len(functions)}')
         self.stdout.write('')
-        
+
         # Mostrar tabla de funciones
         self.stdout.write(self.style.SUCCESS('  FUNCIONES RBAC DISPONIBLES:'))
         self.stdout.write('')
         self.stdout.write('  =========================================================')
         self.stdout.write('  - Permission Django               - Código       - Status   -')
         self.stdout.write('  =========================================================')
-        
+
         for func_data in functions:
             perm = func_data['permission_django'].ljust(31)
             code = func_data['code'].ljust(12)
             status = func_data['status'].ljust(8)
             self.stdout.write(f'  - {perm} - {code} - {status} -')
-        
+
         self.stdout.write('  =========================================================')
         self.stdout.write('')
-        
+
         # Instrucciones de uso
         self.stdout.write(self.style.SUCCESS('  USO EN PERMISOS:'))
         self.stdout.write('')
@@ -138,7 +138,7 @@ class Command(BaseCommand):
         self.stdout.write(self.style.HTTP_INFO("        ..."))
         self.stdout.write(self.style.HTTP_INFO("    }"))
         self.stdout.write('')
-        
+
         # Verificación en código
         self.stdout.write(self.style.SUCCESS('  VERIFICACIÓN EN CÓDIGO:'))
         self.stdout.write('')

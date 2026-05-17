@@ -120,9 +120,8 @@ class TestHasFunctionPermission:
         """
         Función con is_active=False en el modelo Function es denegada.
 
-        get_functions() filtra Function.is_active=True.
-        UserPermission solo tiene user + function, sin is_active propio —
-        la inactividad se controla desactivando la Function.
+        get_functions() ahora filtra function__is_active=True en todos los orígenes.
+        Desactivar una Function revoca el acceso automáticamente sin tocar asignaciones.
         """
         user = UserTestData()
         fn   = FunctionTestData(

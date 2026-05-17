@@ -17,15 +17,10 @@ SPECTACULAR_TAGS = [
     {
         'name': 'Estado del Pipeline',
         'description': (
-            'Estado, errores, disponibilidad de datos y reintento del pipeline ETL. '
-            'Lee directamente de job_execution_log en MariaDB ivr_legacy. '
+            'Estado, errores, disponibilidad de datos, reintento y rendimiento '
+            'del pipeline ETL. Lee directamente de job_execution_log y '
+            'v_etl_rendimiento en MariaDB ivr_legacy. '
             'UC_PIP_01..04. CNST-003: dual DB, CNST-004: sin Celery.'
-        ),
-    },
-    {
-        'name': 'Llamadas',
-        'description': (
-            'Registro de llamadas del call center: centros, servicios, llamadas y notas.'
         ),
     },
 ]

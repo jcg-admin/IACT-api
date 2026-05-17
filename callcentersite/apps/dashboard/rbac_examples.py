@@ -15,7 +15,6 @@ from apps.dashboard.rbac import (
     require_dashboard_view,
     require_widget_owner,
     require_widget_view,
-    require_filter_owner,
     require_authenticated,
     check_dashboard_access,
     check_widget_access,
@@ -34,21 +33,21 @@ from apps.dashboard.services import DashboardService, WidgetService
 def update_dashboard_settings(request, dashboard_id):
     """
     Actualizar configuración del dashboard.
-    
+
     Solo el propietario puede actualizar.
     El dashboard está disponible en request.dashboard
     """
     dashboard = request.dashboard  # Agregado por el decorador
-    
+
     # Actualizar configuración
     if 'config_name' in request.POST:
         dashboard.config_name = request.POST['config_name']
-    
+
     if 'description' in request.POST:
         dashboard.description = request.POST['description']
-    
+
     dashboard.save()
-    
+
     return JsonResponse({
         'status': 'success',
         'message': 'Dashboard actualizado',
@@ -65,11 +64,11 @@ def update_dashboard_settings(request, dashboard_id):
 def get_dashboard_statistics(request, dashboard_id):
     """
     Obtener estadísticas del dashboard.
-    
+
     Cualquier usuario con permisos de visualización puede ver.
     """
     dashboard = request.dashboard  # Agregado por el decorador
-    
+
     # Calcular estadísticas
     stats = {
         'total_widgets': dashboard.widgets.count(),
@@ -78,7 +77,7 @@ def get_dashboard_statistics(request, dashboard_id):
         'is_public': dashboard.is_public,
         'owner': dashboard.user.username
     }
-    
+
     return JsonResponse({
         'status': 'success',
         'dashboard_id': dashboard.id,
@@ -95,14 +94,14 @@ def get_dashboard_statistics(request, dashboard_id):
 def refresh_widget_data(request, widget_id):
     """
     Refrescar datos del widget.
-    
+
     Solo el propietario del dashboard puede refrescar.
     """
     widget = request.widget  # Agregado por el decorador
-    
+
     # Refrescar cache
     WidgetService.refresh_widget_cache(widget.id)
-    
+
     return JsonResponse({
         'status': 'success',
         'message': 'Cache del widget refrescado',
@@ -119,11 +118,11 @@ def refresh_widget_data(request, widget_id):
 def get_widget_details(request, widget_id):
     """
     Obtener detalles del widget.
-    
+
     Cualquier usuario con permisos de visualización puede ver.
     """
     widget = request.widget  # Agregado por el decorador
-    
+
     details = {
         'widget_id': widget.id,
         'widget_name': widget.widget_name,
@@ -132,7 +131,7 @@ def get_widget_details(request, widget_id):
         'dashboard_name': widget.dashboard.config_name,
         'is_visible': widget.is_visible
     }
-    
+
     return JsonResponse({
         'status': 'success',
         'widget': details
@@ -148,7 +147,7 @@ def get_widget_details(request, widget_id):
 def clone_dashboard_manual(request, dashboard_id):
     """
     Clonar dashboard usando check_dashboard_access.
-    
+
     Este ejemplo muestra cómo usar la función helper
     en lugar del decorador.
     """
@@ -158,20 +157,20 @@ def clone_dashboard_manual(request, dashboard_id):
         dashboard_id,
         permission='view'  # Solo necesita ver para clonar
     )
-    
+
     if not has_access:
         return JsonResponse({
             'status': 'error',
             'message': error
         }, status=403)
-    
+
     # Clonar dashboard
     try:
         cloned = DashboardService.clone_dashboard(
             dashboard.id,
             request.user
         )
-        
+
         return JsonResponse({
             'status': 'success',
             'message': 'Dashboard clonado',
@@ -193,12 +192,12 @@ def clone_dashboard_manual(request, dashboard_id):
 def list_my_dashboards(request):
     """
     Listar dashboards del usuario.
-    
+
     Muestra cómo usar get_user_dashboards helper.
     """
     # Obtener dashboards accesibles
     dashboards = get_user_dashboards(request.user)
-    
+
     # Serializar
     dashboard_list = []
     for dashboard in dashboards:
@@ -211,7 +210,7 @@ def list_my_dashboards(request):
             'is_owner': dashboard.user == request.user,
             'widget_count': dashboard.widgets.count()
         })
-    
+
     return JsonResponse({
         'status': 'success',
         'total': len(dashboard_list),
@@ -228,7 +227,7 @@ def list_my_dashboards(request):
 def list_dashboard_widgets(request, dashboard_id):
     """
     Listar widgets de un dashboard.
-    
+
     Muestra cómo usar get_user_widgets con dashboard específico.
     """
     # Verificar acceso al dashboard
@@ -237,16 +236,16 @@ def list_dashboard_widgets(request, dashboard_id):
         dashboard_id,
         permission='view'
     )
-    
+
     if not has_access:
         return JsonResponse({
             'status': 'error',
             'message': error
         }, status=403)
-    
+
     # Obtener widgets del dashboard
     widgets = get_user_widgets(request.user, dashboard=dashboard)
-    
+
     # Serializar
     widget_list = []
     for widget in widgets:
@@ -258,7 +257,7 @@ def list_dashboard_widgets(request, dashboard_id):
             'position_x': widget.position_x,
             'position_y': widget.position_y
         })
-    
+
     return JsonResponse({
         'status': 'success',
         'dashboard_id': dashboard.id,
@@ -276,11 +275,11 @@ def list_dashboard_widgets(request, dashboard_id):
 def delete_dashboard_with_confirmation(request, dashboard_id):
     """
     Eliminar dashboard con confirmación.
-    
+
     Combina decorador de permisos con validación adicional.
     """
     dashboard = request.dashboard
-    
+
     # Validar confirmación
     confirmation = request.POST.get('confirm', '').lower()
     if confirmation != 'yes':
@@ -288,11 +287,11 @@ def delete_dashboard_with_confirmation(request, dashboard_id):
             'status': 'error',
             'message': 'Se requiere confirmación para eliminar'
         }, status=400)
-    
+
     # Eliminar dashboard
     try:
         DashboardService.delete_dashboard(dashboard.id, request.user)
-        
+
         return JsonResponse({
             'status': 'success',
             'message': 'Dashboard eliminado exitosamente'
@@ -313,20 +312,20 @@ def delete_dashboard_with_confirmation(request, dashboard_id):
 def batch_update_widgets(request):
     """
     Actualizar múltiples widgets en batch.
-    
+
     Valida permisos para cada widget individualmente.
     """
     widget_ids = request.POST.getlist('widget_ids[]')
-    
+
     if not widget_ids:
         return JsonResponse({
             'status': 'error',
             'message': 'No se proporcionaron IDs de widgets'
         }, status=400)
-    
+
     updated = []
     errors = []
-    
+
     for widget_id in widget_ids:
         # Verificar acceso a cada widget
         has_access, widget, error = check_widget_access(
@@ -334,14 +333,14 @@ def batch_update_widgets(request):
             widget_id,
             permission='edit'
         )
-        
+
         if not has_access:
             errors.append({
                 'widget_id': widget_id,
                 'error': error
             })
             continue
-        
+
         # Actualizar widget
         try:
             widget.is_visible = request.POST.get('is_visible', 'true') == 'true'
@@ -352,7 +351,7 @@ def batch_update_widgets(request):
                 'widget_id': widget_id,
                 'error': str(e)
             })
-    
+
     return JsonResponse({
         'status': 'success',
         'updated': len(updated),

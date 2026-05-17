@@ -145,35 +145,6 @@ def sample_admin(db):
 
 
 # ============================================================================
-# CORE MODEL FIXTURES (Legacy - mantenidas para compatibilidad)
-# ============================================================================
-
-@pytest.fixture
-def sample_center(db):
-    """
-    Centro de ejemplo.
-    
-    LEGACY: Mantenido para compatibilidad.
-    NUEVO: Usar CenterTestData directamente.
-    """
-    from tests.test_data import CenterTestData
-    return CenterTestData(codigo='CT01', nombre='Centro Test')
-
-
-@pytest.fixture
-def sample_service(db):
-    """
-    Servicio de ejemplo.
-    
-    LEGACY: Mantenido para compatibilidad.
-    NUEVO: Usar ServiceTestData directamente.
-    """
-    from tests.test_data import ServiceTestData
-    return ServiceTestData(
-        numero_800='800-123-4567',
-        nombre='Servicio Test'
-    )
-
 
 # ============================================================================
 # HYBRID FIXTURES (Factory + Mock)
@@ -233,91 +204,35 @@ def authenticated_client_with_rbac(db, mock_access_service):
 
     return client
 
-
-@pytest.fixture
-def etl_job_with_mocks(db, mock_ivr_connection, mock_etl_service):
-    """
-    ETL Job con BD IVR y service mockeados.
-    
-    Combina:
-        - SuccessETLJobTestData
-        - mock_ivr_connection (BD IVR)
-        - mock_etl_service (ETL service)
-    
-    Uso:
-        def test_etl_execution(etl_job_with_mocks):
-            job = etl_job_with_mocks
-            assert job.status == 'SUCCESS'
-    """
-    from tests.test_data import SuccessETLJobTestData
-    
-    # BD IVR retorna datos fake
-    mock_ivr_connection.cursor.return_value.fetchall.return_value = [
-        (2025, 1, 10000, 5000, 180)
-    ]
-    
-    # Service retorna resultado exitoso
-    mock_etl_service.extract_quarterly_data.return_value = [
-        {'year': 2025, 'quarter': 1, 'total_calls': 10000}
-    ]
-    
-    job = SuccessETLJobTestData()
-    return job
-
-
 @pytest.fixture
 def report_with_export_mocks(db, mock_report_generator_service, mock_excel_exporter):
     """
     Reporte con generación y export mockeados.
-    
+
     Combina:
-        - QuarterlyReportReportTestData
+        - QuarterlyReportTestData
         - mock_report_generator_service
         - mock_excel_exporter
-    
+
     Uso:
         def test_report_generation(report_with_export_mocks):
             report = report_with_export_mocks
             assert report.file_url is not None
     """
-    from tests.test_data import QuarterlyReportReportTestData
-    
+    from tests.test_data import QuarterlyReportTestData
+
     # Mock generación
     mock_report_generator_service.generate_quarterly_report.return_value = {
         'report_id': 123,
         'file_url': '/fake/report.xlsx',
         'status': 'SUCCESS'
     }
-    
+
     # Mock export
     mock_excel_exporter.export.return_value = '/fake/report.xlsx'
-    
-    report = QuarterlyReportReportTestData()
+
+    report = QuarterlyReportTestData()
     return report
-
-
-@pytest.fixture
-def scheduled_job_with_mocks(db, mock_apscheduler, mock_cleanup_sessions_job):
-    """
-    Scheduled job con APScheduler mockeado.
-    
-    Combina:
-        - DailyJobConfigTestData
-        - mock_apscheduler
-        - mock_cleanup_sessions_job
-    
-    Uso:
-        def test_scheduled_job(scheduled_job_with_mocks):
-            config = scheduled_job_with_mocks
-            assert config.is_active is True
-    """
-    from tests.test_data import DailyJobConfigTestData
-    
-    # Mock job en scheduler
-    mock_apscheduler.get_job.return_value = mock_cleanup_sessions_job
-    
-    config = DailyJobConfigTestData(job_name='cleanup_sessions')
-    return config
 
 
 @pytest.fixture
@@ -351,31 +266,6 @@ def alert_with_notification_mocks(db, mock_send_mail):
     alert.notification = notification
     
     return alert
-
-
-@pytest.fixture
-def quarterly_data_with_mocks(db, mock_ivr_cursor_quarterly):
-    """
-    Datos trimestrales completos con BD IVR mockeada.
-    
-    Combina:
-        - CompleteQuarterDataTestData
-        - mock_ivr_cursor_quarterly
-    
-    Uso:
-        def test_quarterly_data(quarterly_data_with_mocks):
-            data = quarterly_data_with_mocks
-            assert data['quarterly'].year == 2025
-    """
-    from tests.test_data.ivr_test_data import CompleteQuarterDataTestData
-    
-    # BD IVR retorna datos fake
-    mock_ivr_cursor_quarterly.fetchall.return_value = [
-        {'year': 2025, 'quarter': 1, 'total_calls': 10000}
-    ]
-    
-    data = CompleteQuarterDataTestData.create_quarter(year=2025, quarter=1)
-    return data
 
 
 @pytest.fixture
@@ -521,3 +411,23 @@ def cleanup_files():
 # CNST-002: Dual DB (PostgreSQL test_iact_analytics + MariaDB test_ivr_legacy) [SUCCESS]
 # CNST-010: NO cache (DummyCache en testing.py) [SUCCESS]
 # ============================================================================
+
+@pytest.fixture(scope='session', autouse=True)
+def ensure_postgresql():
+    """
+    H-INFRA-002: garantiza que PostgreSQL esté corriendo antes de la sesión.
+    Sin este fixture, todos los tests @pytest.mark.django_db fallan con
+    psycopg2.OperationalError cuando el contenedor se reinicia.
+    """
+    import subprocess
+    result = subprocess.run(
+        ['pg_ctlcluster', '16', 'main', 'status'],
+        capture_output=True, text=True
+    )
+    if 'online' not in result.stdout and 'running' not in result.stdout:
+        subprocess.run(
+            ['pg_ctlcluster', '16', 'main', 'start'],
+            capture_output=True
+        )
+        import time; time.sleep(2)
+    yield

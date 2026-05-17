@@ -31,7 +31,7 @@ __all__ = [
     'LogoutSerializer',
     'ChangePasswordSerializer',
     'CustomTokenObtainPairSerializer',
-    
+
     # Recovery
     'SecurityQuestionSerializer',
     'SecurityAnswerInputSerializer',
@@ -39,7 +39,7 @@ __all__ = [
     'VerifySecurityAnswersSerializer',
     'ResetPasswordSerializer',
     'PasswordResetRequestSerializer',
-    
+
     # Session
     'SessionLogSerializer',
     'SessionLogDetailSerializer',

@@ -9,28 +9,29 @@ class AlertsConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.alerts'
     verbose_name = 'Sistema de Alertas Internas'
-    
+
     def ready(self):
-        import apps.alerts.schema  # noqa: F401
+        import apps.alerts.schema   # noqa: F401
+        import apps.alerts.signals  # noqa: F401 — InternalMailbox auto-create
         """
         Inicializar APScheduler cuando Django arranca
-        
+
         IMPORTANTE: Solo en servidor web, NO en shell/migrations
-        
+
         Cumple CNST-013: APScheduler para tareas programadas
         """
         # Verificar si es un comando que debe iniciar scheduler
         # runserver o gunicorn = SÍ
         # makemigrations, migrate, shell = NO
-        
+
         argv = sys.argv
-        
+
         # Detectar runserver
         is_runserver = 'runserver' in argv
-        
+
         # Detectar gunicorn (nombre del proceso)
         is_gunicorn = 'gunicorn' in argv[0] if argv else False
-        
+
         # Detectar comandos que NO deben iniciar scheduler
         skip_commands = [
             'makemigrations',
@@ -44,7 +45,7 @@ class AlertsConfig(AppConfig):
             'check',
         ]
         is_skip_command = any(cmd in argv for cmd in skip_commands)
-        
+
         # Iniciar scheduler solo si es servidor web
         if (is_runserver or is_gunicorn) and not is_skip_command:
             from apps.alerts.scheduler import start_scheduler

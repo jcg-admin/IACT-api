@@ -8,7 +8,7 @@ class PipelineConfig(AppConfig):
     default_auto_field = 'django.db.models.BigAutoField'
     name = 'apps.pipeline'
     verbose_name = 'ETL Pipeline'
-    
+
     def ready(self) -> None:
         """
         Start background scheduler on Django startup.
@@ -29,4 +29,3 @@ class PipelineConfig(AppConfig):
         logger.info("ETLScheduler: starting from PipelineConfig.ready()...")
         from apps.pipeline.scheduler import ETLScheduler
         ETLScheduler.start()
-

@@ -126,7 +126,6 @@ class ModuleAccessService:
         Retorna los modulos de nivel raiz con sus hijos accesibles.
         Estructura: lista de modulos con atributo .children.
         """
-        from apps.access.models import Module
         modules = ModuleAccessService.get_user_modules(user)
         module_ids = set(modules.values_list('id', flat=True))
         root_modules = modules.filter(parent__isnull=True).prefetch_related('children')
@@ -147,3 +146,59 @@ class ModuleAccessService:
         return Module.objects.filter(
             parent__isnull=True, is_active=True
         ).prefetch_related('children').order_by('order')
+
+    @staticmethod
+    def grant_module_access(user, module_code: str, granted_by, reason: str = ''):
+        """
+        Otorga acceso activo a un módulo.
+
+        Args:
+            user: User que recibirá acceso.
+            module_code: código canónico del módulo.
+            granted_by: User que concede el acceso.
+            reason: justificación.
+
+        Returns:
+            UserModuleAccess: instancia creada o reactivada.
+        """
+        from django.utils import timezone
+        from apps.access.models import Module, UserModuleAccess
+        module = Module.objects.get(code=module_code)
+        access, created = UserModuleAccess.objects.get_or_create(
+            user=user,
+            module=module,
+            defaults={
+                'granted_by': granted_by,
+                'reason': reason,
+                'granted_at': timezone.now(),
+                'is_active': True,
+            },
+        )
+        if not created and not access.is_active:
+            access.is_active = True
+            access.granted_by = granted_by
+            access.reason = reason
+            access.granted_at = timezone.now()
+            access.save(update_fields=['is_active', 'granted_by', 'reason', 'granted_at'])
+        return access
+
+    @staticmethod
+    def revoke_module_access(user, module_code: str, revoked_by) -> bool:
+        """
+        Revoca el acceso a un módulo.
+
+        Returns:
+            bool: True si se encontró y revocó, False si no tenía acceso activo.
+        """
+        from django.utils import timezone
+        from apps.access.models import UserModuleAccess
+        updated = UserModuleAccess.objects.filter(
+            user=user,
+            module__code=module_code,
+            is_active=True,
+        ).update(
+            is_active=False,
+            revoked_by=revoked_by,
+            revoked_at=timezone.now(),
+        )
+        return updated > 0

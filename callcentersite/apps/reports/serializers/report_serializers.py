@@ -20,14 +20,14 @@ from apps.reports.models import Report
 class ReportSerializer(serializers.ModelSerializer):
     """
     Serializer para Report.
-    
+
     Incluye:
     - Datos básicos del reporte
     - Usuario creador (read-only)
     - Validación de filtros JSON
     - Campos display para choices
     """
-    
+
     created_by_username = serializers.CharField(
         source='created_by.username',
         read_only=True
@@ -40,7 +40,7 @@ class ReportSerializer(serializers.ModelSerializer):
         source='get_status_display',
         read_only=True
     )
-    
+
     class Meta:
         model = Report
         fields = [
@@ -65,17 +65,17 @@ class ReportSerializer(serializers.ModelSerializer):
             'total_records',
             'status',
         ]
-    
+
     def validate_filters(self, value):
         """
         Validar que filters sea un dict válido.
-        
+
         Args:
             value: Filtros en formato JSON
-            
+
         Returns:
             dict: Filtros validados
-            
+
         Raises:
             ValidationError: Si filters no es dict
         """
@@ -89,11 +89,11 @@ class ReportSerializer(serializers.ModelSerializer):
 class ReportCreateSerializer(serializers.ModelSerializer):
     """
     Serializer para crear reportes.
-    
+
     Simplificado para creación, sin campos calculados.
     El usuario creador se asigna automáticamente desde request.user.
     """
-    
+
     class Meta:
         model = Report
         fields = [
@@ -101,11 +101,11 @@ class ReportCreateSerializer(serializers.ModelSerializer):
             'report_type',
             'filters',
         ]
-    
+
     def validate_report_type(self, value):
         """
         Validar que report_type sea válido.
-        
+
         Verifica contra Report.REPORT_TYPES.
         """
         valid_types = [choice[0] for choice in Report.REPORT_TYPES]

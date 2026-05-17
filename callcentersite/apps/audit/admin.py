@@ -6,10 +6,10 @@ from apps.audit.models import AuditLog
 class AuditLogAdmin(admin.ModelAdmin):
     """
     Admin para logs auditoria.
-    
+
     SOLO LECTURA (CNST-009).
     """
-    
+
     list_display = (
         'timestamp',
         'user',
@@ -30,9 +30,9 @@ class AuditLogAdmin(admin.ModelAdmin):
         'user_agent',
         'details'
     )
-    
+
     date_hierarchy = 'timestamp'
-    
+
     fieldsets = (
         ('Accion', {
             'fields': ('user', 'action', 'resource', 'result')
@@ -45,15 +45,15 @@ class AuditLogAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-    
+
     def has_add_permission(self, request):
         """NO permitir crear logs desde admin."""
         return False
-    
+
     def has_change_permission(self, request, obj=None):
         """NO permitir modificar logs."""
         return False
-    
+
     def has_delete_permission(self, request, obj=None):
         """NO permitir eliminar logs."""
         return False

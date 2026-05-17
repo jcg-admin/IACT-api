@@ -5,9 +5,6 @@ CLEAN_CODE v3.0.1: Funciones auto-documentadas.
 SOLID: SRP (Single Responsibility), DRY (Don't Repeat Yourself).
 """
 
-import re
-from decimal import Decimal
-from typing import Optional
 
 
 # ============================================================================
@@ -17,17 +14,17 @@ from typing import Optional
 def format_phone_cl(phone: str, with_country_code: bool = False) -> str:
     """
     Formatea teléfono chileno.
-    
+
     CLEAN_CODE v3.0.1: Nombre descriptivo.
     SOLID SRP: Solo formatea, no valida.
-    
+
     Args:
         phone: Teléfono
         with_country_code: Incluir +56
-    
+
     Returns:
         str: Teléfono formateado
-    
+
     Examples:
         >>> format_phone_cl('912345678')
         '9 1234 5678'
@@ -37,17 +34,17 @@ def format_phone_cl(phone: str, with_country_code: bool = False) -> str:
     # DRY: Usar helper de validators
     from apps.utils.validators import _clean_phone_number
     clean = _clean_phone_number(phone)
-    
+
     if len(clean) == 9:  # Móvil
         formatted = f"{clean[0]} {clean[1:5]} {clean[5:]}"
     elif len(clean) == 8:  # Fijo
         formatted = f"{clean[0:2]} {clean[2:6]} {clean[6:]}"
     else:
         return phone  # Retornar sin cambios si formato desconocido
-    
+
     if with_country_code:
         formatted = f"+56 {formatted}"
-    
+
     return formatted
 
 
@@ -58,16 +55,16 @@ def format_phone_cl(phone: str, with_country_code: bool = False) -> str:
 def format_rut(rut: str) -> str:
     """
     Formatea RUT chileno.
-    
+
     CLEAN_CODE v3.0.1: Nombre que revela intención.
     SOLID SRP: Solo formatea.
-    
+
     Args:
         rut: RUT
-    
+
     Returns:
         str: RUT formateado (12.345.678-9)
-    
+
     Examples:
         >>> format_rut('123456789')
         '12.345.678-9'
@@ -77,33 +74,33 @@ def format_rut(rut: str) -> str:
     # DRY: Usar helper de validators
     from apps.utils.validators import _clean_rut
     clean = _clean_rut(rut)
-    
+
     if len(clean) < 2:
         return rut  # Retornar sin cambios
-    
+
     # Separar cuerpo y DV
     body = clean[:-1]
     dv = clean[-1]
-    
+
     # Formatear cuerpo con puntos
     formatted_body = _format_number_with_dots(body)
-    
+
     return f"{formatted_body}-{dv}"
 
 
 def _format_number_with_dots(number: str) -> str:
     """
     Formatea número con puntos de miles.
-    
+
     SOLID SRP: Solo formatea.
     DRY: Reutilizable.
-    
+
     Args:
         number: Número como string
-    
+
     Returns:
         str: Número con puntos
-    
+
     Examples:
         >>> _format_number_with_dots('12345678')
         '12.345.678'
@@ -126,18 +123,18 @@ def format_currency(
 ) -> str:
     """
     Formatea monto como moneda.
-    
+
     CLEAN_CODE v3.0.1: Nombre descriptivo.
     SOLID SRP: Solo formatea moneda.
-    
+
     Args:
         amount: Monto
         currency: Moneda ('CLP', 'USD', 'EUR')
         decimals: Decimales a mostrar
-    
+
     Returns:
         str: Monto formateado
-    
+
     Examples:
         >>> format_currency(1234567)
         '$1.234.567'
@@ -148,12 +145,12 @@ def format_currency(
         # Formato chileno: $1.234.567
         formatted_number = _format_number_cl(amount, decimals)
         return f"${formatted_number}"
-    
+
     elif currency in ['USD', 'EUR']:
         # Formato internacional: USD 1,234.56
         formatted_number = _format_number_intl(amount, decimals)
         return f"{currency} {formatted_number}"
-    
+
     else:
         # Formato genérico
         return f"{currency} {amount:,.{decimals}f}"
@@ -162,20 +159,20 @@ def format_currency(
 def _format_number_cl(number: float, decimals: int = 0) -> str:
     """
     Formatea número estilo chileno.
-    
+
     SOLID SRP: Solo formatea.
     DRY: Reutilizable.
-    
+
     Args:
         number: Número
         decimals: Decimales
-    
+
     Returns:
         str: Número formateado (1.234.567,89)
     """
     # Redondear
     rounded = round(number, decimals)
-    
+
     # Separar parte entera y decimal
     if decimals > 0:
         formatted = f"{rounded:,.{decimals}f}"
@@ -183,20 +180,20 @@ def _format_number_cl(number: float, decimals: int = 0) -> str:
         formatted = formatted.replace(',', 'TEMP').replace('.', ',').replace('TEMP', '.')
     else:
         formatted = f"{int(rounded):,}".replace(',', '.')
-    
+
     return formatted
 
 
 def _format_number_intl(number: float, decimals: int = 2) -> str:
     """
     Formatea número estilo internacional.
-    
+
     SOLID SRP: Solo formatea.
-    
+
     Args:
         number: Número
         decimals: Decimales
-    
+
     Returns:
         str: Número formateado (1,234.56)
     """
@@ -214,18 +211,18 @@ def format_percentage(
 ) -> str:
     """
     Formatea porcentaje.
-    
+
     CLEAN_CODE v3.0.1: Nombre que revela intención.
     SOLID SRP: Solo formatea porcentajes.
-    
+
     Args:
         value: Valor (0.1234 = 12.34%)
         decimals: Decimales
         include_symbol: Incluir símbolo %
-    
+
     Returns:
         str: Porcentaje formateado
-    
+
     Examples:
         >>> format_percentage(0.1234)
         '12.34%'
@@ -234,10 +231,10 @@ def format_percentage(
     """
     percentage = value * 100
     formatted = f"{percentage:.{decimals}f}"
-    
+
     if include_symbol:
         return f"{formatted}%"
-    
+
     return formatted
 
 
@@ -248,26 +245,26 @@ def format_percentage(
 def format_service_800(service: str) -> str:
     """
     Formatea número servicio 800.
-    
+
     CLEAN_CODE v3.0.1: Nombre descriptivo.
     SOLID SRP: Solo formatea.
-    
+
     Args:
         service: Número 800
-    
+
     Returns:
         str: Número formateado (800-123-4567)
-    
+
     Examples:
         >>> format_service_800('8001234567')
         '800-123-4567'
     """
     # Limpiar
     clean = service.replace('-', '').replace(' ', '')
-    
+
     if len(clean) == 10 and clean.startswith('800'):
         return f"{clean[0:3]}-{clean[3:6]}-{clean[6:]}"
-    
+
     return service  # Retornar sin cambios
 
 
@@ -330,16 +327,16 @@ def truncate_text(text: str, max_length: int = 100, suffix: str = '...') -> str:
 def format_file_size(size_bytes: int) -> str:
     """
     Formatea tamaño de archivo.
-    
+
     CLEAN_CODE v3.0.1: Nombre auto-documentado.
     SOLID SRP: Solo formatea tamaños.
-    
+
     Args:
         size_bytes: Tamaño en bytes
-    
+
     Returns:
         str: Tamaño formateado
-    
+
     Examples:
         >>> format_file_size(1024)
         '1.0 KB'
@@ -350,15 +347,15 @@ def format_file_size(size_bytes: int) -> str:
         if size_bytes < 1024.0:
             return f"{size_bytes:.1f} {unit}"
         size_bytes /= 1024.0
-    
+
     return f"{size_bytes:.1f} PB"
 
 
 # ============================================================================
 # RESUMEN FORMATTERS
-# 
+#
 # Total: 8 funciones públicas + 3 helpers privados
-# 
+#
 # Funciones Públicas:
 #   [SUCCESS] format_phone_cl()
 #   [SUCCESS] format_rut()
@@ -366,12 +363,12 @@ def format_file_size(size_bytes: int) -> str:
 #   [SUCCESS] format_percentage()
 #   [SUCCESS] format_service_800()
 #   [SUCCESS] format_file_size()
-# 
+#
 # Helpers Privados (DRY):
 #   [SUCCESS] _format_number_with_dots()
 #   [SUCCESS] _format_number_cl()
 #   [SUCCESS] _format_number_intl()
-# 
+#
 # Principios SOLID Aplicados:
 #   [SUCCESS] SRP: Cada función una responsabilidad
 #   [SUCCESS] DRY: Helpers privados reutilizables

@@ -48,15 +48,26 @@ def validate_module_name(value: str) -> None:
 
 def validate_function_code(value: str) -> None:
     """
-    Function codes: uppercase letters, digits and underscores.
-    Example: 'USERS_LIST', 'REPORTS_EXPORT'
+    Códigos de función RBAC — formato canónico v5.4.0.
+
+    Formato: MOD-NNN
+    - MOD: 2-4 letras mayúsculas (prefijo de módulo)
+    - NNN: 3 dígitos (secuencia 001..999)
+
+    Ejemplos válidos: AUTH-001, USR-009, ACC-012, LOG-007, RPT-011
+    Ejemplos inválidos: USR_VIEW (legacy v6.0.0), reports.view (namespace)
+
+    Fuente: arquitectura-tecnica/rbac/modelo-rbac-iact.rst v5.4.0
+    CNST-033: vocabulario unificado RBAC — inglés, sin namespaces Django.
     """
-    if not re.match(r'^[A-Z][A-Z0-9_]{1,49}$', value):
+    if not re.match(r'^[A-Z]{2,4}-\d{3}$', value):
         raise ValidationError(
             _(
-                "Código de función inválido. Use mayúsculas, números y guiones bajos. "
-                "Ej: USERS_LIST"
-            )
+                "Código de función inválido: %(value)s. "
+                "Use formato MOD-NNN (ej: AUTH-001, RPT-011). "
+                "Fuente: modelo-rbac-iact.rst v5.4.0."
+            ),
+            params={'value': value},
         )
 
 

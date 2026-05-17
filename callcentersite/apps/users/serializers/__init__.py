@@ -15,7 +15,6 @@ Estructura:
 from apps.users.serializers.user_serializer import (
     UserSerializer,
     UserListSerializer,
-    # UserDetailSerializer,  # TODO: No existe en user_serializer.py - comentado temporalmente
     UserCreateSerializer,
     UserUpdateSerializer,
 )
@@ -38,6 +37,11 @@ from apps.authentication.serializers import (
 )
 from apps.authentication.serializers.recovery import (
     PasswordResetRequestSerializer,
+)
+
+# Session serializer (1)
+from apps.users.serializers.session_serializer import (
+    SessionHistorySerializer,
 )
 
 # PasswordResetConfirmSerializer: simple serializer de confirmación vía token
@@ -65,25 +69,19 @@ class PasswordResetConfirmSerializer(_drf_serializers.Serializer):
 # UserProfileSerializer alias for ProfileSerializer
 UserProfileSerializer = ProfileSerializer
 
-# Session serializer (1)
-from apps.users.serializers.session_serializer import (
-    SessionHistorySerializer,
-)
-
 
 __all__ = [
     # User (5 -> 4 temporalmente)
     'UserSerializer',
     'UserListSerializer',
-    # 'UserDetailSerializer',  # TODO: No existe - comentado temporalmente
     'UserCreateSerializer',
     'UserUpdateSerializer',
-    
+
     # Profile (3)
     'ProfileSerializer',
     'UserSettingsSerializer',
     'AvatarUploadSerializer',
-    
+
     # Auth (2 + aliases)
     'PasswordChangeSerializer',
     'UserActivationSerializer',
@@ -92,7 +90,7 @@ __all__ = [
     'PasswordResetRequestSerializer',
     'PasswordResetConfirmSerializer',
     'UserProfileSerializer',
-    
+
     # Session (1)
     'SessionHistorySerializer',
 ]

@@ -20,25 +20,26 @@ Principios aplicados:
 
 from rest_framework import serializers
 from apps.audit.models import AuditLog
+from drf_spectacular.utils import extend_schema_field, OpenApiTypes
 
 
 class AuditLogSerializer(serializers.ModelSerializer):
     """
     Serializer para AuditLog (readonly).
-    
+
     Muestra información completa del log de auditoría.
     Incluye username, full_name, y todos los detalles del evento.
-    
+
     Los logs de auditoría son inmutables por diseño (no create/update/delete).
     """
-    
+
     user_username = serializers.CharField(
         source='user.username',
         read_only=True,
         allow_null=True
     )
     user_full_name = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = AuditLog
         fields = [
@@ -55,11 +56,12 @@ class AuditLogSerializer(serializers.ModelSerializer):
             'details',
         ]
         read_only_fields = fields  # Todos readonly (inmutable)
-    
+
+    @extend_schema_field(OpenApiTypes.STR)
     def get_user_full_name(self, obj):
         """
         Obtener nombre completo del usuario.
-        
+
         Returns:
             str: Nombre completo o username si no tiene nombre, None si no hay usuario
         """
@@ -71,17 +73,17 @@ class AuditLogSerializer(serializers.ModelSerializer):
 class AuditLogSummarySerializer(serializers.ModelSerializer):
     """
     Serializer resumido para listados.
-    
+
     Omite detalles pesados como user_agent y details para mejor performance.
     Ideal para listados con muchos registros.
     """
-    
+
     user_username = serializers.CharField(
         source='user.username',
         read_only=True,
         allow_null=True
     )
-    
+
     class Meta:
         model = AuditLog
         fields = [

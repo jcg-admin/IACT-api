@@ -62,7 +62,7 @@ class FunctionTestData(DjangoModelFactory):
 
     module            = factory.SubFactory(ModuleTestData)
     name              = factory.Sequence(lambda n: f'Function {n}')
-    code              = factory.Sequence(lambda n: f'fn_{n:04d}')
+    code              = factory.Sequence(lambda n: f'TST-{n:03d}')  # v5.4.0 format: MOD-NNN
     permission_django = factory.Sequence(lambda n: f'module.action_{n}')
     description       = factory.Faker('sentence', nb_words=8)
     is_active         = True
@@ -140,23 +140,36 @@ class UserAccessGroupTestData(DjangoModelFactory):
 
 class SeparationRuleTestData(DjangoModelFactory):
     """
-    Factory for SeparationRule (incompatible function pair).
+    Factory para SeparationRule (v5.4.0 — modelo M2M).
 
-    Usage:
+    El modelo actual usa ManyToManyField (functions_set_a, functions_set_b).
+    Los conjuntos se asignan con .set() después de crear la instancia,
+    no como kwargs del constructor.
+
+    Uso:
         rule = SeparationRuleTestData()
-        rule = SeparationRuleTestData(
-            function_a=fn_a, function_b=fn_b, status='active')
+
+        # Con funciones asignadas:
+        fa, fb = FunctionTestData(), FunctionTestData()
+        rule = SeparationRuleTestData()
+        rule.functions_set_a.set([fa])
+        rule.functions_set_b.set([fb])
+
+        # Desactivada:
+        rule = SeparationRuleTestData(state=SeparationRule.STATE_DISABLED)
+
+    Hallazgo FASE 1 (2026-05-13):
+      Los campos function_a, function_b, justification, status corresponden
+      al modelo v5.2.1 (FKs binarios). Eliminados — no existen en v5.4.0.
     """
 
-    name          = factory.Sequence(lambda n: f'Separation Rule {n}')
-    function_a    = factory.SubFactory(FunctionTestData)
-    function_b    = factory.SubFactory(FunctionTestData)
-    justification = factory.Faker('paragraph', nb_sentences=2)
-    status        = 'active'
-    created_by    = factory.SubFactory(UserTestData)
+    code  = factory.Sequence(lambda n: f'TST-SR-{n:03d}')
+    name  = factory.Sequence(lambda n: f'test_separation_{n}')
+    state = SeparationRule.STATE_ENABLED
 
     class Meta:
         model = SeparationRule
+        django_get_or_create = ('code',)
 
 
 # ---------------------------------------------------------------------------
@@ -181,29 +194,27 @@ class ExceptionalPermissionTestData(DjangoModelFactory):
     user          = factory.SubFactory(UserTestData)
     function      = factory.SubFactory(FunctionTestData)
     justification = factory.Faker('paragraph', nb_sentences=5)
-    status        = 'pending'
-    valid_from    = factory.LazyFunction(timezone.now)
-    valid_until   = factory.LazyFunction(
+    status        = ExceptionalPermission.STATE_ACTIVE  # 'ACTIVE'
+    # granted_at / expires_at — campos actuales del modelo
+    granted_at    = factory.LazyFunction(timezone.now)
+    expires_at    = factory.LazyFunction(
         lambda: timezone.now() + timedelta(days=7))
-    granted_by    = None
 
     class Meta:
         model = ExceptionalPermission
 
 
 class ApprovedExceptionalPermissionTestData(ExceptionalPermissionTestData):
-    """Pre-approved ExceptionalPermission, currently active."""
-    status     = 'approved'
-    granted_by = factory.SubFactory(UserTestData)
+    """Pre-approved ExceptionalPermission, currently active (alias legacy)."""
+    status     = ExceptionalPermission.STATE_ACTIVE
 
 
 class ExpiredExceptionalPermissionTestData(ExceptionalPermissionTestData):
-    """Expired ExceptionalPermission — valid_until in the past."""
-    status      = 'approved'
-    granted_by  = factory.SubFactory(UserTestData)
-    valid_from  = factory.LazyFunction(
+    """Expired ExceptionalPermission — expires_at in the past."""
+    status     = ExceptionalPermission.STATE_EXPIRED
+    granted_at = factory.LazyFunction(
         lambda: timezone.now() - timedelta(days=10))
-    valid_until = factory.LazyFunction(
+    expires_at = factory.LazyFunction(
         lambda: timezone.now() - timedelta(days=3))
 
 

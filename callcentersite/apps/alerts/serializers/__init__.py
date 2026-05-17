@@ -55,7 +55,7 @@ __all__ = [
     'InternalMessageDetailSerializer',
     'InternalMessageCreateSerializer',
     'InboxMessageSerializer',
-    
+
     # Alert serializers
     'AlertConfigurationSerializer',
     'AlertSubscriptionSerializer',
