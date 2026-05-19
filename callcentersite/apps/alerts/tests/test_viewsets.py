@@ -11,7 +11,7 @@ from apps.alerts.models import (  # noqa: F401
     AlertSubscription
 )
 from apps.alerts.services import MessageService
-from apps.access.models import Function
+from apps.access.models import Function, Module
 
 User = get_user_model()
 
@@ -32,12 +32,18 @@ class InternalMessageViewSetTest(TestCase):
             password='password123'
         )
 
+        # Crear modulo RBAC (Function.module es ForeignKey a Module,
+        # no un string — pasar un Module instance, no 'MOD_Alerts').
+        module_alerts, _ = Module.objects.get_or_create(
+            code='MOD_Alerts',
+            defaults={'name': 'Alertas'}
+        )
         # Crear funciones RBAC si no existen
         Function.objects.get_or_create(
             permission_django='alerts.send',
             defaults={
                 'code': 'ALRT_SEND',
-                'module': 'MOD_Alerts',
+                'module': module_alerts,
                 'name': 'Enviar Mensajes',
                 'status': 'activo'
             }
@@ -46,7 +52,7 @@ class InternalMessageViewSetTest(TestCase):
             permission_django='alerts.view.inbox',
             defaults={
                 'code': 'ALRT_VIEW_INB',
-                'module': 'MOD_Alerts',
+                'module': module_alerts,
                 'name': 'Ver Inbox',
                 'status': 'activo'
             }
@@ -134,12 +140,16 @@ class AlertConfigurationViewSetTest(TestCase):
             is_staff=True
         )
 
-        # Crear función RBAC
+        # Crear modulo + funcion RBAC (Function.module es ForeignKey)
+        module_alerts, _ = Module.objects.get_or_create(
+            code='MOD_Alerts',
+            defaults={'name': 'Alertas'}
+        )
         Function.objects.get_or_create(
             permission_django='alerts.configure.rules',
             defaults={
                 'code': 'ALRT_CFG_RUL',
-                'module': 'MOD_Alerts',
+                'module': module_alerts,
                 'name': 'Configurar Reglas',
                 'status': 'activo'
             }
@@ -237,12 +247,16 @@ class AlertSubscriptionViewSetTest(TestCase):
             }
         )
 
-        # Crear función RBAC
+        # Crear modulo + funcion RBAC (Function.module es ForeignKey)
+        module_alerts, _ = Module.objects.get_or_create(
+            code='MOD_Alerts',
+            defaults={'name': 'Alertas'}
+        )
         Function.objects.get_or_create(
             permission_django='alerts.manage.subscriptions',
             defaults={
                 'code': 'ALRT_MNG_SUB',
-                'module': 'MOD_Alerts',
+                'module': module_alerts,
                 'name': 'Gestionar Suscripciones',
                 'status': 'activo'
             }
