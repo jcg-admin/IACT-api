@@ -61,8 +61,12 @@ class UserSettingsSerializer(serializers.Serializer):
 @extend_schema(tags=['Perfil'])
 class ProfileView(APIView):
     """
-    GET /api/users/profile/  — retorna perfil del usuario autenticado.
-    PATCH /api/users/profile/ — actualiza campos de perfil.
+    UC_USR_07 — Editar perfil propio (self-service).
+
+    GET   /api/users/profile/  — retorna perfil del usuario autenticado.
+    PATCH /api/users/profile/  — actualiza first_name/last_name del propio
+    usuario. No requiere RBAC (self-service); el target es siempre
+    request.user. Emite USER_PROFILE_UPDATED en mutaciones efectivas.
     """
     permission_classes = [IsAuthenticated]
     serializer_class   = UserProfileSerializer
@@ -72,13 +76,27 @@ class ProfileView(APIView):
         return Response(serializer.data)
 
     def patch(self, request):
+        from apps.audit.services import AuditLogService
+
         serializer = UserProfileSerializer(request.user, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         user = request.user
+        changed = []
         for field in ('first_name', 'last_name'):
             if field in serializer.validated_data:
-                setattr(user, field, serializer.validated_data[field])
-        user.save(update_fields=['first_name', 'last_name'])
+                new_value = serializer.validated_data[field]
+                if getattr(user, field) != new_value:
+                    setattr(user, field, new_value)
+                    changed.append(field)
+        if changed:
+            user.save(update_fields=changed)
+            AuditLogService.emit(
+                event_type='USER_PROFILE_UPDATED',
+                actor_user_id=user.pk,
+                target_entity_type='User',
+                target_entity_id=str(user.pk),
+                payload={'fields_changed': changed},
+            )
         return Response(UserProfileSerializer(user).data)
 
 

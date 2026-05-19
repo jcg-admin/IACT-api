@@ -107,6 +107,8 @@ class UserViewSet(viewsets.ModelViewSet):
         'destroy':        'USR-003',  # deactivate_users (baja lógica BR-009)
         'activate':       'USR-008',  # reactivate_users
         'deactivate':     'USR-003',  # deactivate_users
+        'block':          'USR-006',  # block_users   (UC_USR_05)
+        'unblock':        'USR-007',  # unblock_users (UC_USR_06)
     }
 
     def get_serializer_class(self):
@@ -152,6 +154,85 @@ class UserViewSet(viewsets.ModelViewSet):
         user = self.get_object()
         user.is_active = False
         user.save()
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def block(self, request, pk=None):
+        """
+        UC_USR_05 — Bloquear (suspender) usuario.
+
+        POST /api/users/{id}/block/
+
+        Transiciona state='BLOCKED' + is_active=False (preserva sesiones
+        para audit; el authentication backend rechaza usuarios bloqueados).
+        Self-block prohibido (paralelo a SELF_ELIMINATION_FORBIDDEN).
+        Idempotente: bloquear un usuario ya BLOCKED retorna 200 sin re-emitir
+        audit (USER_BLOCK_NOOP-like, sin contaminar VALID_EVENT_TYPES).
+        """
+        from apps.audit.services import AuditLogService
+        from django.utils import timezone
+
+        user = self.get_object()
+        if user.pk == request.user.pk:
+            return Response(
+                {'error': 'SELF_BLOCK_FORBIDDEN',
+                 'detail': 'No puede bloquearse a si mismo.'},
+                status=400,
+            )
+
+        if user.state == 'BLOCKED':
+            serializer = self.get_serializer(user)
+            return Response(serializer.data)
+
+        user.state = 'BLOCKED'
+        user.is_active = False
+        user.state_changed_at = timezone.now()
+        user.save(update_fields=['state', 'is_active', 'state_changed_at'])
+
+        AuditLogService.emit(
+            event_type='USER_BLOCKED',
+            actor_user_id=request.user.pk,
+            target_entity_type='User',
+            target_entity_id=str(user.pk),
+            payload={'target_user_id': user.pk},
+        )
+
+        serializer = self.get_serializer(user)
+        return Response(serializer.data)
+
+    @action(detail=True, methods=['post'])
+    def unblock(self, request, pk=None):
+        """
+        UC_USR_06 — Desbloquear usuario.
+
+        POST /api/users/{id}/unblock/
+
+        Solo aplica a usuarios en state='BLOCKED'. Restaura ACTIVE +
+        is_active=True. Idempotente sobre usuarios ya ACTIVE.
+        """
+        from apps.audit.services import AuditLogService
+        from django.utils import timezone
+
+        user = self.get_object()
+
+        if user.state != 'BLOCKED':
+            serializer = self.get_serializer(user)
+            return Response(serializer.data)
+
+        user.state = 'ACTIVE'
+        user.is_active = True
+        user.state_changed_at = timezone.now()
+        user.save(update_fields=['state', 'is_active', 'state_changed_at'])
+
+        AuditLogService.emit(
+            event_type='USER_UNBLOCKED',
+            actor_user_id=request.user.pk,
+            target_entity_type='User',
+            target_entity_id=str(user.pk),
+            payload={'target_user_id': user.pk},
+        )
 
         serializer = self.get_serializer(user)
         return Response(serializer.data)

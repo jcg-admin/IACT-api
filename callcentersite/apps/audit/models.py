@@ -222,6 +222,8 @@ VALID_EVENT_TYPES = frozenset({
     'USER_ELIMINATE_FAILED',
     'USER_MODIFY_FAILED',
     'USER_PASSWORD_RESET',
+    # UC_USR_07 — Editar perfil propio (self-service)
+    'USER_PROFILE_UPDATED',
     # UC_AUTH_03 — alias canónico (corpus usa PASSWORD_RESET, FASE 2 usó USER_PASSWORD_RESET)
     # Ambos se mantienen para backward compat.
     # Unauthorized
