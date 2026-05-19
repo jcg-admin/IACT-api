@@ -131,6 +131,7 @@ class InternalMessageCreateSerializer(serializers.Serializer):
         child=serializers.IntegerField(),
         min_length=1,
         max_length=50,  # CNST-024
+        write_only=True,
         help_text='Lista de IDs de usuarios destinatarios (máximo 50)'
     )
     subject = serializers.CharField(
