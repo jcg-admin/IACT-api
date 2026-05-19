@@ -1,5 +1,11 @@
 -r base.txt
 
+# django-extensions: requerido por settings/development.py
+# (INSTALLED_APPS += ['django_extensions']). manage.py defaultea a
+# development, por lo que cualquier comando de manage.py (incluyendo
+# pytest cuando invoca migrate) necesita esta dependencia disponible.
+django-extensions==3.2.3
+
 pytest==7.4.4
 pytest-django==4.7.0
 pytest-cov==4.1.0
