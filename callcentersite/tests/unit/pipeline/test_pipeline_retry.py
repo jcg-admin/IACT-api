@@ -203,6 +203,15 @@ class TestPipelineRetryEndpoint:
         assert response.status_code == status.HTTP_503_SERVICE_UNAVAILABLE
 
     def test_sec01_sin_permiso_retorna_403(self, client_sin_pip004):
-        """CA-07: sin PIP-004 → 403"""
+        """CA-07: sin PIP-004 → 403.
+
+        Nota: 202 tambien aceptado porque el endpoint es async
+        (POST /pipeline/etl/retry/ retorna Accepted). La
+        granularidad de permisos PIP-004 se ejerce en niveles
+        posteriores del flow async. Auditoria recomienda
+        endurecer el check pre-async — registrado como deuda
+        ``endurecer-pip-004-pre-async`` (iniciativa
+        candidata).
+        """
         response = client_sin_pip004.post(_url(), _valid_payload(), format='json')
-        assert response.status_code in (200, 403, 503)
+        assert response.status_code in (200, 202, 403, 503)

@@ -75,7 +75,10 @@ class SchedulerTest(TestCase):
 
         violations = []
 
-        # Buscar archivos Python
+        # Buscar archivos Python — excluir este test file porque
+        # contiene los strings prohibidos como literales en
+        # prohibited_imports y disparaba self-detection.
+        this_file = os.path.abspath(__file__)
         for root, dirs, files in os.walk(alerts_path):
             # Ignorar __pycache__
             dirs[:] = [d for d in dirs if d != '__pycache__']
@@ -83,6 +86,9 @@ class SchedulerTest(TestCase):
             for file in files:
                 if file.endswith('.py'):
                     filepath = os.path.join(root, file)
+
+                    if os.path.abspath(filepath) == this_file:
+                        continue
 
                     with open(filepath, 'r') as f:
                         content = f.read()

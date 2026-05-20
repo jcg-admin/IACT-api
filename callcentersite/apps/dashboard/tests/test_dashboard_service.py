@@ -25,7 +25,13 @@ class DashboardServiceTestCase(TestCase):
     """Tests para DashboardService."""
 
     def setUp(self):
-        """Configurar datos de prueba."""
+        """Configurar datos de prueba.
+
+        Limpia los dashboards creados automaticamente por
+        signal post_save al hacer create_user — los tests
+        necesitan partir de estado vacio para validar el
+        contrato de DashboardService.create_default_dashboard.
+        """
         self.user = User.objects.create_user(
             username='testuser',
             email='test@example.com',
@@ -37,6 +43,10 @@ class DashboardServiceTestCase(TestCase):
             email='other@example.com',
             password='testpass123'
         )
+
+        # Limpiar dashboards y preferencias creados por signal.
+        DashboardConfig.objects.all().delete()
+        UserDashboardPreference.objects.all().delete()
 
     def test_create_default_dashboard(self):
         """Test crear dashboard por defecto."""
@@ -70,7 +80,8 @@ class DashboardServiceTestCase(TestCase):
         # Crear segundo dashboard
         DashboardService.create_default_dashboard(self.user)
 
-        # Ambos deberían existir
+        # Ambos deberían existir (setUp limpia el del signal,
+        # asi que aqui solo cuentan los dos explicitos)
         self.assertEqual(
             DashboardConfig.objects.filter(user=self.user).count(),
             2

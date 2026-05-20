@@ -31,6 +31,14 @@ BASE_DIR = Path(__file__).resolve().parent.parent.parent
 # Project root (iact-project/)
 PROJECT_ROOT = BASE_DIR.parent
 
+# Garantiza que el directorio de logs exista antes de que LOGGING se
+# configure. El RotatingFileHandler declarado mas abajo apunta a
+# PROJECT_ROOT/'logs'/'django.log' y falla con ValueError("Unable to
+# configure handler 'file'") si el directorio no existe. Crear el
+# directorio aqui evita el error duro en setups frescos sin que el
+# operador deba acordarse de hacer mkdir.
+(PROJECT_ROOT / 'logs').mkdir(exist_ok=True)
+
 
 # ==============================================================================
 # SECURITY

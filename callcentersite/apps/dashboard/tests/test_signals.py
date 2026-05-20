@@ -9,7 +9,7 @@ Pruebas de:
 FASE 7: Tests de signals.
 """
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.contrib.auth import get_user_model
 from django.core.cache import cache
 
@@ -120,8 +120,20 @@ class DashboardSignalsTestCase(TestCase):
         self.assertFalse(dashboard2.is_default)
         self.assertTrue(dashboard3.is_default)
 
+    @override_settings(CACHES={
+        'default': {
+            'BACKEND': 'django.core.cache.backends.locmem.LocMemCache',
+            'LOCATION': 'test-signals-invalidate-cache',
+        }
+    })
     def test_invalidate_cache_on_widget_update(self):
-        """Test que se invalida cache al actualizar widget."""
+        """Test que se invalida cache al actualizar widget.
+
+        testing_local.py usa DummyCache para aislamiento entre
+        tests. Este test EXIGE cache real para validar que el
+        signal lo invalida, asi que override a LocMemCache local
+        al test.
+        """
         user = User.objects.create_user(
             username='testuser',
             email='test@example.com',

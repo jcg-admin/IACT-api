@@ -37,4 +37,10 @@ urlpatterns = [
 
     # Logs (UC_LOG_01..07)
     path('api/logs/', include('apps.logs.urls')),
+
+    # Dashboard (UC_DSH_01..04) — registrado tras detectar 404 != 200 en
+    # apps/dashboard/tests/test_viewsets.py: el router DRF de la app existia
+    # pero config.urls no lo incluia. Iniciativa
+    # resolver-tests-dashboard-iact-api.
+    path('api/dashboard/', include('apps.dashboard.urls')),
 ]

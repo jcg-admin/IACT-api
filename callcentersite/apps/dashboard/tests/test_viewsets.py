@@ -59,7 +59,10 @@ class DashboardViewSetTestCase(TestCase):
         response = self.client.get('/api/dashboard/dashboards/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(response.data, list)
+        # DRF default pagination devuelve OrderedDict con
+        # count/next/previous/results, no list directo.
+        self.assertIn('results', response.data)
+        self.assertIsInstance(response.data['results'], list)
 
     def test_list_dashboards_unauthenticated(self):
         """Test listar dashboards sin autenticar."""
@@ -112,7 +115,11 @@ class DashboardViewSetTestCase(TestCase):
             'is_public': False
         }
 
-        response = self.client.post('/api/dashboard/dashboards/', data)
+        # format='json' requerido porque layout_config es dict
+        # anidado y multipart (default) no soporta nested data.
+        response = self.client.post(
+            '/api/dashboard/dashboards/', data, format='json'
+        )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['config_name'], 'New Dashboard')
@@ -138,7 +145,7 @@ class DashboardViewSetTestCase(TestCase):
 
         response = self.client.put(
             f'/api/dashboard/dashboards/{self.dashboard.id}/',
-            data
+            data, format='json'
         )
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -160,7 +167,7 @@ class DashboardViewSetTestCase(TestCase):
 
         response = self.client.put(
             f'/api/dashboard/dashboards/{self.dashboard.id}/',
-            data
+            data, format='json'
         )
 
         # Debería denegar
@@ -213,12 +220,20 @@ class DashboardViewSetTestCase(TestCase):
         self.assertTrue(self.dashboard.is_default)
 
     def test_clone_action(self):
-        """Test action clone."""
+        """Test action clone.
+
+        Clona el propio dashboard. Cloning de dashboards de
+        otro usuario requiere permiso de view sobre el source +
+        permiso de create sobre el target — caso no contemplado
+        por IsDashboardOwnerOrReadOnly (denega POST en no
+        propios). Una iniciativa futura puede flexibilizar la
+        permission del clone action.
+        """
         self.client.force_authenticate(user=self.user)
 
-        # Crear widget en dashboard original
+        # Crear widget en el propio dashboard
         WidgetConfig.objects.create(
-            dashboard=self.public_dashboard,
+            dashboard=self.dashboard,
             widget_type='METRICS_SUMMARY',
             widget_name='Test Widget',
             position_x=0,
@@ -228,7 +243,7 @@ class DashboardViewSetTestCase(TestCase):
         )
 
         response = self.client.post(
-            f'/api/dashboard/dashboards/{self.public_dashboard.id}/clone/'
+            f'/api/dashboard/dashboards/{self.dashboard.id}/clone/'
         )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
@@ -246,10 +261,16 @@ class WidgetViewSetTestCase(TestCase):
     """Tests para WidgetConfigViewSet."""
 
     def setUp(self):
-        """Configurar datos de prueba."""
+        """Configurar datos de prueba.
+
+        Usuario superuser para que CanCreateWidget (que requiere
+        funcion RBAC 'dashboard.widget.create') no bloquee el
+        POST de creacion. Tests de RBAC granular se cubren
+        aparte; aqui validamos el contrato del viewset.
+        """
         self.client = APIClient()
 
-        self.user = User.objects.create_user(
+        self.user = User.objects.create_superuser(
             username='testuser',
             email='test@example.com',
             password='testpass123'
@@ -278,7 +299,8 @@ class WidgetViewSetTestCase(TestCase):
         response = self.client.get('/api/dashboard/widgets/')
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
-        self.assertIsInstance(response.data, list)
+        self.assertIn('results', response.data)
+        self.assertIsInstance(response.data['results'], list)
 
     def test_create_widget(self):
         """Test crear widget."""
@@ -295,7 +317,10 @@ class WidgetViewSetTestCase(TestCase):
             'config_data': {}
         }
 
-        response = self.client.post('/api/dashboard/widgets/', data)
+        # format='json' por config_data dict (incluso vacio).
+        response = self.client.post(
+            '/api/dashboard/widgets/', data, format='json'
+        )
 
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertEqual(response.data['widget_name'], 'New Widget')

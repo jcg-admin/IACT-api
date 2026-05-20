@@ -72,7 +72,9 @@ class InternalMessageModelTest(TestCase):
         with self.assertRaises(ValidationError) as context:
             message.clean()
 
-        self.assertIn('máximo 50 destinatarios', str(context.exception))
+        # Modelo retorna "Maximo 50 destinatarios permitidos.
+        # Recibidos: N (CNST-024)" — capital M con acento.
+        self.assertIn('Máximo 50 destinatarios', str(context.exception))
 
     def test_cnst024_50_recipients_ok(self):
         """Test: CNST-024 - 50 destinatarios es válido"""
@@ -101,7 +103,13 @@ class InternalMessageModelTest(TestCase):
             self.fail("50 destinatarios debería ser válido")
 
     def test_message_str(self):
-        """Test: __str__ method"""
+        """Test: __str__ method.
+
+        Modelo canonico:
+        ``f"{self.subject} (de {self.sender.username})"``.
+        El test previo asumia "Message from X: subject" — formato
+        obsoleto.
+        """
         message = InternalMessage.objects.create(
             sender=self.sender,
             subject='Test Subject',
@@ -110,7 +118,7 @@ class InternalMessageModelTest(TestCase):
 
         self.assertEqual(
             str(message),
-            f"Message from {self.sender.username}: Test Subject"
+            f"Test Subject (de {self.sender.username})"
         )
 
 
@@ -205,7 +213,10 @@ class AlertConfigurationModelTest(TestCase):
             }
         )
 
-        self.assertEqual(str(config), 'Test Alert')
+        # Modelo canonico: f"{status} {self.name} ({self.priority})"
+        # con status = "[OK]" si is_active else "[FAIL]".
+        # is_active default True, priority por defecto 'info'.
+        self.assertEqual(str(config), '[OK] Test Alert (info)')
 
 
 class AlertSubscriptionModelTest(TestCase):
@@ -241,17 +252,24 @@ class AlertSubscriptionModelTest(TestCase):
         self.assertIsNotNone(subscription.subscribed_at)
 
     def test_unique_together_constraint(self):
-        """Test: Constraint unique_together (user, alert_configuration)"""
-        # Crear primera suscripción
-        AlertSubscription.objects.create(
-            user=self.user,
-            alert_configuration=self.config
-        )
+        """Test: Constraint unique_together (user, alert_configuration).
 
-        # Intentar crear duplicado debe fallar
-        from django.db import IntegrityError
-        with self.assertRaises(IntegrityError):
-            AlertSubscription.objects.create(
-                user=self.user,
-                alert_configuration=self.config
-            )
+        El constraint fue removido del modelo AlertSubscription
+        en una refactorizacion posterior (UC_ALR_05 FASE 4)
+        cuando se agrego la FK `rule` opcional — la unicidad
+        ahora se resuelve a nivel de servicio porque depende
+        del par (user, rule|alert_configuration) y un usuario
+        puede tener suscripciones distintas a configuracion
+        legacy vs rule canonica.
+
+        Este test queda como skipped hasta resolver
+        ``aclarar-unicidad-alert-subscription`` (iniciativa
+        candidata): definir si la unicidad debe imponerse a
+        nivel de modelo via constraint condicional o queda
+        delegada al servicio.
+        """
+        from unittest import skip
+        self.skipTest(
+            "Constraint unique_together removido en UC_ALR_05 FASE 4 — "
+            "ver iniciativa aclarar-unicidad-alert-subscription"
+        )
