@@ -183,13 +183,24 @@ class LogoutView(APIView):
                 # El refresh token ya expiró o fue malformado por el cliente.
                 logger.warning("blacklist_jwt: token inválido para user=%s: %s", user.pk, exc)
 
-        # PASO 8: AuditEvent LOGOUT (CNST-025/026)
+        # PASO 8: AuditEvent LOGOUT (CNST-025/026 + FR-002.02)
+        # FR-002.02 declara campos canonicos: session_id, session_duration,
+        # logout_type ('VOLUNTARY' | 'FORCED' | 'EXPIRED').
+        # Mapeo desde Session.close_reason:
+        #   USER_LOGOUT  -> VOLUNTARY
+        #   ADMIN_FORCE  -> FORCED
+        #   EXPIRED      -> EXPIRED
+        session_duration_seconds = int(
+            (now - session.started_at).total_seconds()
+        ) if session.started_at else None
         AuditLogService.emit(
             event_type='LOGOUT',
             actor_user_id=user.pk,
             payload={
                 'session_id': str(session.session_id),
-                'close_reason': 'USER_LOGOUT',
+                'close_reason': 'USER_LOGOUT',         # legacy compat
+                'logout_type': 'VOLUNTARY',            # FR-002.02 canonico
+                'session_duration': session_duration_seconds,
                 'ip': ip,
                 'refresh_token_invalidated': refresh_invalidated,
             },

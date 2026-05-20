@@ -181,6 +181,10 @@ class SessionCloseView(APIView):
         try:
             with transaction.atomic():
                 session.close(reason='ADMIN_REVOKED')
+                # FR-002.02: campos canonicos session_duration + logout_type
+                session_duration_seconds = int(
+                    (session.closed_at - session.started_at).total_seconds()
+                ) if (session.closed_at and session.started_at) else None
                 AuditLogService.emit(
                     event_type='SESSION_CLOSED',
                     actor_user_id=request.user.pk,
@@ -188,6 +192,8 @@ class SessionCloseView(APIView):
                         'session_id': str(session_id),
                         'target_user_id': session.user_id,
                         'close_reason': 'ADMIN_REVOKED',
+                        'logout_type': 'FORCED',           # FR-002.02
+                        'session_duration': session_duration_seconds,
                     },
                 )
                 # CA-11: InternalMessage al usuario (CNST-001)
