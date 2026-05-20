@@ -59,9 +59,16 @@ class LogExportView(APIView):
 
         job_id = str(uuid.uuid4())
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
+        # FR-062.01: audit canonico de log export queued
         AuditLogService.emit(
             event_type='LOG_EXPORT_QUEUED',
             actor_user_id=request.user.pk,
+            target_entity_type='LogExportJob',
+            target_entity_id=job_id,
+            ip_address=ip_admin,
             payload={
                 'job_id':    job_id,
                 'log_type':  ser.validated_data['log_type'],
