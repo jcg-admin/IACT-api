@@ -92,17 +92,50 @@ class TestLoginSerializer:
         # Desactivar usuario
         self.user.is_active = False
         self.user.save()
-        
+
         data = {
             'username': 'testuser',
             'password': 'TestPass123',
         }
-        
+
         serializer = LoginSerializer(data=data)
-        
+
         # Validación pasa
         assert serializer.is_valid()
         # Falla en service (no testeamos aquí)
+
+    # ------------------------------------------------------------------
+    # FR-001.01 — formato canonico de username (3-50 chars, regex)
+    # ------------------------------------------------------------------
+
+    @pytest.mark.parametrize('username', [
+        'ab',                      # menor a 3 chars
+        '1abc',                    # inicia con numero
+        'user with space',         # contiene espacios
+        'user@host',               # caracter no permitido
+        'user-name',               # guion no permitido
+        'a' * 51,                  # mayor a 50 chars
+        '',                        # vacio
+        '   ',                     # solo espacios
+    ])
+    def test_fr_001_01_username_invalido_rechazado(self, username):
+        """FR-001.01: usernames mal formados son rechazados con mensaje generico."""
+        data = {'username': username, 'password': 'TestPass123'}
+        serializer = LoginSerializer(data=data)
+        assert not serializer.is_valid()
+        assert 'username' in serializer.errors
+
+    @pytest.mark.parametrize('username', [
+        'abc',                     # 3 chars minimo
+        'juan.perez_01',           # caso ejemplo del FR
+        '_underscore_start',       # inicia con underscore (permitido)
+        'a' * 50,                  # exactamente 50 chars
+    ])
+    def test_fr_001_01_username_valido_aceptado(self, username):
+        """FR-001.01: usernames con formato correcto pasan validacion."""
+        data = {'username': username, 'password': 'TestPass123'}
+        serializer = LoginSerializer(data=data)
+        assert serializer.is_valid(), serializer.errors
 
 
 @pytest.mark.django_db

@@ -5,6 +5,8 @@ CLEAN_CODE v3.0.1: Nombres descriptivos.
 SOLID SRP: Cada serializer una responsabilidad.
 """
 
+import re
+
 from rest_framework import serializers
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import get_user_model
@@ -13,22 +15,30 @@ from apps.authentication.constants import PASSWORD_MIN_LENGTH, PASSWORD_MAX_LENG
 
 User = get_user_model()
 
+# FR-001.01: formato canonico de username
+# - Min 3, Max 50 caracteres
+# - Alfanumericos + underscore + punto
+# - No inicia con numero, no espacios
+USERNAME_REGEX = re.compile(r'^[A-Za-z_][A-Za-z0-9_.]{2,49}$')
+
 
 class LoginSerializer(serializers.Serializer):
     """
-    Serializer para login.
+    Serializer para login (UC_AUTH_01).
 
     SOLID SRP: Solo validación de credenciales de login.
+    FR-001.01 conforme: valida formato username antes de credenciales.
 
     Fields:
-    - username: Username (required)
+    - username: Username (required, 3-50 chars, alfanum + _ + .)
     - password: Password (required)
     """
 
     username = serializers.CharField(
         required=True,
-        max_length=150,
-        help_text='Username del usuario'
+        min_length=3,
+        max_length=50,
+        help_text='Username del usuario (3-50 chars, alfanum + _ + .)'
     )
 
     password = serializers.CharField(
@@ -40,14 +50,19 @@ class LoginSerializer(serializers.Serializer):
 
     def validate_username(self, value):
         """
-        Valida username.
+        FR-001.01: valida formato username antes de DB query.
 
-        SOLID SRP: Solo validación de username.
+        Mensajes deliberadamente genericos para no revelar
+        existencia de usuarios (CNST-005 nota seguridad).
         """
         if not value or not value.strip():
-            raise serializers.ValidationError("Username no puede estar vacío")
+            raise serializers.ValidationError("Username invalido")
 
-        return value.strip()
+        value = value.strip()
+        if not USERNAME_REGEX.match(value):
+            raise serializers.ValidationError("Username invalido")
+
+        return value
 
     def validate_password(self, value):
         """
