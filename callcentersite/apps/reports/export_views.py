@@ -136,10 +136,16 @@ class ExportView(APIView):
             status=ExportJob.STATUS_QUEUED,
         )
 
-        # PASO 8: audit QUEUED (CNST-025)
+        # PASO 8: audit QUEUED (CNST-025 + FR-035.02)
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='REPORT_EXPORT_QUEUED',
             actor_user_id=request.user.pk,
+            target_entity_type='ExportJob',
+            target_entity_id=str(job.id),
+            ip_address=ip_admin,
             payload={
                 'job_id': str(job.id),
                 'report_type': job.report_type,
