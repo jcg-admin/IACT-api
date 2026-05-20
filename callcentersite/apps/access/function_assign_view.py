@@ -112,11 +112,18 @@ class FunctionAssignView(APIView):
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
+        # FR-010.03/05: ip del admin para audit canonico
+        ip_admin = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR', '')
+        ) or None
+
         # CA-07: auto-asignación prohibida (P-11)
         if user_id == request.user.pk:
             AuditLogService.emit(
                 event_type='FUNCTIONS_ASSIGN_FAILED',
                 actor_user_id=request.user.pk,
+                ip_address=ip_admin,
                 payload={'reason': 'self_assign', 'target_user_id': user_id},
             )
             return Response({'error': 'SELF_ASSIGN_FORBIDDEN'}, status=400)
@@ -160,13 +167,21 @@ class FunctionAssignView(APIView):
 
         new_codes = [f.code for f in fns]
 
-        # CA-05/06: validar SoD
+        # CA-05/06 + FR-010.02: validar SoD
         violations = DutySeparationValidator.validate(target, new_codes)
         if violations:
             AuditLogService.emit(
                 event_type='FUNCTIONS_ASSIGN_FAILED',
                 actor_user_id=request.user.pk,
-                payload={'target_user_id': user_id, 'reason': 'separation_rule_violation', 'violations': violations},
+                target_entity_type='User',
+                target_entity_id=str(user_id),
+                ip_address=ip_admin,
+                payload={
+                    'target_user_id': user_id,
+                    'reason': 'separation_rule_violation',
+                    'violations': violations,
+                    'attempted_function_codes': new_codes,
+                },
             )
             return Response({
                 'error': 'SEPARATION_RULE_VIOLATION',
@@ -202,20 +217,30 @@ class FunctionAssignView(APIView):
                     assigned.append({'function_id': fn.pk, 'code': fn.code, 'assignment_id': assignment.pk})
 
                 if assigned:
+                    # FR-010.03/05: audit canonico
                     AuditLogService.emit(
                         event_type='FUNCTIONS_ASSIGNED',
                         actor_user_id=request.user.pk,
+                        target_entity_type='User',
+                        target_entity_id=str(user_id),
+                        ip_address=ip_admin,
                         payload={
                             'target_user_id': user_id,
                             'function_ids_assigned': [a['function_id'] for a in assigned],
+                            'function_codes_assigned': [a['code'] for a in assigned],
+                            'reason': data.get('reason', ''),
+                            'expires_at': expires_at.isoformat() if expires_at else None,
                         },
                     )
-                    # CA-14: invalidar cache post-COMMIT
+                    # CA-14 + FR-010.04: invalidar cache post-COMMIT (recalcula efectivos)
                     PermissionCache.invalidate(user_id=user_id)
                 else:
                     AuditLogService.emit(
                         event_type='FUNCTIONS_ASSIGN_NOOP',
                         actor_user_id=request.user.pk,
+                        target_entity_type='User',
+                        target_entity_id=str(user_id),
+                        ip_address=ip_admin,
                         payload={'target_user_id': user_id, 'all_skipped': True},
                     )
 
@@ -258,11 +283,18 @@ class FunctionRevokeView(APIView):
         from django.contrib.auth import get_user_model
         User = get_user_model()
 
+        # FR-011.02/03: ip del admin para audit canonico
+        ip_admin = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR', '')
+        ) or None
+
         # CA-06: auto-revocación prohibida
         if user_id == request.user.pk:
             AuditLogService.emit(
                 event_type='FUNCTIONS_REVOKE_FAILED',
                 actor_user_id=request.user.pk,
+                ip_address=ip_admin,
                 payload={'reason': 'self_revoke', 'target_user_id': user_id},
             )
             return Response({'error': 'SELF_REVOKE_FORBIDDEN'}, status=400)
@@ -300,9 +332,13 @@ class FunctionRevokeView(APIView):
                     revoked.append({'function_id': fn_id, 'assignment_id': assignment.pk})
 
                 if revoked:
+                    # FR-011.02/03: audit canonico + recalc cache
                     AuditLogService.emit(
                         event_type='FUNCTIONS_REVOKED',
                         actor_user_id=request.user.pk,
+                        target_entity_type='User',
+                        target_entity_id=str(user_id),
+                        ip_address=ip_admin,
                         payload={
                             'target_user_id': user_id,
                             'function_ids_revoked': [r['function_id'] for r in revoked],
@@ -314,6 +350,9 @@ class FunctionRevokeView(APIView):
                     AuditLogService.emit(
                         event_type='FUNCTIONS_REVOKE_NOOP',
                         actor_user_id=request.user.pk,
+                        target_entity_type='User',
+                        target_entity_id=str(user_id),
+                        ip_address=ip_admin,
                         payload={'target_user_id': user_id},
                     )
 
