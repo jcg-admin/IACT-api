@@ -82,9 +82,15 @@ class AlertSubscriptionListView(APIView):
             rule=rule,
             state='active',
         )
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='ALERT_SUBSCRIPTION_CREATED',
             actor_user_id=request.user.pk,
+            target_entity_type='AlertSubscription',
+            target_entity_id=str(sub.pk),
+            ip_address=ip_admin,
             payload={'subscription_id': str(sub.pk), 'rule_id': str(rule.pk)},
         )
         return Response({'id': str(sub.pk), 'rule_id': str(sub.rule_id), 'state': sub.state}, status=201)
@@ -109,9 +115,15 @@ class AlertSubscriptionDetailView(APIView):
             return Response({'error': 'NOT_FOUND'}, status=404)
         sub.state = 'cancelled'
         sub.save(update_fields=['state'])
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='ALERT_SUBSCRIPTION_CANCELLED',
             actor_user_id=request.user.pk,
+            target_entity_type='AlertSubscription',
+            target_entity_id=str(sub.pk),
+            ip_address=ip_admin,
             payload={'subscription_id': str(sub.pk)},
         )
         return Response({'id': sub.pk, 'state': sub.state})
