@@ -114,6 +114,10 @@ class ExceptionalGrantView(APIView):
 
         data = ser.validated_data
         try:
+            ip_admin = (
+                request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+                or request.META.get('REMOTE_ADDR', '')
+            ) or None
             result = ExceptionalPermissionService.grant(
                 target_user=target,
                 function_ids=data['function_ids'],
@@ -121,6 +125,7 @@ class ExceptionalGrantView(APIView):
                 justification=data['justification'],
                 ticket_reference=data.get('ticket_reference', ''),
                 invoker=request.user,
+                ip_address=ip_admin,
             )
         except ValueError as e:
             err = str(e)
@@ -226,10 +231,15 @@ class ExceptionalRevokeView(APIView):
             return Response({'error': 'URL_MISMATCH'}, status=400)
 
         try:
+            ip_admin = (
+                request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+                or request.META.get('REMOTE_ADDR', '')
+            ) or None
             result = ExceptionalPermissionService.revoke(
                 permission=perm,
                 invoker=request.user,
                 revoke_reason=ser.validated_data['revoke_reason'],
+                ip_address=ip_admin,
             )
         except ValueError as e:
             err = str(e)

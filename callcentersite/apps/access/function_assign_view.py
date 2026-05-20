@@ -434,6 +434,11 @@ class AGRAssignView(APIView):
 
         agr_id = ser.validated_data['access_group_id']
 
+        ip_admin = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR', '')
+        ) or None
+
         # CA-06: AGR no existe
         try:
             agr = AccessGroup.objects.get(pk=agr_id, is_active=True)
@@ -445,6 +450,9 @@ class AGRAssignView(APIView):
             AuditLogService.emit(
                 event_type='AGR_ASSIGN_NOOP',
                 actor_user_id=request.user.pk,
+                target_entity_type='User',
+                target_entity_id=str(user_id),
+                ip_address=ip_admin,
                 payload={'target_user_id': user_id, 'agr_id': agr_id},
             )
             return Response({'already_assigned': True, 'agr_code': agr.code}, status=200)
@@ -470,9 +478,13 @@ class AGRAssignView(APIView):
                 access_group=agr,
                 granted_by=request.user,
             )
+            # FR-012.03: audit canonico de asignacion AGR
             AuditLogService.emit(
                 event_type='AGR_ASSIGNED',
                 actor_user_id=request.user.pk,
+                target_entity_type='User',
+                target_entity_id=str(user_id),
+                ip_address=ip_admin,
                 payload={
                     'target_user_id': user_id,
                     'agr_id': agr_id,
@@ -518,6 +530,11 @@ class AGRRevokeView(APIView):
         if user_id == request.user.pk:
             return Response({'error': 'SELF_REVOKE_FORBIDDEN'}, status=400)
 
+        ip_admin = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR', '')
+        ) or None
+
         try:
             target = User.objects.get(pk=user_id)
         except User.DoesNotExist:
@@ -540,9 +557,13 @@ class AGRRevokeView(APIView):
 
         with transaction.atomic():
             membership.delete()   # UserAccessGroup no tiene estado — DELETE físico permitido
+            # FR-013.02: audit canonico de revocacion AGR
             AuditLogService.emit(
                 event_type='AGR_REVOKED',
                 actor_user_id=request.user.pk,
+                target_entity_type='User',
+                target_entity_id=str(user_id),
+                ip_address=ip_admin,
                 payload={'target_user_id': user_id, 'agr_id': agr_id},
             )
             PermissionCache.invalidate(user_id=user_id)
@@ -611,17 +632,35 @@ class FunctionGroupFnView(APIView):
         skipped = [f for f in fns if f.pk in already]
         agr.functions.add(*new)
 
-        # CA-01: COMPOSITION_CHANGED audit (F6-GC-T8 fix)
+        ip_admin = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR', '')
+        ) or None
+
+        # CA-01 + FR-017.01: COMPOSITION_CHANGED audit canonico
         AuditLogService.emit(
             event_type='COMPOSITION_CHANGED',
             actor_user_id=request.user.pk,
+            target_entity_type='AccessGroup',
+            target_entity_id=str(agr_id),
+            ip_address=ip_admin,
             payload={
                 'agr_id': agr_id,
+                'agr_code': agr.code,
                 'added': [f.code for f in new],
                 'skipped': [f.code for f in skipped],
                 'change_reason': change_reason,
             },
         )
+
+        # FR-017.02: invalidar cache para todos los usuarios miembros del AGR
+        from apps.access.models import UserAccessGroup
+        from apps.access.services.permission_service import PermissionCache
+        member_ids = UserAccessGroup.objects.filter(
+            access_group=agr,
+        ).values_list('user_id', flat=True)
+        for uid in member_ids:
+            PermissionCache.invalidate(user_id=uid)
 
         return Response({
             'agr_code':          agr.code,
