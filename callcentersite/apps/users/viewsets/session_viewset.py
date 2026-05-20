@@ -1,6 +1,8 @@
 """
 apps/users/viewsets/session_viewset.py
 
+UC_AUTH_05 — Gestionar Sesiones (stub de compatibilidad).
+
 Stub de compatibilidad — SessionHistory fue eliminado.
 
 El historial de sesiones se gestiona via:

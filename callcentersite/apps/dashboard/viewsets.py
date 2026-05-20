@@ -1,6 +1,11 @@
 """
 ViewSets para la app Dashboard.
 
+Implementa:
+- UC_RPT_01 — Ver Dashboard (DashboardConfigViewSet + WidgetConfigViewSet)
+- UC_RPT_09 — Gestionar Filtros Guardados (SavedFilterViewSet)
+- UC_RPT_10 — Guardar Vista (UserDashboardPreferenceViewSet)
+
 ViewSets implementados:
 - DashboardConfigViewSet (con actions: set_default, clone, export, import_config)
 - WidgetConfigViewSet (con actions: data, refresh_cache)

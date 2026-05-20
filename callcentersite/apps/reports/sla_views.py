@@ -1,6 +1,8 @@
 """
 apps/reports/sla_views.py
 
+UC_RPT_03 — Ver Reportes Historicos (SLA por trimestre).
+
 Reporte SLA por trimestre via v_sla_distribucion de MariaDB ivr_legacy.
 
 GET /api/reports/ivr/sla/   RPT-019  view_ivr_reports

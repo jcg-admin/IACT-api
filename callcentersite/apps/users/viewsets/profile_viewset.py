@@ -1,6 +1,8 @@
 """
 apps/users/viewsets/profile_viewset.py
 
+UC_USR_07 — Editar Perfil Propio (redireccion a endpoint canonico).
+
 Redirección a los endpoints canónicos de perfil.
 
 ProfileView y SettingsView implementados en apps/users/profile_view.py.

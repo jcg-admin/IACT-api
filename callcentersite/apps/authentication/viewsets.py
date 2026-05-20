@@ -1,6 +1,11 @@
 """
 ViewSets para authentication.
 
+Implementa:
+- UC_AUTH_01 — Iniciar Sesion (login)
+- UC_AUTH_02 — Cerrar Sesion (logout)
+- UC_AUTH_05 — Gestionar Sesiones (SessionViewSet)
+
 CLEAN_CODE v3.0.1: Nombres descriptivos.
 SOLID SRP: Cada viewset una responsabilidad.
 """
