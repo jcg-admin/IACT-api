@@ -244,3 +244,34 @@ class TestChangePasswordBlocked:
         user.refresh_from_db()
         if hasattr(user, 'state'):
             assert user.state == 'BLOCKED'
+
+
+# ---------------------------------------------------------------------------
+# FR-004.02 — policy validator (MAX_LENGTH = 128)
+# ---------------------------------------------------------------------------
+
+import pytest as _pytest  # noqa: E402
+from apps.authentication.change_password_view import PasswordPolicyValidator  # noqa: E402
+
+
+class _UserStub:
+    def __init__(self, username='someuser'):
+        self.username = username
+
+
+class TestPasswordPolicyValidatorMaxLength:
+    """FR-004.02: max_length=128 declarado en spec."""
+
+    def test_max_length_excedido_rechazado(self):
+        validator = PasswordPolicyValidator()
+        long_password = 'Aa1!' * 33  # 132 chars
+        violations = validator.validate(long_password, _UserStub())
+        assert 'max_length' in violations
+
+    def test_exactamente_128_aceptado(self):
+        validator = PasswordPolicyValidator()
+        # 128 chars exactos: 'Aa1!' * 31 = 124 + 'Bb2$' = 128
+        password = 'Aa1!' * 31 + 'Bb2$'
+        assert len(password) == 128
+        violations = validator.validate(password, _UserStub())
+        assert 'max_length' not in violations

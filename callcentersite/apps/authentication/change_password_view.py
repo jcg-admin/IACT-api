@@ -75,14 +75,31 @@ class ChangePasswordRequestSerializer(serializers.Serializer):
 class PasswordPolicyValidator:
     """
     Valida la política de complejidad de contraseñas.
-    Fuente: uc-auth-04/implementacion-tecnica.rst § 11.5
+
+    FR-004.02 base + endurecimiento del proyecto:
+    - MIN_LENGTH del FR = 8, del proyecto = 12 (mas estricto, OK).
+    - MAX_LENGTH del FR = 128 (validado aqui).
+    - Mayuscula + minuscula + digito + simbolo (FR-004.02).
+    - No contener username (FR-004.02).
+    - No coincidir con ultimos 5 (verificado por PASO 9 en view).
+
+    Deuda registrada (no implementado): chequeo contra lista de
+    10000 passwords comunes. FR-004.02 lo declara — requiere fichero
+    estatico de wordlist + comparacion. Pendiente como iniciativa
+    'implementar-blocklist-passwords-comunes'.
+
+    Fuente: uc-auth-04/implementacion-tecnica.rst § 11.5 +
+            FR-004-02-validar-complejidad-nuevo-password.
     """
-    MIN_LENGTH = 12
+    MIN_LENGTH = 12  # proyecto mas estricto que FR (8); valido por SR-001.
+    MAX_LENGTH = 128  # FR-004.02
 
     def validate(self, password: str, user) -> list[str]:
         violations = []
         if len(password) < self.MIN_LENGTH:
             violations.append('min_length')
+        if len(password) > self.MAX_LENGTH:
+            violations.append('max_length')
         if not re.search(r'[A-Z]', password):
             violations.append('missing_uppercase')
         if not re.search(r'[a-z]', password):
