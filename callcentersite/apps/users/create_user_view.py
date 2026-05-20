@@ -106,8 +106,13 @@ class PasswordGenerator:
 # Serializers
 # ---------------------------------------------------------------------------
 class CreateUserRequestSerializer(serializers.Serializer):
-    first_name      = serializers.CharField(max_length=50)
-    last_name       = serializers.CharField(max_length=50)
+    """
+    FR-006.01: campos obligatorios + min length.
+    - first_name / last_name: 2-50 chars cada uno (FR pide 2-100 total).
+    - email: EmailField (FR-006.01 + FR-006.04).
+    """
+    first_name      = serializers.CharField(min_length=2, max_length=50)
+    last_name       = serializers.CharField(min_length=2, max_length=50)
     email           = serializers.EmailField()
     access_group_id = serializers.IntegerField(required=False, allow_null=True)
 
@@ -234,9 +239,17 @@ class CreateUserView(APIView):
         )
 
         # PASO 13: AuditEvent (CNST-025/026 — sin contraseña en payload)
+        # FR-006.05: incluir ip_address del admin que ejecuto.
+        ip_admin = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR', '')
+        ) or None
         AuditLogService.emit(
             event_type='USER_CREATED',
             actor_user_id=request.user.pk,
+            target_entity_type='User',
+            target_entity_id=str(user.pk),
+            ip_address=ip_admin,
             payload={
                 'target_user_id': user.pk,
                 'access_group_id': agr_id,

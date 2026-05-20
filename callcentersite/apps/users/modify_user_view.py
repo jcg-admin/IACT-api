@@ -29,13 +29,32 @@ VALID_STATE_TRANSITIONS = {
 
 
 class ModifyUserSerializer(serializers.Serializer):
-    first_name = serializers.CharField(max_length=50, required=False)
-    last_name  = serializers.CharField(max_length=50, required=False)
-    email      = serializers.EmailField(required=False)
-    state      = serializers.ChoiceField(
+    """
+    FR-007.02: validacion selectiva de campos modificados.
+    - first_name/last_name: min=2, max=50.
+    - email: EmailField.
+    - state: ChoiceField + motivo obligatorio cuando state=INACTIVE.
+    """
+    first_name      = serializers.CharField(min_length=2, max_length=50, required=False)
+    last_name       = serializers.CharField(min_length=2, max_length=50, required=False)
+    email           = serializers.EmailField(required=False)
+    state           = serializers.ChoiceField(
         choices=['ACTIVE', 'INACTIVE', 'BLOCKED', 'ELIMINATED'],
         required=False,
     )
+    deactivation_reason = serializers.CharField(
+        max_length=255, required=False, allow_blank=False,
+        help_text='Motivo (obligatorio si state=INACTIVE; FR-007.02/03).'
+    )
+
+    def validate(self, attrs):
+        if attrs.get('state') == 'INACTIVE' and not attrs.get('deactivation_reason'):
+            raise serializers.ValidationError({
+                'deactivation_reason': (
+                    'Motivo obligatorio al pasar state=INACTIVE (FR-007.02).'
+                )
+            })
+        return attrs
 
 
 @extend_schema(
@@ -98,14 +117,25 @@ class ModifyUserView(APIView):
                 return Response({'error': 'EMAIL_EXISTS'}, status=409)
 
         prior_state   = target.state
-        fields_changed = list(data.keys())
+        fields_changed = [k for k in data.keys() if k != 'deactivation_reason']
+
+        # FR-007.04: capturar valores anteriores ANTES de mutar.
+        prior_values = {f: getattr(target, f, None) for f in fields_changed}
+        new_values   = {f: data[f] for f in fields_changed}
+
+        # FR-006.05/007.04: ip del admin para audit
+        ip_admin = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR', '')
+        ) or None
 
         try:
             with transaction.atomic():
-                # Aplicar campos modificados
+                # Aplicar campos modificados (excluye deactivation_reason — no es atributo del modelo)
                 for field, val in data.items():
-                    if field != 'state':
-                        setattr(target, field, val)
+                    if field in ('state', 'deactivation_reason'):
+                        continue
+                    setattr(target, field, val)
 
                 if new_state:
                     target.state = new_state
@@ -125,14 +155,21 @@ class ModifyUserView(APIView):
                     if new_state else None
                 )
 
+                # FR-007.04: audit con prior/new values + ip
                 AuditLogService.emit(
                     event_type='USER_MODIFIED',
                     actor_user_id=request.user.pk,
+                    target_entity_type='User',
+                    target_entity_id=str(user_id),
+                    ip_address=ip_admin,
                     payload={
                         'target_user_id': user_id,
                         'fields_changed': fields_changed,
+                        'prior_values': prior_values,
+                        'new_values': new_values,
                         'state_transition': state_transition,
                         'sessions_closed_count': sessions_closed,
+                        'deactivation_reason': data.get('deactivation_reason'),
                     },
                 )
 
@@ -155,6 +192,28 @@ class ModifyUserView(APIView):
         for s in sessions:
             s.close(reason=close_reason)
         return len(sessions)
+
+    @staticmethod
+    def _is_last_system_admin(target_user) -> bool:
+        """
+        FR-008.01: protege contra eliminacion del ultimo usuario con
+        AccessGroup code='AGR-010' (system_admin_group).
+
+        Retorna True solo si target_user es el unico miembro ACTIVE
+        del grupo. Si el target no pertenece al grupo, retorna False.
+        """
+        from apps.access.models import AccessGroup, UserAccessGroup
+        try:
+            agr = AccessGroup.objects.get(code='AGR-010')
+        except AccessGroup.DoesNotExist:
+            return False  # sin AGR, no aplica la proteccion
+        members = UserAccessGroup.objects.filter(
+            access_group=agr, user__state='ACTIVE',
+        ).exclude(user__state='ELIMINATED')
+        target_is_member = members.filter(user=target_user).exists()
+        if not target_is_member:
+            return False
+        return members.count() <= 1
 
 
 @extend_schema(
@@ -180,11 +239,23 @@ class EliminateUserView(APIView):
         from apps.access.models import UserFunctionAssignment
         User = get_user_model()
 
-        # CA-03: auto-eliminación prohibida
+        # FR-008.02: motivo de baja (opcional en body/query; persistido en audit).
+        deactivation_reason = (
+            (request.data.get('reason') if hasattr(request, 'data') else None)
+            or request.query_params.get('reason')
+            or ''
+        )
+        ip_admin = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR', '')
+        ) or None
+
+        # CA-03 / FR-008.01: auto-eliminación prohibida
         if user_id == request.user.pk:
             AuditLogService.emit(
                 event_type='USER_ELIMINATE_FAILED',
                 actor_user_id=request.user.pk,
+                ip_address=ip_admin,
                 payload={'reason': 'self_elimination', 'target_user_id': user_id},
             )
             return Response({'error': 'SELF_ELIMINATION_FORBIDDEN'}, status=400)
@@ -193,6 +264,25 @@ class EliminateUserView(APIView):
             target = User.objects.get(pk=user_id)
         except User.DoesNotExist:
             return Response({'error': 'USER_NOT_FOUND'}, status=404)
+
+        # FR-008.01: no eliminar al ultimo admin de system_admin_group (AGR-010).
+        if ModifyUserView._is_last_system_admin(target):
+            AuditLogService.emit(
+                event_type='USER_ELIMINATE_FAILED',
+                actor_user_id=request.user.pk,
+                ip_address=ip_admin,
+                payload={
+                    'reason': 'last_system_admin',
+                    'target_user_id': user_id,
+                },
+            )
+            return Response({
+                'error': 'LAST_SYSTEM_ADMIN',
+                'message': (
+                    'No se puede eliminar al ultimo usuario con grupo '
+                    'system_admin_group (FR-008.01 / AGR-010).'
+                ),
+            }, status=400)
 
         # CA-06: ya ELIMINATED (idempotente)
         if target.state == 'ELIMINATED':
@@ -234,10 +324,14 @@ class EliminateUserView(APIView):
                 AuditLogService.emit(
                     event_type='USER_ELIMINATED',
                     actor_user_id=request.user.pk,
+                    target_entity_type='User',
+                    target_entity_id=str(user_id),
+                    ip_address=ip_admin,
                     payload={
                         'target_user_id':         user_id,
                         'sessions_closed_count':  len(sessions),
                         'assignments_revoked_count': len(assignments),
+                        'deactivation_reason':    deactivation_reason or None,
                     },
                 )
 

@@ -56,9 +56,21 @@ class UserViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend, SearchFilter, OrderingFilter]
     filterset_class = UserFilter
     search_fields = ['username', 'email', 'first_name', 'last_name']
-    ordering_fields = ['username', 'email', 'date_joined']
+    # FR-009.03: ordenable por username, nombre, estado, ultimo acceso, fecha creacion.
+    ordering_fields = [
+        'username', 'email', 'first_name', 'last_name',
+        'state', 'last_login', 'date_joined',
+    ]
     ordering = ['-date_joined']
-    _VALID_ORDERING = frozenset({'username', 'email', 'date_joined', '-username', '-email', '-date_joined'})
+    _VALID_ORDERING = frozenset({
+        'username', '-username',
+        'email', '-email',
+        'first_name', '-first_name',
+        'last_name', '-last_name',
+        'state', '-state',
+        'last_login', '-last_login',
+        'date_joined', '-date_joined',
+    })
 
     # F1-H-006: function_map con códigos canónicos v5.4.0 (antes: namespaces Django legacy)
     # list_users=USR-004, view_users=USR-009, create_users=USR-001, update_users=USR-002
