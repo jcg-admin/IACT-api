@@ -89,10 +89,15 @@ class AuditEventListView(APIView):
             for a in qs[:page_size]
         ]
 
-        # CA-17: meta-audit AUDIT_LOG_QUERIED
+        # CA-17 + FR-055.01: meta-audit canonico
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='AUDIT_LOG_QUERIED',
             actor_user_id=request.user.pk,
+            target_entity_type='AuditLog',
+            ip_address=ip_admin,
             payload={
                 'filters': {'actor_id': actor_id, 'event_type': event_type},
                 'page_size': page_size,
@@ -119,9 +124,15 @@ class AuditEventDetailView(APIView):
         except AuditLog.DoesNotExist:
             return Response({'error': 'NOT_FOUND'}, status=404)
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='AUDIT_LOG_DETAIL_VIEWED',
             actor_user_id=request.user.pk,
+            target_entity_type='AuditLog',
+            target_entity_id=str(event_id),
+            ip_address=ip_admin,
             payload={'viewed_event_id': str(event_id)},
         )
 
@@ -152,9 +163,14 @@ class AuditEventAggregateView(APIView):
         qs = AuditLog.objects.values('action').annotate(count=Count('id')).order_by('-count')
         buckets = [{'event_type': row['action'], 'count': row['count']} for row in qs[:100]]
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='AUDIT_LOG_AGGREGATE_QUERIED',
             actor_user_id=request.user.pk,
+            target_entity_type='AuditLog',
+            ip_address=ip_admin,
             payload={'group_by': group_by, 'buckets_returned': len(buckets)},
         )
 
@@ -193,9 +209,16 @@ class AuditEventExportView(APIView):
                 return Response({'error': 'VALIDATION_ERROR', 'detail': 'Fechas inválidas.'}, status=400)
 
         job_id = str(_uuid.uuid4())
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
+        # FR-057.01: audit canonico de export queued
         AuditLogService.emit(
             event_type='AUDIT_EXPORT_QUEUED',
             actor_user_id=request.user.pk,
+            target_entity_type='AuditExportJob',
+            target_entity_id=str(job_id),
+            ip_address=ip_admin,
             payload={'job_id': job_id, 'format': fmt,
                      'date_from': date_from, 'date_to': date_to},
         )
@@ -254,9 +277,15 @@ class AuditSearchView(APIView):
             for a in qs[:1000]
         ]
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
+        # FR-056.01: audit canonico de search
         AuditLogService.emit(
             event_type='AUDIT_SEARCH_QUERIED',
             actor_user_id=request.user.pk,
+            target_entity_type='AuditLog',
+            ip_address=ip_admin,
             payload={'q': q[:100], 'results_count': len(results)},
         )
 
@@ -374,10 +403,15 @@ class GeneralAuditListView(APIView):
 
         results = list(qs[:page_size])
 
-        # CA-06: meta-audit GENERAL_AUDIT_QUERIED
+        # CA-06 + FR-055.01: meta-audit canonico
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='GENERAL_AUDIT_QUERIED',
             actor_user_id=request.user.pk,
+            target_entity_type='AuditLog',
+            ip_address=ip_admin,
             payload={
                 'filters': {
                     'module': module,

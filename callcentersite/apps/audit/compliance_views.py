@@ -71,10 +71,20 @@ class ComplianceReportView(APIView):
 
         signature = HMACSigner.sign(report_payload)
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
+        # FR-058.01: audit canonico de compliance report
         AuditLogService.emit(
             event_type='COMPLIANCE_REPORT_REQUESTED',
             actor_user_id=request.user.pk,
-            payload={'template': data['template']},
+            target_entity_type='ComplianceReport',
+            target_entity_id=str(data['template']),
+            ip_address=ip_admin,
+            payload={
+                'template': data['template'],
+                'signature_prefix': signature[:16] if signature else None,
+            },
         )
 
         return Response({
