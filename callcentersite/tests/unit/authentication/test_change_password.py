@@ -275,3 +275,43 @@ class TestPasswordPolicyValidatorMaxLength:
         assert len(password) == 128
         violations = validator.validate(password, _UserStub())
         assert 'max_length' not in violations
+
+
+# ---------------------------------------------------------------------------
+# FR-004.02 — blocklist de passwords comunes
+# ---------------------------------------------------------------------------
+
+from apps.authentication.change_password_view import _COMMON_PASSWORDS  # noqa: E402
+
+
+class TestPasswordCommonBlocklist:
+    """FR-004.02: blocklist case-insensitive."""
+
+    def test_blocklist_no_vacia(self):
+        """La blocklist se carga desde el fichero data/common_passwords.txt."""
+        assert len(_COMMON_PASSWORDS) > 100  # top-1000 derivado
+
+    @_pytest.mark.parametrize('weak', [
+        'password',          # iconico
+        'Password',          # mismatch case en blocklist (test case-insensitive)
+        '123456',            # numerico clasico
+        'qwerty',            # teclado clasico
+        'P@ssw0rd',          # leetspeak comun
+        'Welcome2026',       # password contextual del proyecto
+        'iact123',           # password del producto
+    ])
+    def test_password_comun_rechazado(self, weak):
+        """Passwords del top-1000 retornan violation 'common_password'."""
+        validator = PasswordPolicyValidator()
+        violations = validator.validate(weak, _UserStub(username='nadie'))
+        assert 'common_password' in violations
+
+    def test_password_no_comun_aceptado(self):
+        """Password unico (no en blocklist) no genera common_password."""
+        validator = PasswordPolicyValidator()
+        # password unico + cumple todas las demas reglas
+        violations = validator.validate(
+            'Xy7$kQ9pL!mN3r2v',  # 16 chars, no listada
+            _UserStub(username='nadie'),
+        )
+        assert 'common_password' not in violations

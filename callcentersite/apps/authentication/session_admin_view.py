@@ -87,8 +87,9 @@ class SessionListView(APIView):
         from apps.audit.services import AuditLogService
 
         qs = Session.objects.filter(state='ACTIVE').select_related('user')
-        user_id_filter = request.query_params.get('user_id')
 
+        # FR-005.01: filtros (user_id, ip_address, started_after, started_before, search)
+        user_id_filter = request.query_params.get('user_id')
         if user_id_filter:
             try:
                 uid = int(user_id_filter)
@@ -105,23 +106,74 @@ class SessionListView(APIView):
                     status=400,
                 )
 
+        ip_filter = request.query_params.get('ip')
+        if ip_filter:
+            qs = qs.filter(ip_address=ip_filter)
+
+        started_after = request.query_params.get('started_after')
+        if started_after:
+            qs = qs.filter(started_at__gte=started_after)
+
+        started_before = request.query_params.get('started_before')
+        if started_before:
+            qs = qs.filter(started_at__lte=started_before)
+
+        search = request.query_params.get('search')
+        if search:
+            from django.db.models import Q
+            qs = qs.filter(
+                Q(user__username__icontains=search)
+                | Q(user__first_name__icontains=search)
+                | Q(user__last_name__icontains=search)
+            )
+
+        # FR-005.01: ordenamiento (started_at | last_activity_at | username)
+        order_by = request.query_params.get('ordering', '-started_at')
+        allowed_orderings = {
+            'started_at', '-started_at',
+            'last_activity_at', '-last_activity_at',
+            'user__username', '-user__username',
+        }
+        if order_by in allowed_orderings:
+            qs = qs.order_by(order_by)
+        else:
+            qs = qs.order_by('-started_at')
+
         page_size = min(int(request.query_params.get('page_size', 50)), 200)
         page      = max(int(request.query_params.get('page', 1)), 1)
         offset    = (page - 1) * page_size
         total     = qs.count()
         sessions  = qs[offset:offset + page_size]
 
+        from django.utils import timezone as _tz
+        now_ = _tz.now()
         results = []
         for s in sessions:
+            # FR-005.01: campos canonicos del listado
+            full_name = (
+                f"{s.user.first_name} {s.user.last_name}".strip()
+                or s.user.username
+            )
+            user_agent = (
+                (s.client_info or {}).get('user_agent')
+                if isinstance(s.client_info, dict) else None
+            )
+            duration_seconds = int(
+                (now_ - s.started_at).total_seconds()
+            ) if s.started_at else None
             results.append({
-                'session_id':  str(s.session_id),
-                'user_id':     s.user_id,
-                'username':    s.user.username,
-                'state':       s.state,
-                'started_at':  s.started_at.isoformat(),
-                'expires_at':  s.expires_at.isoformat(),
-                'ip_address':  s.ip_address,
-                'client_info': s.client_info,
+                'session_id':       str(s.session_id),
+                'user_id':          s.user_id,
+                'username':         s.user.username,
+                'full_name':        full_name,            # FR-005.01
+                'state':            s.state,
+                'started_at':       s.started_at.isoformat() if s.started_at else None,
+                'last_activity_at': s.last_activity_at.isoformat() if s.last_activity_at else None,  # FR-005.01
+                'duration_seconds': duration_seconds,     # FR-005.01
+                'expires_at':       s.expires_at.isoformat() if s.expires_at else None,
+                'ip_address':       s.ip_address,
+                'user_agent':       user_agent,           # FR-005.01 (extraido de client_info)
+                'client_info':      s.client_info,
             })
 
         return Response({

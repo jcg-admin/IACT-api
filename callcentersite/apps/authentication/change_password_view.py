@@ -72,21 +72,44 @@ class ChangePasswordRequestSerializer(serializers.Serializer):
 # ---------------------------------------------------------------------------
 # PasswordPolicyValidator — PASO 8
 # ---------------------------------------------------------------------------
+def _load_common_passwords() -> frozenset[str]:
+    """
+    Carga lista de passwords comunes (blocklist) desde fichero estatico.
+
+    FR-004.02: "lista de 10000 mas comunes". Implementacion practica:
+    top-1000 (derivado de listas publicas) carga al modulo, se compara
+    case-insensitive. Permite re-cargar agregando lineas al archivo
+    sin re-deploy de codigo.
+
+    Lazy + cached: solo se lee una vez por proceso.
+    """
+    from pathlib import Path
+    path = Path(__file__).resolve().parent / 'data' / 'common_passwords.txt'
+    try:
+        with path.open('r', encoding='utf-8') as fh:
+            return frozenset(
+                line.strip().lower()
+                for line in fh
+                if line.strip() and not line.startswith('#')
+            )
+    except FileNotFoundError:
+        return frozenset()
+
+
+_COMMON_PASSWORDS = _load_common_passwords()
+
+
 class PasswordPolicyValidator:
     """
     Valida la política de complejidad de contraseñas.
 
-    FR-004.02 base + endurecimiento del proyecto:
+    FR-004.02 + endurecimiento del proyecto:
     - MIN_LENGTH del FR = 8, del proyecto = 12 (mas estricto, OK).
-    - MAX_LENGTH del FR = 128 (validado aqui).
+    - MAX_LENGTH del FR = 128.
     - Mayuscula + minuscula + digito + simbolo (FR-004.02).
     - No contener username (FR-004.02).
+    - No estar en la lista de passwords comunes (FR-004.02).
     - No coincidir con ultimos 5 (verificado por PASO 9 en view).
-
-    Deuda registrada (no implementado): chequeo contra lista de
-    10000 passwords comunes. FR-004.02 lo declara — requiere fichero
-    estatico de wordlist + comparacion. Pendiente como iniciativa
-    'implementar-blocklist-passwords-comunes'.
 
     Fuente: uc-auth-04/implementacion-tecnica.rst § 11.5 +
             FR-004-02-validar-complejidad-nuevo-password.
@@ -110,6 +133,9 @@ class PasswordPolicyValidator:
             violations.append('missing_symbol')
         if user.username and user.username.lower() in password.lower():
             violations.append('contains_username')
+        # FR-004.02: blocklist de passwords comunes (case-insensitive)
+        if password.lower() in _COMMON_PASSWORDS:
+            violations.append('common_password')
         return violations
 
 
