@@ -99,9 +99,15 @@ class AgentDetailView(APIView):
     required_function  = 'RPT-015'   # view_agent_detail — función adicional (CA-06)
 
     def get(self, request, agent_id):
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='AGENT_DETAIL_VIEWED',
             actor_user_id=request.user.pk,
+            target_entity_type='Agent',
+            target_entity_id=str(agent_id),
+            ip_address=ip_admin,
             payload={'agent_id': agent_id},
         )
         try:

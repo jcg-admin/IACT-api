@@ -64,9 +64,15 @@ class ShareCreateView(APIView):
 
         share_id = str(uuid.uuid4())
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='REPORT_SHARE_CREATED',
             actor_user_id=request.user.pk,
+            target_entity_type='ReportShare',
+            target_entity_id=share_id,
+            ip_address=ip_admin,
             payload={
                 'share_id':    share_id,
                 'target_type': data['target_type'],
@@ -98,9 +104,15 @@ class ShareDetailView(APIView):
     required_function  = 'RPT-011'
 
     def delete(self, request, share_id):
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='REPORT_SHARE_REVOKED',
             actor_user_id=request.user.pk,
+            target_entity_type='ReportShare',
+            target_entity_id=str(share_id),
+            ip_address=ip_admin,
             payload={'share_id': str(share_id)},
         )
         return Response({'share_id': str(share_id), 'status': 'revoked'})

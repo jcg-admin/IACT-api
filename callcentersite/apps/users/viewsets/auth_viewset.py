@@ -1,10 +1,15 @@
 """
 ViewSet para autenticación y gestión de password.
 
+Implementa:
+- UC_AUTH_04 — Cambiar Password (change_password)
+- UC_AUTH_03 — Recuperar Password (password_reset / confirm)
+
 CLEAN_CODE v3.0.1: ViewSet con responsabilidad única.
 SOLID SRP: Solo gestión de password.
 
-NOTA: Login/Logout están en apps/authentication (no aquí).
+NOTA: UC_AUTH_01 (login) / UC_AUTH_02 (logout) viven en
+apps/authentication (no aquí).
 
 FASE 2 PARTE 5: ViewSets de apps/users/
 """

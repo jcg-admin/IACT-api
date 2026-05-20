@@ -1,3 +1,12 @@
+"""
+apps/authentication/views.py
+
+Vistas funcionales de autenticacion.
+
+Implementa:
+- UC_AUTH_01 — Iniciar Sesion (CustomTokenObtainPairView)
+- UC_AUTH_03 — Recuperar Password (password_reset_request)
+"""
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny

@@ -72,9 +72,15 @@ class AccessAuditListView(APIView):
 
         # CA-03: audit selectivo — solo si se filtra por target_user_id
         if target_uid:
+            xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+            ip_admin = (xff.split(',')[0].strip() if xff
+                        else request.META.get('REMOTE_ADDR', '')) or None
             AuditLogService.emit(
                 event_type='ACCESS_AUDIT_VIEWED',
                 actor_user_id=request.user.pk,
+                target_entity_type='User',
+                target_entity_id=str(target_uid),
+                ip_address=ip_admin,
                 payload={'target_user_id': int(target_uid), 'results_count': len(results)},
             )
 
@@ -103,9 +109,15 @@ class AccessAuditDetailView(APIView):
         if not AccessScopeFilter.is_access_event(audit.action):
             return Response({'error': 'NOT_FOUND'}, status=404)
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='ACCESS_AUDIT_VIEWED',
             actor_user_id=request.user.pk,
+            target_entity_type='AuditLog',
+            target_entity_id=str(event_id),
+            ip_address=ip_admin,
             payload={'viewed_event_id': str(event_id)},
         )
 

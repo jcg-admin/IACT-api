@@ -100,6 +100,8 @@ urlpatterns = [
     # Perfil y configuraciones del usuario autenticado
     # ────────────────────────────────────────────────────────────────────
     path('profile/', ProfileView.as_view(), name='user-profile'),
+    # UC_USR_07 alias: la UI llama /api/users/me/profile/ (gateway canonico)
+    path('me/profile/', ProfileView.as_view(), name='user-me-profile'),
     path('profile/avatar/', AvatarUploadView.as_view(), name='user-avatar'),
     path('settings/', SettingsView.as_view(), name='user-settings'),
 

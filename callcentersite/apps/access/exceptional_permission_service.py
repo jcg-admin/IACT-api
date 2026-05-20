@@ -70,7 +70,8 @@ class ExceptionalPermissionService:
     @classmethod
     def grant(cls, target_user, function_ids: list, expires_at,
               justification: str, ticket_reference: str,
-              invoker, require_ticket: bool = False) -> dict:
+              invoker, require_ticket: bool = False,
+              ip_address: str | None = None) -> dict:
         from apps.access.models import ExceptionalPermission, Function
         from apps.audit.services import AuditLogService
 
@@ -121,9 +122,13 @@ class ExceptionalPermissionService:
             cls._notify(target_user, functions, expires_at, justification)
 
             # CA-12: audit con payload reforzado (sin email/full_name — CNST-026)
+            # FR-014.02: audit canonico de concesion excepcional
             AuditLogService.emit(
                 event_type='EXCEPTIONAL_PERMISSION_GRANTED',
                 actor_user_id=invoker.pk,
+                target_entity_type='User',
+                target_entity_id=str(target_user.pk),
+                ip_address=ip_address,
                 payload={
                     'target_user_id':   target_user.pk,
                     'function_ids':     function_ids,
@@ -146,7 +151,8 @@ class ExceptionalPermissionService:
         }
 
     @classmethod
-    def revoke(cls, permission, invoker, revoke_reason: str) -> dict:
+    def revoke(cls, permission, invoker, revoke_reason: str,
+               ip_address: str | None = None) -> dict:
         from apps.access.models import ExceptionalPermission
         from apps.audit.services import AuditLogService
 
@@ -188,9 +194,13 @@ class ExceptionalPermissionService:
             cls._notify_revoke(permission.user, permission.function, revoke_reason)
 
             # CA-14: audit high-priority
+            # FR-015.02: audit canonico de revocacion excepcional
             AuditLogService.emit(
                 event_type='EXCEPTIONAL_PERMISSION_REVOKED',
                 actor_user_id=invoker.pk,
+                target_entity_type='User',
+                target_entity_id=str(permission.user_id),
+                ip_address=ip_address,
                 payload={
                     'target_user_id':     permission.user_id,
                     'permission_id':      permission.pk,

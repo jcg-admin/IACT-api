@@ -1,4 +1,11 @@
 # apps/alerts/views.py
+#
+# Implementa:
+# - UC_ALR_01 — Configurar Umbrales Alertas (AlertConfigurationViewSet)
+# - UC_ALR_02 — Ver Alertas Activas (legacy InternalMessage inbox)
+# - UC_ALR_03 — Reconocer Alerta
+# - UC_ALR_04 — Ver Historial Alertas
+# - UC_ALR_05 — Gestionar Suscripciones (AlertSubscriptionViewSet)
 
 from rest_framework import viewsets, status
 from rest_framework.decorators import action

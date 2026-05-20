@@ -177,10 +177,12 @@ class ExportWorker:
                 'row_count', 'byte_count', 'completed_at',
             ])
 
-            # PASO W10: audit COMPLETED
+            # PASO W10: audit COMPLETED (target_entity canonico)
             AuditLogService.emit(
                 event_type='REPORT_EXPORT_COMPLETED',
                 actor_user_id=job.actor_id,
+                target_entity_type='ExportJob',
+                target_entity_id=str(job.id),
                 payload={
                     'job_id': str(job.id), 'format': job.format,
                     'row_count': row_count, 'byte_count': byte_count,
@@ -236,6 +238,8 @@ class ExportWorker:
         AuditLogService.emit(
             event_type='REPORT_EXPORT_FAILED',
             actor_user_id=job.actor_id,
+            target_entity_type='ExportJob',
+            target_entity_id=str(job.id),
             payload={'job_id': str(job.id), 'error_code': error_code},
         )
 

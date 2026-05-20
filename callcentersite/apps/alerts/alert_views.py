@@ -137,10 +137,16 @@ class AlertRuleListCreateView(APIView):
                 actions=data.get('actions', []),
                 cooldown_minutes=data.get('cooldown_minutes', 60),
             )
-            # UC_ALR_01 CA-10: audit
+            # UC_ALR_01 CA-10 + FR-050.01: audit canonico
+            xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+            ip_admin = (xff.split(',')[0].strip() if xff
+                        else request.META.get('REMOTE_ADDR', '')) or None
             AuditLogService.emit(
                 event_type='ALERT_RULE_CREATED',
                 actor_user_id=request.user.pk,
+                target_entity_type='AlertRule',
+                target_entity_id=str(rule.id),
+                ip_address=ip_admin,
                 payload={'rule_id': str(rule.id), 'name': rule.name, 'metric': rule.metric},
             )
 
@@ -204,9 +210,15 @@ class AlertRuleDetailView(APIView):
                 rule=rule, version=rule.version - 1,
                 snapshot=snapshot, changed_by=request.user,
             )
+            xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+            ip_admin = (xff.split(',')[0].strip() if xff
+                        else request.META.get('REMOTE_ADDR', '')) or None
             AuditLogService.emit(
                 event_type='ALERT_RULE_UPDATED',
                 actor_user_id=request.user.pk,
+                target_entity_type='AlertRule',
+                target_entity_id=str(rule.id),
+                ip_address=ip_admin,
                 payload={'rule_id': str(rule.id), 'version': rule.version,
                          'fields': list(data.keys())},
             )
@@ -221,9 +233,15 @@ class AlertRuleDetailView(APIView):
         with transaction.atomic():
             rule.status = AlertRule.STATUS_PAUSED
             rule.save(update_fields=['status'])
+            xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+            ip_admin = (xff.split(',')[0].strip() if xff
+                        else request.META.get('REMOTE_ADDR', '')) or None
             AuditLogService.emit(
                 event_type='ALERT_RULE_DELETED',
                 actor_user_id=request.user.pk,
+                target_entity_type='AlertRule',
+                target_entity_id=str(rule.id),
+                ip_address=ip_admin,
                 payload={'rule_id': str(rule.id), 'note': 'BR-009: baja lógica'},
             )
         return Response({'id': str(rule.id), 'status': rule.status})
@@ -244,9 +262,15 @@ class AlertRulePauseView(APIView):
             return Response({'error': 'RULE_NOT_FOUND'}, status=404)
         rule.status = AlertRule.STATUS_PAUSED
         rule.save(update_fields=['status'])
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='ALERT_RULE_PAUSED',
             actor_user_id=request.user.pk,
+            target_entity_type='AlertRule',
+            target_entity_id=str(rule.id),
+            ip_address=ip_admin,
             payload={'rule_id': str(rule.id)},
         )
         return Response({'id': str(rule.id), 'status': rule.status})
@@ -267,9 +291,15 @@ class AlertRuleResumeView(APIView):
             return Response({'error': 'RULE_NOT_FOUND'}, status=404)
         rule.status = AlertRule.STATUS_ACTIVE
         rule.save(update_fields=['status'])
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='ALERT_RULE_RESUMED',
             actor_user_id=request.user.pk,
+            target_entity_type='AlertRule',
+            target_entity_id=str(rule.id),
+            ip_address=ip_admin,
             payload={'rule_id': str(rule.id)},
         )
         return Response({'id': str(rule.id), 'status': rule.status})
@@ -380,9 +410,15 @@ class AlertAcknowledgeView(APIView):
             alert.save(update_fields=[
                 'state', 'acknowledged_by', 'acknowledged_at', 'acknowledged_note',
             ])
+            xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+            ip_admin = (xff.split(',')[0].strip() if xff
+                        else request.META.get('REMOTE_ADDR', '')) or None
             AuditLogService.emit(
                 event_type='ALERT_ACKNOWLEDGED',
                 actor_user_id=request.user.pk,
+                target_entity_type='Alert',
+                target_entity_id=str(alert.id),
+                ip_address=ip_admin,
                 payload={
                     'alert_id': str(alert.id),
                     'rule_id': str(alert.rule_id),
@@ -413,6 +449,9 @@ class AlertBulkAcknowledgeView(APIView):
         except ValueError as e:
             return Response({'error': 'VALIDATION_ERROR', 'detail': str(e)}, status=400)
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin_bulk = (xff.split(',')[0].strip() if xff
+                         else request.META.get('REMOTE_ADDR', '')) or None
         acked = []
         errors = []
         for aid in alert_ids:
@@ -429,6 +468,9 @@ class AlertBulkAcknowledgeView(APIView):
                     AuditLogService.emit(
                         event_type='ALERT_ACKNOWLEDGED',
                         actor_user_id=request.user.pk,
+                        target_entity_type='Alert',
+                        target_entity_id=str(alert.id),
+                        ip_address=ip_admin_bulk,
                         payload={'alert_id': str(alert.id), 'bulk': True},
                     )
                 acked.append(str(aid))

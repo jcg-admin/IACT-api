@@ -4,8 +4,10 @@ Constantes para authentication.
 CLEAN_CODE v3.0.1: Nombres en UPPER_CASE.
 SOLID OCP: Valores configurables centralizados.
 
-CNST-005: Lockout configurado.
+BR-015: Lockout configurado (5 intentos / 30 min ventana / 30 min duracion)
+        — alineado con FR-001.02 spec aprobada.
 CNST-001: Security questions configuradas.
+CNST-005: Timeout de sesion 15 min (concepto distinto a lockout).
 """
 
 # ============================================================================
@@ -16,20 +18,22 @@ MAX_LOGIN_ATTEMPTS = 5
 """
 Máximo de intentos fallidos antes del bloqueo.
 
-CNST-005: 5 intentos fallidos.
+FR-001.02 + BR-015: 5 intentos fallidos.
 """
 
-LOCKOUT_DURATION_MINUTES = 15
+LOCKOUT_DURATION_MINUTES = 30
 """
 Duración del bloqueo en minutos.
 
-CNST-005: 15 minutos de bloqueo.
+FR-001.02 (escenario 4): mensaje "Intente en 30 minutos".
+Alineado con la ventana de conteo (LOCKOUT_WINDOW_MINUTES).
 """
 
-LOCKOUT_WINDOW_MINUTES = 15
+LOCKOUT_WINDOW_MINUTES = 30
 """
 Ventana de tiempo para contar intentos fallidos.
 
+FR-001.02: "5+ intentos fallidos en últimos 30 minutos".
 Los intentos fuera de esta ventana no se cuentan.
 """
 

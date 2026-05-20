@@ -143,13 +143,22 @@ class AccessGroupListCreateView(APIView):
                     fns = Function.objects.filter(pk__in=fn_ids, is_active=True)
                     agr.functions.set(fns)
 
+                ip_admin = (
+                    request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+                    or request.META.get('REMOTE_ADDR', '')
+                ) or None
+                # FR-016.01: audit canonico de creacion AGR
                 AuditLogService.emit(
                     event_type='ACCESS_GROUP_CREATED',
                     actor_user_id=request.user.pk,
+                    target_entity_type='AccessGroup',
+                    target_entity_id=str(agr.pk),
+                    ip_address=ip_admin,
                     payload={
                         'agr_code': code,
                         'agr_id': agr.pk,
                         'function_count': len(fn_ids),
+                        'initial_function_ids': fn_ids,
                     },
                 )
         except DatabaseError:
@@ -233,9 +242,17 @@ class AccessGroupDetailView(APIView):
 
         agr.save(update_fields=changed) if changed else None
 
+        ip_admin = (
+            request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+            or request.META.get('REMOTE_ADDR', '')
+        ) or None
+        # FR-016.02: audit canonico de modificacion AGR
         AuditLogService.emit(
             event_type='ACCESS_GROUP_MODIFIED',
             actor_user_id=request.user.pk,
+            target_entity_type='AccessGroup',
+            target_entity_id=str(agr_id),
+            ip_address=ip_admin,
             payload={'agr_id': agr_id, 'fields_changed': changed},
         )
         return Response({'id': agr.pk, 'code': agr.code, 'name': agr.name, 'fields_changed': changed})
@@ -260,9 +277,17 @@ class AccessGroupDetailView(APIView):
             agr.retire_reason = ser.validated_data['retire_reason']
             agr.save(update_fields=['is_active', 'retired_at', 'retire_reason'])
 
+            ip_admin = (
+                request.META.get('HTTP_X_FORWARDED_FOR', '').split(',')[0].strip()
+                or request.META.get('REMOTE_ADDR', '')
+            ) or None
+            # FR-016.03: audit canonico de retiro AGR
             AuditLogService.emit(
                 event_type='ACCESS_GROUP_RETIRED',
                 actor_user_id=request.user.pk,
+                target_entity_type='AccessGroup',
+                target_entity_id=str(agr_id),
+                ip_address=ip_admin,
                 payload={'agr_id': agr_id, 'retire_reason': ser.validated_data['retire_reason']},
             )
 

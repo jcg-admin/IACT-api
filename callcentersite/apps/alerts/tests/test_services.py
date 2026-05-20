@@ -73,7 +73,9 @@ class MessageServiceTest(TestCase):
                 body='Test'
             )
 
-        self.assertIn('máximo 50 destinatarios', str(context.exception))
+        # Modelo retorna "Maximo 50 destinatarios permitidos.
+        # Recibidos: N (CNST-024)" — capital M con acento.
+        self.assertIn('Máximo 50 destinatarios', str(context.exception))
 
     def test_get_inbox(self):
         """Test: Obtener inbox de usuario"""

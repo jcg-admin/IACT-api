@@ -37,11 +37,25 @@ PASS   = 'django_pass'
 
 
 def _sql(statements: str) -> subprocess.CompletedProcess:
-    """Ejecuta SQL en test_ivr_legacy. Commit implícito."""
-    return subprocess.run(
+    """Ejecuta SQL en test_ivr_legacy. Commit implícito.
+
+    Falla loudly: si el subprocess mysql retorna != 0 (error de
+    SQL, socket inaccesible, credenciales erroneas, etc.), lanza
+    RuntimeError con stderr. Sin esto, errores de schema creation
+    se enmascaraban y los tests fallaban despues con
+    "table doesn't exist" sin trazabilidad.
+    """
+    result = subprocess.run(
         ['mysql', f'--socket={SOCKET}', f'-u{USER}', f'-p{PASS}', DB],
         input=statements, text=True, capture_output=True,
     )
+    if result.returncode != 0:
+        raise RuntimeError(
+            f"_sql FAIL (returncode={result.returncode}): "
+            f"stderr={result.stderr!r} "
+            f"input[:200]={statements[:200]!r}"
+        )
+    return result
 
 
 # ---------------------------------------------------------------------------

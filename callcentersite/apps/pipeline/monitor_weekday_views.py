@@ -1,6 +1,8 @@
 """
 apps/pipeline/monitor_weekday_views.py
 
+UC_PIP_01 — Ver Estado Pipeline (monitor weekday view).
+
 Monitor de distribucion de llamadas por dias de semana
 via vw_monitor_dias_semana de MariaDB ivr_legacy.
 

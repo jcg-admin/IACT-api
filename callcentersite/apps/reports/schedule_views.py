@@ -118,9 +118,15 @@ class ScheduledReportListCreateView(APIView):
             next_run_at=next_run_at,
         )
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='SCHEDULED_REPORT_CREATED',
             actor_user_id=request.user.pk,
+            target_entity_type='ScheduledReport',
+            target_entity_id=str(sched.pk),
+            ip_address=ip_admin,
             payload={'schedule_id': sched.pk, 'frequency': sched.frequency},
         )
 
@@ -180,10 +186,16 @@ class ScheduledReportDetailView(APIView):
             })
         s.save()
 
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='SCHEDULED_REPORT_PAUSED' if s.status == ScheduledReport.STATUS_PAUSED
                        else 'SCHEDULED_REPORT_RESUMED',
             actor_user_id=request.user.pk,
+            target_entity_type='ScheduledReport',
+            target_entity_id=str(s.pk),
+            ip_address=ip_admin,
             payload={'schedule_id': s.pk},
         )
         return Response(_sched_to_dict(s))
@@ -194,9 +206,15 @@ class ScheduledReportDetailView(APIView):
             return Response({'error': 'NOT_FOUND'}, status=404)
         s.status = ScheduledReport.STATUS_DELETED
         s.save(update_fields=['status'])
+        xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+        ip_admin = (xff.split(',')[0].strip() if xff
+                    else request.META.get('REMOTE_ADDR', '')) or None
         AuditLogService.emit(
             event_type='SCHEDULED_REPORT_DELETED',
             actor_user_id=request.user.pk,
+            target_entity_type='ScheduledReport',
+            target_entity_id=str(s.pk),
+            ip_address=ip_admin,
             payload={'schedule_id': s.pk},
         )
         return Response({'id': s.pk, 'status': s.status})

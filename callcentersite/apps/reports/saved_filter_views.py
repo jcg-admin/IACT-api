@@ -22,6 +22,14 @@ from apps.reports.serializers.scheduled_report_serializers import SavedViewSeria
 _TAG = 'Reportes'
 
 
+def _get_client_ip(request) -> str | None:
+    """Extrae IP del cliente (X-Forwarded-For prioritario)."""
+    xff = request.META.get('HTTP_X_FORWARDED_FOR', '')
+    if xff:
+        return xff.split(',')[0].strip() or None
+    return request.META.get('REMOTE_ADDR') or None
+
+
 # ---------------------------------------------------------------------------
 # UC_RPT_09 — SavedFilter
 # ---------------------------------------------------------------------------
@@ -107,6 +115,9 @@ class SavedFilterListView(APIView):
         AuditLogService.emit(
             event_type='SAVED_FILTER_CREATED',
             actor_user_id=request.user.pk,
+            target_entity_type='SavedFilter',
+            target_entity_id=str(sf.pk),
+            ip_address=_get_client_ip(request),
             payload={'filter_id': sf.pk, 'name': sf.name},
         )
         return Response(_filter_to_dict(sf), status=201)
@@ -158,6 +169,9 @@ class SavedFilterDetailView(APIView):
         AuditLogService.emit(
             event_type='SAVED_FILTER_UPDATED',
             actor_user_id=request.user.pk,
+            target_entity_type='SavedFilter',
+            target_entity_id=str(sf.pk),
+            ip_address=_get_client_ip(request),
             payload={'filter_id': sf.pk},
         )
         return Response(_filter_to_dict(sf))
@@ -171,6 +185,9 @@ class SavedFilterDetailView(APIView):
         AuditLogService.emit(
             event_type='SAVED_FILTER_DELETED',
             actor_user_id=request.user.pk,
+            target_entity_type='SavedFilter',
+            target_entity_id=str(sf_id),
+            ip_address=_get_client_ip(request),
             payload={'filter_id': sf_id},
         )
         return Response({'deleted': sf_id})
@@ -252,6 +269,9 @@ class SavedViewListView(APIView):
         AuditLogService.emit(
             event_type='SAVED_VIEW_CREATED',
             actor_user_id=request.user.pk,
+            target_entity_type='SavedView',
+            target_entity_id=str(sv.pk),
+            ip_address=_get_client_ip(request),
             payload={'view_id': sv.pk, 'name': sv.name},
         )
         return Response(_view_to_dict(sv), status=201)
@@ -289,6 +309,9 @@ class SavedViewDetailView(APIView):
         AuditLogService.emit(
             event_type='SAVED_VIEW_UPDATED',
             actor_user_id=request.user.pk,
+            target_entity_type='SavedView',
+            target_entity_id=str(sv.pk),
+            ip_address=_get_client_ip(request),
             payload={'view_id': sv.pk},
         )
         return Response(_view_to_dict(sv))
@@ -302,6 +325,9 @@ class SavedViewDetailView(APIView):
         AuditLogService.emit(
             event_type='SAVED_VIEW_DELETED',
             actor_user_id=request.user.pk,
+            target_entity_type='SavedView',
+            target_entity_id=str(sv_id),
+            ip_address=_get_client_ip(request),
             payload={'view_id': sv_id},
         )
         return Response({'deleted': sv_id})
@@ -332,6 +358,9 @@ class SavedViewCloneView(APIView):
         AuditLogService.emit(
             event_type='SAVED_VIEW_CLONED',
             actor_user_id=request.user.pk,
+            target_entity_type='SavedView',
+            target_entity_id=str(sv.pk),
+            ip_address=_get_client_ip(request),
             payload={'original_id': pk, 'clone_id': sv.pk},
         )
         return Response(_view_to_dict(sv), status=201)

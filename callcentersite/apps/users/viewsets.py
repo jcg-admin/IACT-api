@@ -3,6 +3,14 @@ ViewSets para apps/users/.
 
 DRF ViewSets con permisos RBAC y documentación OpenAPI.
 CLEAN_CODE v3.0.1: ViewSets auto-documentados.
+
+Implementa los siguientes casos de uso:
+- UC_USR_01..04 (CRUD usuarios) — UserViewSet
+- UC_USR_07 (perfil propio) — ProfileViewSet
+- UC_USR_08 (settings) — SettingsViewSet
+- UC_AUTH_01 (login) / UC_AUTH_02 (logout) / UC_AUTH_04 (cambiar
+  password) / UC_AUTH_03 (reset password) — AuthViewSet
+- UC_AUTH_05 (gestionar sesiones) — SessionHistoryViewSet
 """
 
 from rest_framework import viewsets
