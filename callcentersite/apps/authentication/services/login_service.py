@@ -217,6 +217,10 @@ class LoginService:
         # Verificar password
         if not user.check_password(password):
             new_count = cls._record_failed_attempt(username, user=user)
+            # FR-001.05: emitir LOGIN_FAILED por cada intento fallido
+            cls._emit_audit('LOGIN_FAILED', user.pk, {
+                'username': username, 'attempt_number': new_count,
+            })
             # BR-015: si llega al límite, bloquear
             if new_count >= MAX_FAILED_ATTEMPTS:
                 user.state = 'BLOCKED'
@@ -280,7 +284,8 @@ class LoginService:
         # Verificar si tiene permisos (FA-04)
         has_perms = cls._user_has_any_assignment(user)
 
-        # PASO 13a: emitir LOGIN principal
+        # PASO 13a: emitir LOGIN_SUCCESS (FR-001.05) + LOGIN (legacy compat).
+        cls._emit_audit('LOGIN_SUCCESS', user.pk, audit_payload)
         cls._emit_audit('LOGIN', user.pk, audit_payload)
 
         # PASO 13b: LOGIN_NO_PERMISSIONS si no tiene funciones

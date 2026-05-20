@@ -148,7 +148,9 @@ class AuditLog(models.Model):
 
 VALID_EVENT_TYPES = frozenset({
     # Auth (UC_AUTH_01..05)
-    'LOGIN',
+    'LOGIN',           # legacy (mantenido por audit historico)
+    'LOGIN_SUCCESS',   # FR-001.05 canonico
+    'LOGIN_FAILED',    # FR-001.05 — intento fallido individual
     'LOGOUT',
     'SESSION_CLOSED',
     'LOGIN_NO_PERMISSIONS',
